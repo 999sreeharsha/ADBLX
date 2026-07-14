@@ -66,7 +66,8 @@ The current project already has a natural two-level settings split — project-l
 5. Xcode ⌘B succeeds and ⌘R launches the simulator (manual).
 6. `xcodebuild test` (or Xcode ⌘U) runs `ADBLXTests`/`ADBLXUITests` and they still pass/launch.
 7. **Diff scope check** — `git diff`/`git status` after generation contains changes only within `project.yml`, `ADBLX.xcodeproj/`, and `README.md` (the XcodeGen quickstart added in this commit). No source file changes anywhere else. This catches accidental rewrites of generated assets or unexpected project modifications.
-8. `git status` is clean after generation and review.
+8. **Xcode project usability (manual)** — `open ADBLX.xcodeproj` and confirm: all three schemes appear correctly, no missing file references, no yellow/orange folders, no build-setting warnings in the project navigator, and the project opens without any "upgrade to recommended settings" migration prompt.
+9. `git status` is clean after generation and review.
 
 ## Rollback
 
