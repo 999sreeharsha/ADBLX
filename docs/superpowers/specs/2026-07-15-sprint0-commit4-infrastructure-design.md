@@ -57,7 +57,7 @@ group.com.ADBLX.shared/
 └── Diagnostics/
 ```
 
-- `Rules/` (not "CompiledRules") holds the active rule JSON per category, regardless of provenance — bundled, compiled, or imported. Content Blockers will eventually read from here instead of their bundled `Resources/blockerList.json` (that migration is Commit 5).
+- `Rules/` (not "CompiledRules") holds the active rule JSON per category, regardless of provenance — bundled, compiled, or imported. Content Blockers will eventually read from here instead of their bundled `Resources/blockerList.json` (that migration is Commit 5). Files are written atomically by the main app (`.tmp` → rename) so extensions never observe partially-written rule files. This is a contract for future write code, not something implemented in this commit.
 - `Manifest/manifest.json` — the CDN-fetched manifest describing available filter lists and versions.
 - `Metadata/installed-versions.json` — which rule versions are currently installed, self-documenting name (was "versions.json").
 - `Metadata/manifest-state.json` — state of the last manifest sync/compile operation, self-documenting name (was "state.json").
@@ -103,6 +103,8 @@ concurrency:
 5. `xcodebuild build` for the `ADBLX` scheme
 6. `xcodebuild test` — **`ADBLXTests` only**, via `-only-testing:ADBLXTests`
 
+**CI philosophy:** each step gates the next — the pipeline validates repository state before it validates code. Generation must succeed before the drift check runs; the drift check is a hard failure (not a warning) before build; build must succeed before tests run. There is no `fail-fast: false` matrix here (single job, no parallel variants), but the ordering itself is the fail-fast contract: a broken step stops the pipeline rather than masking downstream results.
+
 **Sprint 0 CI test policy (explicit):**
 ```
 Run:  ADBLXTests
@@ -125,6 +127,14 @@ No caching, no artifacts, no release automation.
 ## Performance & battery
 
 No runtime impact. App Groups add a negligible entitlement/container overhead with no code yet reading or writing through it. CI changes are developer-workflow-only — no effect on the shipped app. The only measurable cost is CI wall-clock time from building 7 targets, which is not gated in this commit.
+
+## Development environment limitations
+
+Current development uses an Apple Personal Team (free, non-paid). Therefore:
+
+- The Network Extension entitlement (`com.apple.developer.networking.networkextension`) is unavailable — Personal Teams cannot provision it.
+- `ADBLXPacketTunnel`'s capability and App Group are intentionally deferred as a result (see the target matrix above).
+- This is an Apple provisioning limitation, not a project or architecture limitation. Revisit once the account upgrades to a paid Apple Developer Program membership.
 
 ## What's deliberately not here
 
