@@ -46,6 +46,8 @@ Every extension target uses `type: app-extension`. Confirmed directly from Xcode
 
 `Resources/blockerList.json` contains `[]` in this commit — a syntactically valid, empty rule list. **No code calls `SFContentBlockerManager.reloadContentBlocker()` anywhere in this commit.** Commit 5 changes exactly one thing: `[]` becomes a real 1–3K compiled rule set. The handler's request-handling logic does not change between Commit 3 and Commit 5 — only the JSON payload does.
 
+The JSON is loaded from the extension bundle, **not** the App Group container. By Commit 5 the app begins writing rule data into the App Group; Commit 3 intentionally exercises only the bundled-resource path, not App Group I/O.
+
 ### PacketTunnel
 
 `PacketTunnelProvider: NEPacketTunnelProvider` implements only the overrides required by the SDK (`startTunnel(options:completionHandler:)`, `stopTunnel(with:completionHandler:)`, `handleAppMessage(_:completionHandler:)`). Every implementation calls its completion handler immediately (e.g. `completionHandler(nil)` / `completionHandler(nil)`) with no other work: no timers, no observers, no networking, no file I/O. No Network Extension entitlement (Commit 4).
@@ -99,4 +101,4 @@ No App Groups, no Network Extension entitlement, no Web Extension capabilities. 
 
 ## Performance & battery
 
-Expected to be effectively zero measurable runtime cost: no main-thread work beyond extension initialization, negligible memory (placeholder handlers do almost no work), no network activity, no App Group I/O, no background execution. The only real-world impact is a compile-time increase from 3 targets to 7, tracked informally per acceptance criterion 7.
+Expected to be effectively zero measurable runtime cost: no main-thread work beyond extension initialization, negligible memory (placeholder handlers do almost no work), no network activity, no App Group I/O, no background execution. No persistent background processes are introduced in this commit — PacketTunnel and the Web Extension existing as targets does not imply any background execution; their placeholder implementations correctly avoid it. The only real-world impact is a compile-time increase from 3 targets to 7, tracked informally per acceptance criterion 7.
