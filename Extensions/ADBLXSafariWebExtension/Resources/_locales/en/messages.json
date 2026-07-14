@@ -1,0 +1,10 @@
+{
+    "extension_name": {
+        "message": "ADBLX Safari Web Extension",
+        "description": "Display name shown in Safari's extension list."
+    },
+    "extension_description": {
+        "message": "Placeholder description — functional implementation lands in a later sprint.",
+        "description": "Description shown in Safari's extension list."
+    }
+}

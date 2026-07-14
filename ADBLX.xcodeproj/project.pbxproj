@@ -27,11 +27,86 @@
 		0774520D89681EE00363A7DE /* ADBLX.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = ADBLX.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		269873BA9A7421D0F1488E18 /* ADBLXTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = ADBLXTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		2B308625A55359393052EBDF /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
+		4270ABDB6F2A340D314B5511 /* ADBLXRegionalBlocker.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = ADBLXRegionalBlocker.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		51BB17E426853BD9CF673A19 /* ADBLXUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = ADBLXUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		5D507ADA71442B7732E25662 /* ADBLXPacketTunnel.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = ADBLXPacketTunnel.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		A4F1B788D3F46BBC97DACE47 /* ADBLXAnnoyancesBlocker.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = ADBLXAnnoyancesBlocker.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		C18C5D670DA3B78285B44C94 /* ADBLXSafariWebExtension.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = ADBLXSafariWebExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		CE383A84E1D527E02B0E4CA0 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
+		E2F6DD6F2EACB8B84B9FAD7D /* ADBLXAdsBlocker.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = ADBLXAdsBlocker.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		F09181B523459EB98934CA02 /* ADBLXPrivacyBlocker.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = ADBLXPrivacyBlocker.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		2060F4E5B192F6724FA312AF /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 734790D8FA30AEF8AB59E21B /* ADBLXSafariWebExtension */;
+		};
+		88E813FE543BAE5119B8542D /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = C87480D5B9FF5CF1894F7775 /* ADBLXRegionalBlocker */;
+		};
+		ABFB96CE63CB83F440BFF98B /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 824DB7F7B38E0216F3CDD3A7 /* ADBLXAdsBlocker */;
+		};
+		B68B005B4FB6650B332CBE96 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 8E481CF8054F4670C26FB1CF /* ADBLXPacketTunnel */;
+		};
+		D03E6A87125B987754364C69 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = C5C128EE93D0F47D2A5E66C4 /* ADBLXAnnoyancesBlocker */;
+		};
+		E89B5CB5F67F8FB7497B6934 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 40E66CD588F8467CEC1C699F /* ADBLXPrivacyBlocker */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		08840849EAC568D56B6D152C /* Extensions/ADBLXSafariWebExtension */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				2060F4E5B192F6724FA312AF /* PBXFileSystemSynchronizedBuildFileExceptionSet */,
+			);
+			explicitFileTypes = {
+			};
+			explicitFolders = (
+			);
+			path = Extensions/ADBLXSafariWebExtension;
+			sourceTree = "<group>";
+		};
+		11126BC11D41F3B6FC5A8F2E /* Extensions/ADBLXRegionalBlocker */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				88E813FE543BAE5119B8542D /* PBXFileSystemSynchronizedBuildFileExceptionSet */,
+			);
+			explicitFileTypes = {
+			};
+			explicitFolders = (
+			);
+			path = Extensions/ADBLXRegionalBlocker;
+			sourceTree = "<group>";
+		};
 		4467C4E4C0F2D1659CA5361C /* ADBLXUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			explicitFileTypes = {
@@ -39,6 +114,18 @@
 			explicitFolders = (
 			);
 			path = ADBLXUITests;
+			sourceTree = "<group>";
+		};
+		4E46745D031963421B1BB746 /* Extensions/ADBLXAnnoyancesBlocker */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				D03E6A87125B987754364C69 /* PBXFileSystemSynchronizedBuildFileExceptionSet */,
+			);
+			explicitFileTypes = {
+			};
+			explicitFolders = (
+			);
+			path = Extensions/ADBLXAnnoyancesBlocker;
 			sourceTree = "<group>";
 		};
 		4E670790808BA4FFFFB99817 /* ADBLXTests */ = {
@@ -59,6 +146,42 @@
 			path = ADBLX;
 			sourceTree = "<group>";
 		};
+		6E55DB98411B229448E7F2A9 /* Extensions/ADBLXPrivacyBlocker */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				E89B5CB5F67F8FB7497B6934 /* PBXFileSystemSynchronizedBuildFileExceptionSet */,
+			);
+			explicitFileTypes = {
+			};
+			explicitFolders = (
+			);
+			path = Extensions/ADBLXPrivacyBlocker;
+			sourceTree = "<group>";
+		};
+		CD03B46135A235F678846099 /* Extensions/ADBLXPacketTunnel */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				B68B005B4FB6650B332CBE96 /* PBXFileSystemSynchronizedBuildFileExceptionSet */,
+			);
+			explicitFileTypes = {
+			};
+			explicitFolders = (
+			);
+			path = Extensions/ADBLXPacketTunnel;
+			sourceTree = "<group>";
+		};
+		D3984DF576CCEBB0D50C8A9E /* Extensions/ADBLXAdsBlocker */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				ABFB96CE63CB83F440BFF98B /* PBXFileSystemSynchronizedBuildFileExceptionSet */,
+			);
+			explicitFileTypes = {
+			};
+			explicitFolders = (
+			);
+			path = Extensions/ADBLXAdsBlocker;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXGroup section */
@@ -66,6 +189,12 @@
 			isa = PBXGroup;
 			children = (
 				0774520D89681EE00363A7DE /* ADBLX.app */,
+				E2F6DD6F2EACB8B84B9FAD7D /* ADBLXAdsBlocker.appex */,
+				A4F1B788D3F46BBC97DACE47 /* ADBLXAnnoyancesBlocker.appex */,
+				5D507ADA71442B7732E25662 /* ADBLXPacketTunnel.appex */,
+				F09181B523459EB98934CA02 /* ADBLXPrivacyBlocker.appex */,
+				4270ABDB6F2A340D314B5511 /* ADBLXRegionalBlocker.appex */,
+				C18C5D670DA3B78285B44C94 /* ADBLXSafariWebExtension.appex */,
 				269873BA9A7421D0F1488E18 /* ADBLXTests.xctest */,
 				51BB17E426853BD9CF673A19 /* ADBLXUITests.xctest */,
 			);
@@ -88,6 +217,12 @@
 				4E670790808BA4FFFFB99817 /* ADBLXTests */,
 				4467C4E4C0F2D1659CA5361C /* ADBLXUITests */,
 				C5117A8CD238BA15216E3450 /* Config */,
+				D3984DF576CCEBB0D50C8A9E /* Extensions/ADBLXAdsBlocker */,
+				4E46745D031963421B1BB746 /* Extensions/ADBLXAnnoyancesBlocker */,
+				CD03B46135A235F678846099 /* Extensions/ADBLXPacketTunnel */,
+				6E55DB98411B229448E7F2A9 /* Extensions/ADBLXPrivacyBlocker */,
+				11126BC11D41F3B6FC5A8F2E /* Extensions/ADBLXRegionalBlocker */,
+				08840849EAC568D56B6D152C /* Extensions/ADBLXSafariWebExtension */,
 				36502E7A4796624FAD8BD33E /* Products */,
 			);
 			sourceTree = "<group>";
@@ -139,6 +274,27 @@
 			productReference = 51BB17E426853BD9CF673A19 /* ADBLXUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		40E66CD588F8467CEC1C699F /* ADBLXPrivacyBlocker */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 44C4AD09915B0C27C49996D6 /* Build configuration list for PBXNativeTarget "ADBLXPrivacyBlocker" */;
+			buildPhases = (
+				20C9866D2F56B24537016901 /* Sources */,
+				704DADC3DB87ADB61F09EBDC /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				6E55DB98411B229448E7F2A9 /* Extensions/ADBLXPrivacyBlocker */,
+			);
+			name = ADBLXPrivacyBlocker;
+			packageProductDependencies = (
+			);
+			productName = ADBLXPrivacyBlocker;
+			productReference = F09181B523459EB98934CA02 /* ADBLXPrivacyBlocker.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		685EBB135767780CE1A90795 /* ADBLX */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 3808986D29A8874D4F4C0A4B /* Build configuration list for PBXNativeTarget "ADBLX" */;
@@ -160,6 +316,111 @@
 			productReference = 0774520D89681EE00363A7DE /* ADBLX.app */;
 			productType = "com.apple.product-type.application";
 		};
+		734790D8FA30AEF8AB59E21B /* ADBLXSafariWebExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 614DCFA0877C7BB9F8544B25 /* Build configuration list for PBXNativeTarget "ADBLXSafariWebExtension" */;
+			buildPhases = (
+				557948948F6DAC2FE2B41331 /* Sources */,
+				0F871898403FBD09EC8E957B /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				08840849EAC568D56B6D152C /* Extensions/ADBLXSafariWebExtension */,
+			);
+			name = ADBLXSafariWebExtension;
+			packageProductDependencies = (
+			);
+			productName = ADBLXSafariWebExtension;
+			productReference = C18C5D670DA3B78285B44C94 /* ADBLXSafariWebExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		824DB7F7B38E0216F3CDD3A7 /* ADBLXAdsBlocker */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 3BD26F7922AEF3871A111D9B /* Build configuration list for PBXNativeTarget "ADBLXAdsBlocker" */;
+			buildPhases = (
+				09CB91B09DD7934330CF3832 /* Sources */,
+				C08273421371ECDA31DC2BC3 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				D3984DF576CCEBB0D50C8A9E /* Extensions/ADBLXAdsBlocker */,
+			);
+			name = ADBLXAdsBlocker;
+			packageProductDependencies = (
+			);
+			productName = ADBLXAdsBlocker;
+			productReference = E2F6DD6F2EACB8B84B9FAD7D /* ADBLXAdsBlocker.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		8E481CF8054F4670C26FB1CF /* ADBLXPacketTunnel */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E6AEF457B2701F95F3A26D7E /* Build configuration list for PBXNativeTarget "ADBLXPacketTunnel" */;
+			buildPhases = (
+				5E0592C7294A89F827BF33A1 /* Sources */,
+				3719DB8B64091E3F20F75C85 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				CD03B46135A235F678846099 /* Extensions/ADBLXPacketTunnel */,
+			);
+			name = ADBLXPacketTunnel;
+			packageProductDependencies = (
+			);
+			productName = ADBLXPacketTunnel;
+			productReference = 5D507ADA71442B7732E25662 /* ADBLXPacketTunnel.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		C5C128EE93D0F47D2A5E66C4 /* ADBLXAnnoyancesBlocker */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 6B1B94CC2D8C1FCEF67F9BFA /* Build configuration list for PBXNativeTarget "ADBLXAnnoyancesBlocker" */;
+			buildPhases = (
+				00D95EED9CF10BE550D5D4C7 /* Sources */,
+				1DF6F70A59B751D49F213053 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				4E46745D031963421B1BB746 /* Extensions/ADBLXAnnoyancesBlocker */,
+			);
+			name = ADBLXAnnoyancesBlocker;
+			packageProductDependencies = (
+			);
+			productName = ADBLXAnnoyancesBlocker;
+			productReference = A4F1B788D3F46BBC97DACE47 /* ADBLXAnnoyancesBlocker.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		C87480D5B9FF5CF1894F7775 /* ADBLXRegionalBlocker */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 6577702E9076672268A27D34 /* Build configuration list for PBXNativeTarget "ADBLXRegionalBlocker" */;
+			buildPhases = (
+				AB62E102ADD9EE3F2EC51E0E /* Sources */,
+				2474998263A0B05FFB2A1ACA /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				11126BC11D41F3B6FC5A8F2E /* Extensions/ADBLXRegionalBlocker */,
+			);
+			name = ADBLXRegionalBlocker;
+			packageProductDependencies = (
+			);
+			productName = ADBLXRegionalBlocker;
+			productReference = 4270ABDB6F2A340D314B5511 /* ADBLXRegionalBlocker.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -176,7 +437,25 @@
 						ProvisioningStyle = Automatic;
 						TestTargetID = 685EBB135767780CE1A90795;
 					};
+					40E66CD588F8467CEC1C699F = {
+						ProvisioningStyle = Automatic;
+					};
 					685EBB135767780CE1A90795 = {
+						ProvisioningStyle = Automatic;
+					};
+					734790D8FA30AEF8AB59E21B = {
+						ProvisioningStyle = Automatic;
+					};
+					824DB7F7B38E0216F3CDD3A7 = {
+						ProvisioningStyle = Automatic;
+					};
+					8E481CF8054F4670C26FB1CF = {
+						ProvisioningStyle = Automatic;
+					};
+					C5C128EE93D0F47D2A5E66C4 = {
+						ProvisioningStyle = Automatic;
+					};
+					C87480D5B9FF5CF1894F7775 = {
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -196,6 +475,12 @@
 			projectRoot = "";
 			targets = (
 				685EBB135767780CE1A90795 /* ADBLX */,
+				824DB7F7B38E0216F3CDD3A7 /* ADBLXAdsBlocker */,
+				C5C128EE93D0F47D2A5E66C4 /* ADBLXAnnoyancesBlocker */,
+				8E481CF8054F4670C26FB1CF /* ADBLXPacketTunnel */,
+				40E66CD588F8467CEC1C699F /* ADBLXPrivacyBlocker */,
+				C87480D5B9FF5CF1894F7775 /* ADBLXRegionalBlocker */,
+				734790D8FA30AEF8AB59E21B /* ADBLXSafariWebExtension */,
 				143F27535B274A2CF99D0C4B /* ADBLXTests */,
 				179B04420DCE6E84F57B2A38 /* ADBLXUITests */,
 			);
@@ -203,6 +488,41 @@
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		0F871898403FBD09EC8E957B /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		1DF6F70A59B751D49F213053 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		2474998263A0B05FFB2A1ACA /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		3719DB8B64091E3F20F75C85 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		704DADC3DB87ADB61F09EBDC /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		A1C162FB05BFAB101373E449 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -211,6 +531,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		AD6FA0F3423771E4849031F3 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C08273421371ECDA31DC2BC3 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -227,7 +554,28 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		00D95EED9CF10BE550D5D4C7 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		091621AA814C583EA42F511D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		09CB91B09DD7934330CF3832 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		20C9866D2F56B24537016901 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -241,7 +589,28 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		557948948F6DAC2FE2B41331 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5E0592C7294A89F827BF33A1 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		73A2C902051BE75697FBD56E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AB62E102ADD9EE3F2EC51E0E /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -273,6 +642,115 @@
 				SDKROOT = auto;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		1852A77014FFB848DF8ACE92 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				INFOPLIST_FILE = Extensions/ADBLXAdsBlocker/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ADBLX.ADBLXAdsBlocker;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				XROS_DEPLOYMENT_TARGET = 26.5;
+			};
+			name = Debug;
+		};
+		19775027042847738C179854 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				INFOPLIST_FILE = Extensions/ADBLXPacketTunnel/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ADBLX.ADBLXPacketTunnel;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				XROS_DEPLOYMENT_TARGET = 26.5;
+			};
+			name = Debug;
+		};
+		20D1E51624C35CFEEE54EF9E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				INFOPLIST_FILE = Extensions/ADBLXSafariWebExtension/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.5;
+				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = "-framework SafariServices";
+				PRODUCT_BUNDLE_IDENTIFIER = com.ADBLX.ADBLXSafariWebExtension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				XROS_DEPLOYMENT_TARGET = 26.5;
+			};
+			name = Debug;
+		};
+		22E8DDB269CF8FAA700A3626 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				INFOPLIST_FILE = Extensions/ADBLXAdsBlocker/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ADBLX.ADBLXAdsBlocker;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				XROS_DEPLOYMENT_TARGET = 26.5;
 			};
 			name = Release;
 		};
@@ -368,6 +846,34 @@
 			};
 			name = Debug;
 		};
+		52DCB4AFA0214A124148B171 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				INFOPLIST_FILE = Extensions/ADBLXSafariWebExtension/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.5;
+				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = "-framework SafariServices";
+				PRODUCT_BUNDLE_IDENTIFIER = com.ADBLX.ADBLXSafariWebExtension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				XROS_DEPLOYMENT_TARGET = 26.5;
+			};
+			name = Release;
+		};
 		55C0BE2086F8EA16F02DD359 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -397,6 +903,60 @@
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2,7";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ADBLX.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/ADBLX";
+				XROS_DEPLOYMENT_TARGET = 26.5;
+			};
+			name = Debug;
+		};
+		572A9EF00B598D5108738796 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				INFOPLIST_FILE = Extensions/ADBLXRegionalBlocker/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ADBLX.ADBLXRegionalBlocker;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				XROS_DEPLOYMENT_TARGET = 26.5;
+			};
+			name = Debug;
+		};
+		58BEFD3873D0E9C2BC5752AD /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				INFOPLIST_FILE = Extensions/ADBLXPrivacyBlocker/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ADBLX.ADBLXPrivacyBlocker;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
 				XROS_DEPLOYMENT_TARGET = 26.5;
 			};
 			name = Debug;
@@ -433,6 +993,87 @@
 				XROS_DEPLOYMENT_TARGET = 26.5;
 			};
 			name = Release;
+		};
+		6A29A1406A0715CF8287965D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				INFOPLIST_FILE = Extensions/ADBLXAnnoyancesBlocker/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ADBLX.ADBLXAnnoyancesBlocker;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				XROS_DEPLOYMENT_TARGET = 26.5;
+			};
+			name = Release;
+		};
+		7C14E636120FAA58EDBC40BE /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				INFOPLIST_FILE = Extensions/ADBLXRegionalBlocker/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ADBLX.ADBLXRegionalBlocker;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				XROS_DEPLOYMENT_TARGET = 26.5;
+			};
+			name = Release;
+		};
+		7C9C63E212C4DA940029EE04 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				INFOPLIST_FILE = Extensions/ADBLXAnnoyancesBlocker/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ADBLX.ADBLXAnnoyancesBlocker;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				XROS_DEPLOYMENT_TARGET = 26.5;
+			};
+			name = Debug;
 		};
 		96DE325A9BB2A05E23A801F9 /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -511,6 +1152,60 @@
 			};
 			name = Debug;
 		};
+		B6BD037705D3076EFB5D44ED /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				INFOPLIST_FILE = Extensions/ADBLXPrivacyBlocker/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ADBLX.ADBLXPrivacyBlocker;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				XROS_DEPLOYMENT_TARGET = 26.5;
+			};
+			name = Release;
+		};
+		E27D733FA6E582D2B41C0F56 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				INFOPLIST_FILE = Extensions/ADBLXPacketTunnel/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ADBLX.ADBLXPacketTunnel;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				XROS_DEPLOYMENT_TARGET = 26.5;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -532,6 +1227,15 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
+		3BD26F7922AEF3871A111D9B /* Build configuration list for PBXNativeTarget "ADBLXAdsBlocker" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1852A77014FFB848DF8ACE92 /* Debug */,
+				22E8DDB269CF8FAA700A3626 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
 		3C8273A2DD0F71683291069E /* Build configuration list for PBXNativeTarget "ADBLXUITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -541,11 +1245,56 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
+		44C4AD09915B0C27C49996D6 /* Build configuration list for PBXNativeTarget "ADBLXPrivacyBlocker" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				58BEFD3873D0E9C2BC5752AD /* Debug */,
+				B6BD037705D3076EFB5D44ED /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		614DCFA0877C7BB9F8544B25 /* Build configuration list for PBXNativeTarget "ADBLXSafariWebExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				20D1E51624C35CFEEE54EF9E /* Debug */,
+				52DCB4AFA0214A124148B171 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		6577702E9076672268A27D34 /* Build configuration list for PBXNativeTarget "ADBLXRegionalBlocker" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				572A9EF00B598D5108738796 /* Debug */,
+				7C14E636120FAA58EDBC40BE /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		6B1B94CC2D8C1FCEF67F9BFA /* Build configuration list for PBXNativeTarget "ADBLXAnnoyancesBlocker" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7C9C63E212C4DA940029EE04 /* Debug */,
+				6A29A1406A0715CF8287965D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
 		B41D3962A493D16C53EE451A /* Build configuration list for PBXProject "ADBLX" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				ACB3F3C729B73D531582B4EB /* Debug */,
 				15C1C1F57D289287D6BCE97F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		E6AEF457B2701F95F3A26D7E /* Build configuration list for PBXNativeTarget "ADBLXPacketTunnel" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				19775027042847738C179854 /* Debug */,
+				E27D733FA6E582D2B41C0F56 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

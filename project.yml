@@ -1,4 +1,6 @@
 name: ADBLX
+options:
+  autogenerateSchemes: false
 configFiles:
   Debug: Config/Debug.xcconfig
   Release: Config/Release.xcconfig
@@ -107,3 +109,190 @@ targets:
         TARGETED_DEVICE_FAMILY: "1,2,7"
         TEST_TARGET_NAME: ADBLX
         XROS_DEPLOYMENT_TARGET: "26.5"
+  ADBLXAdsBlocker:
+    type: app-extension
+    platform: auto
+    supportedDestinations: [iOS, macOS, visionOS]
+    sources:
+      - path: Extensions/ADBLXAdsBlocker
+        type: syncedFolder
+    info:
+      path: Extensions/ADBLXAdsBlocker/Info.plist
+      properties:
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.Safari.content-blocker
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ContentBlockerRequestHandler
+    settings:
+      base:
+        CODE_SIGN_STYLE: Automatic
+        CURRENT_PROJECT_VERSION: "1"
+        IPHONEOS_DEPLOYMENT_TARGET: "26.5"
+        MACOSX_DEPLOYMENT_TARGET: "26.5"
+        MARKETING_VERSION: "1.0"
+        PRODUCT_BUNDLE_IDENTIFIER: com.ADBLX.ADBLXAdsBlocker
+        PRODUCT_NAME: "$(TARGET_NAME)"
+        SDKROOT: auto
+        SUPPORTED_PLATFORMS: "iphoneos iphonesimulator macosx xros xrsimulator"
+        SWIFT_VERSION: "5.0"
+        TARGETED_DEVICE_FAMILY: "1,2,7"
+        XROS_DEPLOYMENT_TARGET: "26.5"
+  ADBLXPrivacyBlocker:
+    type: app-extension
+    platform: auto
+    supportedDestinations: [iOS, macOS, visionOS]
+    sources:
+      - path: Extensions/ADBLXPrivacyBlocker
+        type: syncedFolder
+    info:
+      path: Extensions/ADBLXPrivacyBlocker/Info.plist
+      properties:
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.Safari.content-blocker
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ContentBlockerRequestHandler
+    settings:
+      base:
+        CODE_SIGN_STYLE: Automatic
+        CURRENT_PROJECT_VERSION: "1"
+        IPHONEOS_DEPLOYMENT_TARGET: "26.5"
+        MACOSX_DEPLOYMENT_TARGET: "26.5"
+        MARKETING_VERSION: "1.0"
+        PRODUCT_BUNDLE_IDENTIFIER: com.ADBLX.ADBLXPrivacyBlocker
+        PRODUCT_NAME: "$(TARGET_NAME)"
+        SDKROOT: auto
+        SUPPORTED_PLATFORMS: "iphoneos iphonesimulator macosx xros xrsimulator"
+        SWIFT_VERSION: "5.0"
+        TARGETED_DEVICE_FAMILY: "1,2,7"
+        XROS_DEPLOYMENT_TARGET: "26.5"
+  ADBLXAnnoyancesBlocker:
+    type: app-extension
+    platform: auto
+    supportedDestinations: [iOS, macOS, visionOS]
+    sources:
+      - path: Extensions/ADBLXAnnoyancesBlocker
+        type: syncedFolder
+    info:
+      path: Extensions/ADBLXAnnoyancesBlocker/Info.plist
+      properties:
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.Safari.content-blocker
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ContentBlockerRequestHandler
+    settings:
+      base:
+        CODE_SIGN_STYLE: Automatic
+        CURRENT_PROJECT_VERSION: "1"
+        IPHONEOS_DEPLOYMENT_TARGET: "26.5"
+        MACOSX_DEPLOYMENT_TARGET: "26.5"
+        MARKETING_VERSION: "1.0"
+        PRODUCT_BUNDLE_IDENTIFIER: com.ADBLX.ADBLXAnnoyancesBlocker
+        PRODUCT_NAME: "$(TARGET_NAME)"
+        SDKROOT: auto
+        SUPPORTED_PLATFORMS: "iphoneos iphonesimulator macosx xros xrsimulator"
+        SWIFT_VERSION: "5.0"
+        TARGETED_DEVICE_FAMILY: "1,2,7"
+        XROS_DEPLOYMENT_TARGET: "26.5"
+  ADBLXRegionalBlocker:
+    type: app-extension
+    platform: auto
+    supportedDestinations: [iOS, macOS, visionOS]
+    sources:
+      - path: Extensions/ADBLXRegionalBlocker
+        type: syncedFolder
+    info:
+      path: Extensions/ADBLXRegionalBlocker/Info.plist
+      properties:
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.Safari.content-blocker
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ContentBlockerRequestHandler
+    settings:
+      base:
+        CODE_SIGN_STYLE: Automatic
+        CURRENT_PROJECT_VERSION: "1"
+        IPHONEOS_DEPLOYMENT_TARGET: "26.5"
+        MACOSX_DEPLOYMENT_TARGET: "26.5"
+        MARKETING_VERSION: "1.0"
+        PRODUCT_BUNDLE_IDENTIFIER: com.ADBLX.ADBLXRegionalBlocker
+        PRODUCT_NAME: "$(TARGET_NAME)"
+        SDKROOT: auto
+        SUPPORTED_PLATFORMS: "iphoneos iphonesimulator macosx xros xrsimulator"
+        SWIFT_VERSION: "5.0"
+        TARGETED_DEVICE_FAMILY: "1,2,7"
+        XROS_DEPLOYMENT_TARGET: "26.5"
+  ADBLXPacketTunnel:
+    type: app-extension
+    platform: auto
+    supportedDestinations: [iOS, macOS, visionOS]
+    sources:
+      - path: Extensions/ADBLXPacketTunnel
+        type: syncedFolder
+    info:
+      path: Extensions/ADBLXPacketTunnel/Info.plist
+      properties:
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.networkextension.packet-tunnel
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).PacketTunnelProvider
+    settings:
+      base:
+        CODE_SIGN_STYLE: Automatic
+        CURRENT_PROJECT_VERSION: "1"
+        IPHONEOS_DEPLOYMENT_TARGET: "26.5"
+        MACOSX_DEPLOYMENT_TARGET: "26.5"
+        MARKETING_VERSION: "1.0"
+        PRODUCT_BUNDLE_IDENTIFIER: com.ADBLX.ADBLXPacketTunnel
+        PRODUCT_NAME: "$(TARGET_NAME)"
+        SDKROOT: auto
+        SUPPORTED_PLATFORMS: "iphoneos iphonesimulator macosx xros xrsimulator"
+        SWIFT_VERSION: "5.0"
+        TARGETED_DEVICE_FAMILY: "1,2,7"
+        XROS_DEPLOYMENT_TARGET: "26.5"
+  ADBLXSafariWebExtension:
+    type: app-extension
+    platform: auto
+    supportedDestinations: [iOS, macOS, visionOS]
+    sources:
+      - path: Extensions/ADBLXSafariWebExtension
+        type: syncedFolder
+    info:
+      path: Extensions/ADBLXSafariWebExtension/Info.plist
+      properties:
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.Safari.web-extension
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).SafariWebExtensionHandler
+    settings:
+      base:
+        CODE_SIGN_STYLE: Automatic
+        CURRENT_PROJECT_VERSION: "1"
+        IPHONEOS_DEPLOYMENT_TARGET: "26.5"
+        MACOSX_DEPLOYMENT_TARGET: "26.5"
+        MARKETING_VERSION: "1.0"
+        OTHER_LDFLAGS: "-framework SafariServices"
+        PRODUCT_BUNDLE_IDENTIFIER: com.ADBLX.ADBLXSafariWebExtension
+        PRODUCT_NAME: "$(TARGET_NAME)"
+        SDKROOT: auto
+        SUPPORTED_PLATFORMS: "iphoneos iphonesimulator macosx xros xrsimulator"
+        SWIFT_VERSION: "5.0"
+        TARGETED_DEVICE_FAMILY: "1,2,7"
+        XROS_DEPLOYMENT_TARGET: "26.5"
+schemes:
+  ADBLX:
+    build:
+      targets:
+        ADBLX: all
+        ADBLXAdsBlocker: [build]
+        ADBLXPrivacyBlocker: [build]
+        ADBLXAnnoyancesBlocker: [build]
+        ADBLXRegionalBlocker: [build]
+        ADBLXPacketTunnel: [build]
+        ADBLXSafariWebExtension: [build]
+    test:
+      targets:
+        - ADBLXTests
+        - ADBLXUITests
+      config: Debug
+    run:
+      config: Debug
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release
