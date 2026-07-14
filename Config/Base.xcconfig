@@ -1,0 +1,4 @@
+// Base build settings shared across all ADBLX targets and configurations.
+// Wired into project.yml starting in Sprint 0 Commit 2 (XcodeGen migration).
+SWIFT_VERSION = 5.0
+IPHONEOS_DEPLOYMENT_TARGET = 26.5

@@ -1,0 +1,21 @@
+excluded:
+  - Pods
+  - DerivedData
+  - .build
+
+opt_in_rules:
+  - empty_count
+  - closure_spacing
+  - explicit_init
+  - force_unwrapping
+  - unused_import
+
+line_length:
+  warning: 120
+  error: 150
+
+identifier_name:
+  min_length:
+    warning: 2
+  excluded:
+    - id
