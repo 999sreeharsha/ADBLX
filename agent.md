@@ -1,6 +1,8 @@
 # Agent Notes — SHIELD (ADBLX)
 
-iOS/iPadOS/Mac(Catalyst) ad blocker. Full spec: [docs/adblock-prd-v1.1.md](docs/adblock-prd-v1.1.md).
+iOS/iPadOS ad blocker. Full spec: [docs/adblock-prd-v1.1.md](docs/adblock-prd-v1.1.md).
+
+**Note:** the Xcode project as scaffolded also targets native macOS and visionOS (`supportedDestinations: [iOS, macOS, visionOS]`), not Mac via Catalyst as this line previously stated. That scope was inherited from Xcode's default multiplatform template and deliberately preserved, not decided, during Sprint 0's XcodeGen migration — see [`docs/Architecture/TargetTopology.md`](docs/Architecture/TargetTopology.md#multiplatform-scope). Treat the PRD's "iOS/iPadOS/Mac(Catalyst)" framing as the product intent pending a future Platform Strategy ADR, not as a description of the current build's platform scope.
 
 ## What it does
 Blocks ads/trackers in Safari (content blockers) and, for premium, device-wide via an on-device DNS tunnel + YouTube-in-Safari web extension. Zero data collection is a hard constraint.
@@ -33,4 +35,11 @@ Details: [§6 Architecture](docs/adblock-prd-v1.1.md#6-architecture).
 | India proprietary filter list plan | [Appendix C](docs/adblock-prd-v1.1.md#16-appendix-c--indian-web-ad-network-filter-list-proprietary-regional-extension) |
 
 ## Current repo state
-Fresh Xcode scaffold only (`ADBLX/`, `ADBLXTests/`, `ADBLXUITests/`) — none of the above is implemented yet. Sprint 1 target: app + 4 content blocker extensions + App Group with bundled-snapshot blocking working end-to-end.
+Sprint 0 (repository bootstrap) is in progress on `dev`, Commits 1–3 of 5 complete:
+- **Commit 1** — repo scaffolding (`Config/`, `docs/ADR/`, `docs/Architecture/`, lint/format config).
+- **Commit 2** — migrated the hand-authored `ADBLX.xcodeproj` to XcodeGen (`project.yml` is now the source of truth; see [`README.md`](README.md)).
+- **Commit 3** — added all 6 extension targets (4 Content Blockers, `ADBLXPacketTunnel`, `ADBLXSafariWebExtension`) as placeholders — they build, but have no capabilities and no runtime behavior yet.
+
+Full current target topology, folder layout, and what's deliberately not implemented yet: [`docs/Architecture/TargetTopology.md`](docs/Architecture/TargetTopology.md).
+
+Remaining Sprint 0 work: Commit 4 (App Groups entitlement, CI) and Commit 5 (functional verification — real bundled rule snapshot, `reloadContentBlocker()`, performance baselines).
