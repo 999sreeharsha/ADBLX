@@ -6,7 +6,7 @@ Tracked performance baselines for ADBLX, established in Sprint 0 Commit 5. Updat
 
 | Date | Real time | Notes |
 |---|---|---|
-| 2026-07-15 | 12.8s | Clean build, DerivedData wiped, `generic/platform=iOS Simulator`, Xcode 26.6, Sprint 0 Commit 5 baseline. |
+| 2026-07-15 | 14.9s | Clean build, DerivedData wiped, `generic/platform=iOS Simulator`, Xcode 26.6. Recaptured after the extension-embedding fix (dependencies/embed:true added to `project.yml`); the original 12.8s baseline was measured before extensions were embedded and is no longer representative. |
 
 ## Cold launch (Time Profiler)
 
