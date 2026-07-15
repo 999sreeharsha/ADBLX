@@ -78,6 +78,16 @@ Each extension target owns only its own folder; there are no shared source files
 
 Each `ContentBlockerRequestHandler.beginRequest(with:)` implements the **real** production lifecycle already, not a stub: it wraps a rules JSON file in an `NSItemProvider` and completes the request via `NSExtensionContext.completeRequest`. `ADBLXAdsBlocker` (migrated in Commit 5) resolves that file from the App Group container first (`Rules/Ads.json`), falling back to its own bundled `Resources/blockerList.json` (70 hand-authored synthetic rules) if the App Group copy doesn't exist yet. `ADBLXPrivacyBlocker`/`ADBLXAnnoyancesBlocker`/`ADBLXRegionalBlocker` are unmigrated — their JSON still contains `[]` and is read only from the bundle. A later commit changes their payload and replicates the App Group + fallback pattern — the handler code shape doesn't need to change.
 
+**Rule resolution order** (`ADBLXAdsBlocker` only, evaluated fresh on every `beginRequest`):
+
+```
+1. App Group container — Rules/Ads.json      (if present, use it)
+2. Bundle resource      — blockerList.json   (fallback if (1) is missing)
+3. Safari compiles the returned JSON into its content-blocking engine
+```
+
+Rationale: the App Group path exists so a future rule-update pipeline (Sprint 1) can drop fresh rules into the shared container without shipping a new app build — that's the entire point of `Rules/` being writable at runtime. The bundle fallback exists for two cases the App Group path can't cover on its own: first launch, before `ContentBlockerBootstrap` has ever run (though in practice it always runs before Safari can reach the extension, since the extension can't be enabled until the app has been installed and launched at least once), and recovery if the App Group file is ever missing or corrupted for any reason. Both paths are logged (`os.Logger`, subsystem `com.ADBLX.ADBLX`, category `AppGroup`) with the rule count actually loaded, so which path served a given request is always visible in Console.app/`log show` without inspecting the filesystem.
+
 ## App Groups
 
 Identifier: `group.com.ADBLX.shared` — follows the `com.ADBLX.*` bundle ID namespace, not the earlier-proposed-but-superseded `com.sreeharsha.adblx` convention (see bundle ID note above).

@@ -27,11 +27,20 @@ final class ContentBlockerRequestHandler: NSObject, NSExtensionRequestHandling {
         if let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: AppGroup.identifier) {
             let appGroupURL = containerURL.appendingPathComponent("Rules/Ads.json")
             if FileManager.default.fileExists(atPath: appGroupURL.path) {
-                logger.info("Using App Group rules at \(appGroupURL.path, privacy: .public)")
+                logger.info("Using App Group rules (\(ruleCount(at: appGroupURL)) rules)")
                 return appGroupURL
             }
         }
-        logger.info("App Group rules unavailable, falling back to bundled blockerList.json")
-        return Bundle.main.url(forResource: "blockerList", withExtension: "json")
+        let bundledURL = Bundle.main.url(forResource: "blockerList", withExtension: "json")
+        logger.info("Falling back to bundled rules (\(bundledURL.map { ruleCount(at: $0) } ?? 0) rules)")
+        return bundledURL
+    }
+
+    private static func ruleCount(at url: URL) -> Int {
+        guard let data = try? Data(contentsOf: url),
+              let rules = try? JSONSerialization.jsonObject(with: data) as? [Any] else {
+            return 0
+        }
+        return rules.count
     }
 }

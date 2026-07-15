@@ -55,6 +55,7 @@ enum ContentBlockerBootstrap {
     static func reloadIfNeeded() {
         ensureInitialRulesInstalled()
 
+        logger.info("Content blocker reload requested")
         SFContentBlockerManager.reloadContentBlocker(withIdentifier: contentBlockerIdentifier) { error in
             if let error {
                 logger.error("Reload failed: \(error, privacy: .public)")
