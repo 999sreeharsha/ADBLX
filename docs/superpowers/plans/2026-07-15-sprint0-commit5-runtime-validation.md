@@ -4,7 +4,7 @@
 
 **Goal:** Prove the Commits 1–4 foundation works at runtime — App Group round-trip, Content Blocker reload, minimal observability — by migrating exactly one Content Blocker (`ADBLXAdsBlocker`) to read from the App Group with a bundle fallback, wiring an idempotent bootstrap-and-reload path, adding a minimal MetricKit receiver, and capturing a performance baseline.
 
-**Architecture:** A new `ContentBlockerBootstrap` enum (app target) owns the one-time "copy bundled rules into the App Group, then reload" sequence, kept separate from `ADBLXApp` so startup doesn't accumulate logic. `ContentBlockerRequestHandler` (extension target) tries the App Group file first, falls back to its own bundled copy. Both targets get their own tiny `AppGroup` identifier constant (no shared package yet — still gated on unwritten ADR-0003). A new `os.Logger`-based logging convention (subsystem `com.ADBLX.ADBLX`, categories `Bootstrap`/`AppGroup`/`MetricKit`) is established fresh, since none exists in the codebase yet.
+**Architecture:** A new `ContentBlockerBootstrap` enum (app target) owns the "copy bundled rules into the App Group (idempotent, once), then request a reload (every launch, Sprint-0-only)" sequence, kept separate from `ADBLXApp` so startup doesn't accumulate logic. `ContentBlockerRequestHandler` (extension target) tries the App Group file first, falls back to its own bundled copy. Both targets get their own tiny `AppGroup` identifier constant (no shared package yet — still gated on unwritten ADR-0003). A new `os.Logger`-based logging convention (subsystem `com.ADBLX.ADBLX`, categories `Bootstrap`/`AppGroup`/`MetricKit`) is established fresh, since none exists in the codebase yet.
 
 **Tech Stack:** Swift 5.0, `SafariServices` (`SFContentBlockerManager`), `MetricKit` (`MXMetricManagerSubscriber`), `os.Logger`, Swift Testing (`@Test`/`#expect`/`#require`).
 
@@ -13,9 +13,9 @@
 - Only `ADBLXAdsBlocker` is migrated to read from the App Group. `ADBLXPrivacyBlocker`, `ADBLXAnnoyancesBlocker`, `ADBLXRegionalBlocker` are untouched — still bundle `[]`.
 - Bundled rules are 50–100 hand-authored, original synthetic rules (e.g. `adsN.example.com` / `trackerN.example.net` patterns) — never content copied from EasyList, AdGuard, OISD, HaGeZi, or any other real filter list, per `agent.md`'s licensing constraint.
 - `ContentBlockerBootstrap.ensureInitialRulesInstalled()` is idempotent — checks whether `Rules/Ads.json` already exists in the App Group; only copies if absent. No manifest/version-comparison logic, no checksum comparison — both explicitly deferred to Sprint 1 per the design spec.
-- `reloadIfNeeded()` calls `SFContentBlockerManager.reloadContentBlocker(withIdentifier:)` only when rules were freshly installed (i.e., only once, on first install) — never on every launch.
+- `reloadIfNeeded()` calls `SFContentBlockerManager.reloadContentBlocker(withIdentifier:)` on **every launch**, independent of whether the copy just happened — this is Sprint-0-only behavior (documented via a code comment), fixing a sequencing bug found in ABORT review: the original "only on first install" design guaranteed the one reload attempt fired before Safari had ever registered the extension, with no second trigger for when the user later enabled it. Sprint 1's manifest/version-comparison logic replaces this with "reload only when the manifest version changed."
 - The App Group fallback in `ContentBlockerRequestHandler` (App Group first, bundle resource if missing) is permanent production behavior, not a Sprint-0-only shim.
-- No new UI screens (no Settings screen). The bootstrap/reload sequence runs automatically once per install, dispatched off the main actor.
+- No new UI screens (no Settings screen). The bootstrap/reload sequence runs automatically on every launch, dispatched off the main actor.
 - Logging uses `os.Logger`, subsystem `Bundle.main.bundleIdentifier` (`com.ADBLX.ADBLX`), categories `Bootstrap`, `AppGroup`, `MetricKit`. Every log line states what happened (e.g. "copied Ads.json to App Group", "reload succeeded", "reload failed: <error>") — errors are never swallowed.
 - MetricKit: `MetricsSubscriber` only logs that a payload arrived (count, timestamp) — no parsing, no persistence, no upload.
 - `AppGroup.swift` is duplicated into exactly 2 places (`ADBLX/`, `Extensions/ADBLXAdsBlocker/`) — still no `Packages/ADBLXShared` linkage, still no ADR-0003.
@@ -294,8 +294,15 @@ Expected: `** TEST SUCCEEDED **`.
 Add this function inside the `ContentBlockerBootstrap` enum, after `ensureInitialRulesInstalled()`:
 
 ```swift
+    // Sprint-0-only behavior: reload is requested on every launch, not just first install.
+    // Apple exposes no "extension was just enabled in Safari" callback, and the one
+    // guaranteed first-install reload fires before the user has ever enabled the
+    // extension — so it's guaranteed to be a no-op/failure on a fresh install with no
+    // second trigger. Launch is the only observable event available before Sprint 1's
+    // manifest/version-comparison logic exists; that logic replaces this with
+    // "reload only when the manifest version changed."
     static func reloadIfNeeded() {
-        guard ensureInitialRulesInstalled() else { return }
+        ensureInitialRulesInstalled()
 
         SFContentBlockerManager.reloadContentBlocker(withIdentifier: contentBlockerIdentifier) { error in
             if let error {
@@ -551,17 +558,20 @@ Manual checklists for behavior that isn't automated in CI — either because it 
 
 Verifies each stage of the App Group → Content Blocker → Safari pipeline independently, not just the end result.
 
-1. Launch the app (fresh install, or after clearing the App Group container — see Task 4's test for how to locate/clear `Rules/Ads.json`).
-2. Confirm `Rules/Ads.json` appears in the App Group container on disk (`xcrun simctl get_app_container <UDID> com.ADBLX.ADBLX groups`, then check `Rules/Ads.json` exists inside that path).
-3. Enable `ADBLXAdsBlocker` in Safari → Settings → Extensions (on device or simulator).
-4. Trigger a reload: relaunch the app, or toggle the extension off/on in Safari's Extensions settings.
-5. Confirm the `Bootstrap`-category log line reports the reload succeeded (Console.app, filter by subsystem `com.ADBLX.ADBLX`, category `Bootstrap`).
-6. Visit a page that issues a request matching one of the synthetic rules (e.g. a test page that loads `https://ads1.example.com/...`).
-7. Confirm the matching request is blocked (Safari's Page Information → "X trackers blocked" or equivalent, or a network inspector showing the request never completing).
+1. Install the app (fresh install, or after clearing the App Group container — see Task 4's test for how to locate/clear `Rules/Ads.json`).
+2. Launch the app — this copies rules into the App Group and requests a reload. **Expected at this point:** the reload request may fail or no-op, because Safari doesn't know about the extension yet — that's expected, not a bug (see Task 5's code comment).
+3. Confirm `Rules/Ads.json` appears in the App Group container on disk (`xcrun simctl get_app_container <UDID> com.ADBLX.ADBLX groups`, then check `Rules/Ads.json` exists inside that path).
+4. Enable `ADBLXAdsBlocker` in Safari → Settings → Extensions (on device or simulator).
+5. Relaunch the app — the file copy is now a no-op (idempotent), but the reload request fires again, and this time Safari has the extension registered.
+6. Confirm the `Bootstrap`-category log line from this second launch reports the reload succeeded (Console.app, filter by subsystem `com.ADBLX.ADBLX`, category `Bootstrap`).
+7. Visit a page that issues a request matching one of the synthetic rules (e.g. a test page that loads `https://ads1.example.com/...`).
+8. Confirm the matching request is blocked (Safari's Page Information → "X trackers blocked" or equivalent, or a network inspector showing the request never completing).
+
+Every step has a deterministic cause — no step relies on hoping an earlier reload happened to land at the right time.
 
 ## Fallback verification
 
-8. With the App Group's `Rules/Ads.json` deliberately removed (see Task 4's test for the removal command), confirm `ADBLXAdsBlocker` still produces valid output by falling back to its bundled `Resources/blockerList.json` — re-run steps 3–7 and confirm blocking still works.
+9. With the App Group's `Rules/Ads.json` deliberately removed (see Task 4's test for the removal command), confirm `ADBLXAdsBlocker` still produces valid output by falling back to its bundled `Resources/blockerList.json` — re-run steps 4–8 and confirm blocking still works.
 
 ## Last verified
 
@@ -607,7 +617,7 @@ Replace with:
 
 `ADBLXAdsBlocker` is the only Content Blocker reading from the App Group (`Rules/Ads.json`, with a permanent bundle-resource fallback) — see `ContentBlockerRequestHandler.swift`. `ADBLXPrivacyBlocker`/`ADBLXAnnoyancesBlocker`/`ADBLXRegionalBlocker` still bundle `[]` and are unmigrated; replicating the pattern to them is future work.
 
-`ContentBlockerBootstrap` (`ADBLX/ContentBlockerBootstrap.swift`) runs once per install (idempotent — checks whether `Rules/Ads.json` already exists before copying), dispatched off the main actor from `ADBLXApp`, and calls `SFContentBlockerManager.reloadContentBlocker(withIdentifier:)` only when it just installed rules. Logging uses `os.Logger`, subsystem `com.ADBLX.ADBLX`, categories `Bootstrap`/`AppGroup`/`MetricKit`.
+`ContentBlockerBootstrap` (`ADBLX/ContentBlockerBootstrap.swift`) runs on every launch, dispatched off the main actor from `ADBLXApp`. Its rule copy is idempotent (checks whether `Rules/Ads.json` already exists before copying), but it calls `SFContentBlockerManager.reloadContentBlocker(withIdentifier:)` unconditionally on every launch — a **Sprint-0-only** stand-in (documented via a code comment) for the missing "extension was just enabled in Safari" signal Apple doesn't expose; Sprint 1's manifest/version-comparison logic replaces this with reload-only-on-change. Logging uses `os.Logger`, subsystem `com.ADBLX.ADBLX`, categories `Bootstrap`/`AppGroup`/`MetricKit`.
 ```
 
 - [ ] **Step 2: Update `agent.md`'s "Current repo state" section**
