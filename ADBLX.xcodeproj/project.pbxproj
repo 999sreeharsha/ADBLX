@@ -508,31 +508,40 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					143F27535B274A2CF99D0C4B = {
+						DevelopmentTeam = 93F78RF6FG;
 						ProvisioningStyle = Automatic;
 					};
 					179B04420DCE6E84F57B2A38 = {
+						DevelopmentTeam = 93F78RF6FG;
 						ProvisioningStyle = Automatic;
 						TestTargetID = 685EBB135767780CE1A90795;
 					};
 					40E66CD588F8467CEC1C699F = {
+						DevelopmentTeam = 93F78RF6FG;
 						ProvisioningStyle = Automatic;
 					};
 					685EBB135767780CE1A90795 = {
+						DevelopmentTeam = 93F78RF6FG;
 						ProvisioningStyle = Automatic;
 					};
 					734790D8FA30AEF8AB59E21B = {
+						DevelopmentTeam = 93F78RF6FG;
 						ProvisioningStyle = Automatic;
 					};
 					824DB7F7B38E0216F3CDD3A7 = {
+						DevelopmentTeam = 93F78RF6FG;
 						ProvisioningStyle = Automatic;
 					};
 					8E481CF8054F4670C26FB1CF = {
+						DevelopmentTeam = 93F78RF6FG;
 						ProvisioningStyle = Automatic;
 					};
 					C5C128EE93D0F47D2A5E66C4 = {
+						DevelopmentTeam = 93F78RF6FG;
 						ProvisioningStyle = Automatic;
 					};
 					C87480D5B9FF5CF1894F7775 = {
+						DevelopmentTeam = 93F78RF6FG;
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -745,6 +754,7 @@
 			baseConfigurationReference = CE383A84E1D527E02B0E4CA0 /* Release.xcconfig */;
 			buildSettings = {
 				CLANG_CXX_LIBRARY = "libc++";
+				DEVELOPMENT_TEAM = 93F78RF6FG;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
@@ -1275,6 +1285,7 @@
 			baseConfigurationReference = 2B308625A55359393052EBDF /* Debug.xcconfig */;
 			buildSettings = {
 				CLANG_CXX_LIBRARY = "libc++";
+				DEVELOPMENT_TEAM = 93F78RF6FG;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
 				SWIFT_VERSION = 5.0;

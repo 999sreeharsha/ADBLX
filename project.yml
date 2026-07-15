@@ -4,6 +4,9 @@ options:
 configFiles:
   Debug: Config/Debug.xcconfig
   Release: Config/Release.xcconfig
+settings:
+  base:
+    DEVELOPMENT_TEAM: 93F78RF6FG
 targets:
   ADBLX:
     type: application
