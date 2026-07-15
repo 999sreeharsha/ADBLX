@@ -8,7 +8,7 @@ enum ContentBlockerBootstrap {
         category: "Bootstrap"
     )
 
-    private static let contentBlockerIdentifier = "com.ADBLX.ADBLXAdsBlocker"
+    private static let contentBlockerIdentifier = "com.ADBLX.ADBLX.AdsBlocker"
 
     @discardableResult
     static func ensureInitialRulesInstalled() -> Bool {
