@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(rtk git *)",
+      "Bash(git checkout *)",
+      "Bash(rtk read *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(xcodegen dump *)",
+      "Read(//Users/sreeharshag/Desktop/**)"
+    ]
+  }
+}
