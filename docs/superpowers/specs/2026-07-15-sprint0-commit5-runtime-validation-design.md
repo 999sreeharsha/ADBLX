@@ -68,7 +68,17 @@ This is a documentation/measurement task, not new product code — no automated 
 
 ## 7. Manual Safari verification (not automated)
 
-A documented manual checklist (in `Performance/Baselines.md` or a new `docs/Architecture/ManualVerification.md` — decided at plan-writing time): enable `ADBLXAdsBlocker` in Safari's Extensions settings, confirm it loads without error, confirm a request matching one of the 50–100 synthetic rules is blocked (e.g. visiting a page that requests `ads.example.com`). This stays manual and undocumented-as-CI, consistent with Commit 4's "no UI worth testing yet" policy — automating Safari verification now would cost far more than it proves at this stage.
+A documented manual checklist (in `Performance/Baselines.md` or a new `docs/Architecture/ManualVerification.md` — decided at plan-writing time), verifying each stage of the chain independently rather than just the end result:
+
+1. Launch the app.
+2. Confirm `Rules/Ads.json` appears in the App Group container (inspect on disk).
+3. Enable `ADBLXAdsBlocker` in Safari's Extensions settings.
+4. Trigger a reload (relaunch the app, or toggle the extension off/on in Safari).
+5. Confirm the `Bootstrap` category logs report the reload succeeded.
+6. Visit a page that issues a request matching one of the synthetic rules.
+7. Confirm the matching request is blocked.
+
+This stays manual and undocumented-as-CI, consistent with Commit 4's "no UI worth testing yet" policy — automating Safari verification now would cost far more than it proves at this stage.
 
 ## Acceptance criteria
 
@@ -90,6 +100,7 @@ Main-thread impact: startup only orchestrates `Task { }`-dispatched work; actual
 ## What's deliberately not here
 
 - Manifest-version-comparison logic for future rule updates — only "does `Rules/Ads.json` exist yet" is implemented; version comparison is future work once a manifest format exists.
+- Checksum/hash comparison of the installed vs. bundled file to detect corruption or manual tampering during development — a reasonable low-cost enhancement, but it's a step toward the manifest-version-comparison logic above and was deliberately left for Sprint 1 rather than blurring Commit 5's "existence check only" scope.
 - `Packages/ADBLXShared` linkage / ADR-0003 — still deferred; `AppGroup.swift` is duplicated into exactly 2 places (app, `ADBLXAdsBlocker`), not shared.
 - Migrating `ADBLXPrivacyBlocker`/`ADBLXAnnoyancesBlocker`/`ADBLXRegionalBlocker` to the App Group — proven once with `ADBLXAdsBlocker`, replication is future work.
 - Automated Safari/extension UI testing — manual checklist only.
