@@ -24,56 +24,56 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		0774520D89681EE00363A7DE /* ADBLX.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = ADBLX.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		269873BA9A7421D0F1488E18 /* ADBLXTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = ADBLXTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		0774520D89681EE00363A7DE /* ADBLX.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ADBLX.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		269873BA9A7421D0F1488E18 /* ADBLXTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ADBLXTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		2B308625A55359393052EBDF /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
-		4270ABDB6F2A340D314B5511 /* ADBLXRegionalBlocker.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = ADBLXRegionalBlocker.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		51BB17E426853BD9CF673A19 /* ADBLXUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = ADBLXUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		5D507ADA71442B7732E25662 /* ADBLXPacketTunnel.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = ADBLXPacketTunnel.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		A4F1B788D3F46BBC97DACE47 /* ADBLXAnnoyancesBlocker.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = ADBLXAnnoyancesBlocker.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		C18C5D670DA3B78285B44C94 /* ADBLXSafariWebExtension.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = ADBLXSafariWebExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		4270ABDB6F2A340D314B5511 /* ADBLXRegionalBlocker.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ADBLXRegionalBlocker.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		51BB17E426853BD9CF673A19 /* ADBLXUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ADBLXUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		5D507ADA71442B7732E25662 /* ADBLXPacketTunnel.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ADBLXPacketTunnel.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		A4F1B788D3F46BBC97DACE47 /* ADBLXAnnoyancesBlocker.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ADBLXAnnoyancesBlocker.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		C18C5D670DA3B78285B44C94 /* ADBLXSafariWebExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ADBLXSafariWebExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		CE383A84E1D527E02B0E4CA0 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
-		E2F6DD6F2EACB8B84B9FAD7D /* ADBLXAdsBlocker.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = ADBLXAdsBlocker.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		F09181B523459EB98934CA02 /* ADBLXPrivacyBlocker.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = ADBLXPrivacyBlocker.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		E2F6DD6F2EACB8B84B9FAD7D /* ADBLXAdsBlocker.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ADBLXAdsBlocker.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		F09181B523459EB98934CA02 /* ADBLXPrivacyBlocker.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ADBLXPrivacyBlocker.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		2060F4E5B192F6724FA312AF /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+		2060F4E5B192F6724FA312AF /* Exceptions for "Extensions/ADBLXSafariWebExtension" folder in "ADBLXSafariWebExtension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
 			);
 			target = 734790D8FA30AEF8AB59E21B /* ADBLXSafariWebExtension */;
 		};
-		88E813FE543BAE5119B8542D /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+		88E813FE543BAE5119B8542D /* Exceptions for "Extensions/ADBLXRegionalBlocker" folder in "ADBLXRegionalBlocker" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
 			);
 			target = C87480D5B9FF5CF1894F7775 /* ADBLXRegionalBlocker */;
 		};
-		ABFB96CE63CB83F440BFF98B /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+		ABFB96CE63CB83F440BFF98B /* Exceptions for "Extensions/ADBLXAdsBlocker" folder in "ADBLXAdsBlocker" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
 			);
 			target = 824DB7F7B38E0216F3CDD3A7 /* ADBLXAdsBlocker */;
 		};
-		B68B005B4FB6650B332CBE96 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+		B68B005B4FB6650B332CBE96 /* Exceptions for "Extensions/ADBLXPacketTunnel" folder in "ADBLXPacketTunnel" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
 			);
 			target = 8E481CF8054F4670C26FB1CF /* ADBLXPacketTunnel */;
 		};
-		D03E6A87125B987754364C69 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+		D03E6A87125B987754364C69 /* Exceptions for "Extensions/ADBLXAnnoyancesBlocker" folder in "ADBLXAnnoyancesBlocker" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
 			);
 			target = C5C128EE93D0F47D2A5E66C4 /* ADBLXAnnoyancesBlocker */;
 		};
-		E89B5CB5F67F8FB7497B6934 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+		E89B5CB5F67F8FB7497B6934 /* Exceptions for "Extensions/ADBLXPrivacyBlocker" folder in "ADBLXPrivacyBlocker" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
@@ -86,11 +86,7 @@
 		08840849EAC568D56B6D152C /* Extensions/ADBLXSafariWebExtension */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				2060F4E5B192F6724FA312AF /* PBXFileSystemSynchronizedBuildFileExceptionSet */,
-			);
-			explicitFileTypes = {
-			};
-			explicitFolders = (
+				2060F4E5B192F6724FA312AF /* Exceptions for "Extensions/ADBLXSafariWebExtension" folder in "ADBLXSafariWebExtension" target */,
 			);
 			path = Extensions/ADBLXSafariWebExtension;
 			sourceTree = "<group>";
@@ -98,62 +94,38 @@
 		11126BC11D41F3B6FC5A8F2E /* Extensions/ADBLXRegionalBlocker */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				88E813FE543BAE5119B8542D /* PBXFileSystemSynchronizedBuildFileExceptionSet */,
-			);
-			explicitFileTypes = {
-			};
-			explicitFolders = (
+				88E813FE543BAE5119B8542D /* Exceptions for "Extensions/ADBLXRegionalBlocker" folder in "ADBLXRegionalBlocker" target */,
 			);
 			path = Extensions/ADBLXRegionalBlocker;
 			sourceTree = "<group>";
 		};
 		4467C4E4C0F2D1659CA5361C /* ADBLXUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			explicitFileTypes = {
-			};
-			explicitFolders = (
-			);
 			path = ADBLXUITests;
 			sourceTree = "<group>";
 		};
 		4E46745D031963421B1BB746 /* Extensions/ADBLXAnnoyancesBlocker */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				D03E6A87125B987754364C69 /* PBXFileSystemSynchronizedBuildFileExceptionSet */,
-			);
-			explicitFileTypes = {
-			};
-			explicitFolders = (
+				D03E6A87125B987754364C69 /* Exceptions for "Extensions/ADBLXAnnoyancesBlocker" folder in "ADBLXAnnoyancesBlocker" target */,
 			);
 			path = Extensions/ADBLXAnnoyancesBlocker;
 			sourceTree = "<group>";
 		};
 		4E670790808BA4FFFFB99817 /* ADBLXTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			explicitFileTypes = {
-			};
-			explicitFolders = (
-			);
 			path = ADBLXTests;
 			sourceTree = "<group>";
 		};
 		61773C90EEB5C63FA4DA2D28 /* ADBLX */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			explicitFileTypes = {
-			};
-			explicitFolders = (
-			);
 			path = ADBLX;
 			sourceTree = "<group>";
 		};
 		6E55DB98411B229448E7F2A9 /* Extensions/ADBLXPrivacyBlocker */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				E89B5CB5F67F8FB7497B6934 /* PBXFileSystemSynchronizedBuildFileExceptionSet */,
-			);
-			explicitFileTypes = {
-			};
-			explicitFolders = (
+				E89B5CB5F67F8FB7497B6934 /* Exceptions for "Extensions/ADBLXPrivacyBlocker" folder in "ADBLXPrivacyBlocker" target */,
 			);
 			path = Extensions/ADBLXPrivacyBlocker;
 			sourceTree = "<group>";
@@ -161,11 +133,7 @@
 		CD03B46135A235F678846099 /* Extensions/ADBLXPacketTunnel */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				B68B005B4FB6650B332CBE96 /* PBXFileSystemSynchronizedBuildFileExceptionSet */,
-			);
-			explicitFileTypes = {
-			};
-			explicitFolders = (
+				B68B005B4FB6650B332CBE96 /* Exceptions for "Extensions/ADBLXPacketTunnel" folder in "ADBLXPacketTunnel" target */,
 			);
 			path = Extensions/ADBLXPacketTunnel;
 			sourceTree = "<group>";
@@ -173,11 +141,7 @@
 		D3984DF576CCEBB0D50C8A9E /* Extensions/ADBLXAdsBlocker */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				ABFB96CE63CB83F440BFF98B /* PBXFileSystemSynchronizedBuildFileExceptionSet */,
-			);
-			explicitFileTypes = {
-			};
-			explicitFolders = (
+				ABFB96CE63CB83F440BFF98B /* Exceptions for "Extensions/ADBLXAdsBlocker" folder in "ADBLXAdsBlocker" target */,
 			);
 			path = Extensions/ADBLXAdsBlocker;
 			sourceTree = "<group>";
@@ -648,8 +612,10 @@
 		1852A77014FFB848DF8ACE92 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Extensions/ADBLXAdsBlocker/ADBLXAdsBlocker.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 93F78RF6FG;
 				INFOPLIST_FILE = Extensions/ADBLXAdsBlocker/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -661,6 +627,7 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.ADBLX.ADBLXAdsBlocker;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -677,6 +644,7 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 93F78RF6FG;
 				INFOPLIST_FILE = Extensions/ADBLXPacketTunnel/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -702,8 +670,10 @@
 		20D1E51624C35CFEEE54EF9E /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Extensions/ADBLXSafariWebExtension/ADBLXSafariWebExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 93F78RF6FG;
 				INFOPLIST_FILE = Extensions/ADBLXSafariWebExtension/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -713,9 +683,13 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
 				MARKETING_VERSION = 1.0;
-				OTHER_LDFLAGS = "-framework SafariServices";
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.ADBLX.ADBLXSafariWebExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -730,8 +704,10 @@
 		22E8DDB269CF8FAA700A3626 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Extensions/ADBLXAdsBlocker/ADBLXAdsBlocker.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 93F78RF6FG;
 				INFOPLIST_FILE = Extensions/ADBLXAdsBlocker/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -743,6 +719,7 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.ADBLX.ADBLXAdsBlocker;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -759,9 +736,11 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = ADBLX/ADBLX.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 93F78RF6FG;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
@@ -805,9 +784,11 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = ADBLX/ADBLX.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 93F78RF6FG;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
@@ -849,8 +830,10 @@
 		52DCB4AFA0214A124148B171 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Extensions/ADBLXSafariWebExtension/ADBLXSafariWebExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 93F78RF6FG;
 				INFOPLIST_FILE = Extensions/ADBLXSafariWebExtension/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -860,9 +843,13 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
 				MARKETING_VERSION = 1.0;
-				OTHER_LDFLAGS = "-framework SafariServices";
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.ADBLX.ADBLXSafariWebExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -910,8 +897,10 @@
 		572A9EF00B598D5108738796 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Extensions/ADBLXRegionalBlocker/ADBLXRegionalBlocker.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 93F78RF6FG;
 				INFOPLIST_FILE = Extensions/ADBLXRegionalBlocker/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -923,6 +912,7 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.ADBLX.ADBLXRegionalBlocker;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -937,8 +927,10 @@
 		58BEFD3873D0E9C2BC5752AD /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Extensions/ADBLXPrivacyBlocker/ADBLXPrivacyBlocker.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 93F78RF6FG;
 				INFOPLIST_FILE = Extensions/ADBLXPrivacyBlocker/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -950,6 +942,7 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.ADBLX.ADBLXPrivacyBlocker;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -997,8 +990,10 @@
 		6A29A1406A0715CF8287965D /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Extensions/ADBLXAnnoyancesBlocker/ADBLXAnnoyancesBlocker.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 93F78RF6FG;
 				INFOPLIST_FILE = Extensions/ADBLXAnnoyancesBlocker/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1010,6 +1005,7 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.ADBLX.ADBLXAnnoyancesBlocker;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -1024,8 +1020,10 @@
 		7C14E636120FAA58EDBC40BE /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Extensions/ADBLXRegionalBlocker/ADBLXRegionalBlocker.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 93F78RF6FG;
 				INFOPLIST_FILE = Extensions/ADBLXRegionalBlocker/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1037,6 +1035,7 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.ADBLX.ADBLXRegionalBlocker;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -1051,8 +1050,10 @@
 		7C9C63E212C4DA940029EE04 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Extensions/ADBLXAnnoyancesBlocker/ADBLXAnnoyancesBlocker.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 93F78RF6FG;
 				INFOPLIST_FILE = Extensions/ADBLXAnnoyancesBlocker/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1064,6 +1065,7 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.ADBLX.ADBLXAnnoyancesBlocker;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -1155,8 +1157,10 @@
 		B6BD037705D3076EFB5D44ED /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Extensions/ADBLXPrivacyBlocker/ADBLXPrivacyBlocker.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 93F78RF6FG;
 				INFOPLIST_FILE = Extensions/ADBLXPrivacyBlocker/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1168,6 +1172,7 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.ADBLX.ADBLXPrivacyBlocker;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -1184,6 +1189,7 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 93F78RF6FG;
 				INFOPLIST_FILE = Extensions/ADBLXPacketTunnel/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
 				LD_RUNPATH_SEARCH_PATHS = (

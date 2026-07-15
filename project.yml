@@ -12,6 +12,11 @@ targets:
     sources:
       - path: ADBLX
         type: syncedFolder
+    entitlements:
+      path: ADBLX/ADBLX.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.ADBLX.shared
     settings:
       base:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
@@ -122,6 +127,11 @@ targets:
         NSExtension:
           NSExtensionPointIdentifier: com.apple.Safari.content-blocker
           NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ContentBlockerRequestHandler
+    entitlements:
+      path: Extensions/ADBLXAdsBlocker/ADBLXAdsBlocker.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.ADBLX.shared
     settings:
       base:
         CODE_SIGN_STYLE: Automatic
@@ -131,6 +141,7 @@ targets:
         MARKETING_VERSION: "1.0"
         PRODUCT_BUNDLE_IDENTIFIER: com.ADBLX.ADBLXAdsBlocker
         PRODUCT_NAME: "$(TARGET_NAME)"
+        REGISTER_APP_GROUPS: YES
         SDKROOT: auto
         SUPPORTED_PLATFORMS: "iphoneos iphonesimulator macosx xros xrsimulator"
         SWIFT_VERSION: "5.0"
@@ -149,6 +160,11 @@ targets:
         NSExtension:
           NSExtensionPointIdentifier: com.apple.Safari.content-blocker
           NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ContentBlockerRequestHandler
+    entitlements:
+      path: Extensions/ADBLXPrivacyBlocker/ADBLXPrivacyBlocker.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.ADBLX.shared
     settings:
       base:
         CODE_SIGN_STYLE: Automatic
@@ -158,6 +174,7 @@ targets:
         MARKETING_VERSION: "1.0"
         PRODUCT_BUNDLE_IDENTIFIER: com.ADBLX.ADBLXPrivacyBlocker
         PRODUCT_NAME: "$(TARGET_NAME)"
+        REGISTER_APP_GROUPS: YES
         SDKROOT: auto
         SUPPORTED_PLATFORMS: "iphoneos iphonesimulator macosx xros xrsimulator"
         SWIFT_VERSION: "5.0"
@@ -176,6 +193,11 @@ targets:
         NSExtension:
           NSExtensionPointIdentifier: com.apple.Safari.content-blocker
           NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ContentBlockerRequestHandler
+    entitlements:
+      path: Extensions/ADBLXAnnoyancesBlocker/ADBLXAnnoyancesBlocker.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.ADBLX.shared
     settings:
       base:
         CODE_SIGN_STYLE: Automatic
@@ -185,6 +207,7 @@ targets:
         MARKETING_VERSION: "1.0"
         PRODUCT_BUNDLE_IDENTIFIER: com.ADBLX.ADBLXAnnoyancesBlocker
         PRODUCT_NAME: "$(TARGET_NAME)"
+        REGISTER_APP_GROUPS: YES
         SDKROOT: auto
         SUPPORTED_PLATFORMS: "iphoneos iphonesimulator macosx xros xrsimulator"
         SWIFT_VERSION: "5.0"
@@ -203,6 +226,11 @@ targets:
         NSExtension:
           NSExtensionPointIdentifier: com.apple.Safari.content-blocker
           NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ContentBlockerRequestHandler
+    entitlements:
+      path: Extensions/ADBLXRegionalBlocker/ADBLXRegionalBlocker.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.ADBLX.shared
     settings:
       base:
         CODE_SIGN_STYLE: Automatic
@@ -212,6 +240,7 @@ targets:
         MARKETING_VERSION: "1.0"
         PRODUCT_BUNDLE_IDENTIFIER: com.ADBLX.ADBLXRegionalBlocker
         PRODUCT_NAME: "$(TARGET_NAME)"
+        REGISTER_APP_GROUPS: YES
         SDKROOT: auto
         SUPPORTED_PLATFORMS: "iphoneos iphonesimulator macosx xros xrsimulator"
         SWIFT_VERSION: "5.0"
@@ -257,6 +286,11 @@ targets:
         NSExtension:
           NSExtensionPointIdentifier: com.apple.Safari.web-extension
           NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).SafariWebExtensionHandler
+    entitlements:
+      path: Extensions/ADBLXSafariWebExtension/ADBLXSafariWebExtension.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.ADBLX.shared
     settings:
       base:
         CODE_SIGN_STYLE: Automatic
@@ -267,6 +301,7 @@ targets:
         OTHER_LDFLAGS: "-framework SafariServices"
         PRODUCT_BUNDLE_IDENTIFIER: com.ADBLX.ADBLXSafariWebExtension
         PRODUCT_NAME: "$(TARGET_NAME)"
+        REGISTER_APP_GROUPS: YES
         SDKROOT: auto
         SUPPORTED_PLATFORMS: "iphoneos iphonesimulator macosx xros xrsimulator"
         SWIFT_VERSION: "5.0"

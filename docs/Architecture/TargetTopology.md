@@ -1,6 +1,6 @@
 # Target Topology
 
-**Status:** current as of Sprint 0 Commit 3 (`da17133`). Living document — update in place as targets, build settings, or capabilities change. For the "why" behind these decisions, see the linked specs; this document covers only the "how it currently works."
+**Status:** current as of Sprint 0 Commit 4. Living document — update in place as targets, build settings, or capabilities change. For the "why" behind these decisions, see the linked specs; this document covers only the "how it currently works."
 
 ## Build system
 
@@ -76,10 +76,62 @@ Each extension target owns only its own folder; there are no shared source files
 
 Each `ContentBlockerRequestHandler.beginRequest(with:)` implements the **real** production lifecycle already, not a stub: it loads `Resources/blockerList.json` from its own extension bundle, wraps it in an `NSItemProvider`, and completes the request via `NSExtensionContext.completeRequest`. The JSON currently contains `[]`. A later commit changes exactly that payload to a real 1–3K compiled rule set — the handler code itself does not need to change. **No code calls `SFContentBlockerManager.reloadContentBlocker()` yet**, and the JSON is read from the bundle, not from the App Group container (that wiring is also future work).
 
+## App Groups
+
+Identifier: `group.com.ADBLX.shared` — follows the `com.ADBLX.*` bundle ID namespace, not the earlier-proposed-but-superseded `com.sreeharsha.adblx` convention (see bundle ID note above).
+
+| Target | App Group |
+|---|---|
+| `ADBLX` | ✅ |
+| `ADBLXAdsBlocker` | ✅ |
+| `ADBLXPrivacyBlocker` | ✅ |
+| `ADBLXAnnoyancesBlocker` | ✅ |
+| `ADBLXRegionalBlocker` | ✅ |
+| `ADBLXSafariWebExtension` | ✅ |
+| `ADBLXPacketTunnel` | ⏸ Deferred — see "Development environment limitations" |
+| `ADBLXTests` / `ADBLXUITests` | ❌ Not needed |
+
+Configured via `entitlements:` in `project.yml` per target, generating a `.entitlements` file at build time (same generated-artifact pattern as `Info.plist` — never hand-authored). `REGISTER_APP_GROUPS: YES` is set alongside on each entitled target so Automatic signing registers the capability with the App ID.
+
+`AppGroup.swift` (`ADBLX/AppGroup.swift`) exposes the identifier as `AppGroup.identifier`. It lives only in the app target — no `Packages/ADBLXShared` linkage yet (still gated on unwritten ADR-0003); revisit when a real cross-target need arises.
+
+### Shared container contract
+
+Directory structure inside the App Group container (contract only — not yet exercised with real I/O; that's Commit 5):
+
+```
+group.com.ADBLX.shared/
+├── Rules/
+│   ├── Ads.json
+│   ├── Privacy.json
+│   ├── Annoyances.json
+│   └── Regional.json
+├── Manifest/
+│   └── manifest.json
+├── Metadata/
+│   ├── installed-versions.json
+│   └── manifest-state.json
+└── Diagnostics/
+```
+
+`Rules/` holds active rule JSON regardless of provenance (bundled/compiled/imported) — Content Blockers will eventually read from here instead of their bundled `Resources/blockerList.json`. Files are written atomically by the main app (`.tmp` → rename) so extensions never observe partially-written rule files.
+
+## Development environment limitations
+
+Current development uses an Apple Personal Team (free, non-paid). Therefore:
+
+- The Network Extension entitlement (`com.apple.developer.networking.networkextension`) is unavailable — Personal Teams cannot provision it.
+- `ADBLXPacketTunnel`'s capability and App Group are intentionally deferred as a result.
+- This is an Apple provisioning limitation, not a project or architecture limitation. Revisit once the account upgrades to a paid Apple Developer Program membership.
+
+## Continuous Integration
+
+`.github/workflows/ci.yml` runs on push/PR to `dev`/`main` plus manual dispatch: checkout → select latest-stable Xcode → install XcodeGen → `xcodegen generate` → drift check (`git diff --exit-code`) → build the `ADBLX` scheme → run `ADBLXTests` only. `ADBLXUITests` is intentionally excluded — there is no UI worth testing yet, not because of flakiness; it joins CI once onboarding/settings screens exist.
+
 ## What's deliberately not here yet
 
-- **App Groups, Network Extension entitlement, Safari Web Extension capabilities** — no target has any capability configured. All 7 targets use `CODE_SIGN_STYLE: Automatic` and nothing else security/capability-related.
-- **CI** — `.github/workflows/` has no `ci.yml` yet, only a placeholder `README.md`.
+- **Network Extension entitlement** — `ADBLXPacketTunnel` has no capability configured; blocked on the Personal Team limitation (see "Development environment limitations" above).
+- **CI caching, build artifacts, release automation** — `.github/workflows/ci.yml` (added Commit 4) runs generate/drift-check/build/unit-test only.
 - **Runtime verification** — no simulator launch of any extension, no tunnel start logic, no reload calls.
 - **`Packages/ADBLXShared` source code** — the directory exists but is empty; linking it into any target is gated on ADR-0003.
 
