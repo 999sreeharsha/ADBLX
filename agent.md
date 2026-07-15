@@ -35,12 +35,13 @@ Details: [§6 Architecture](docs/adblock-prd-v1.1.md#6-architecture).
 | India proprietary filter list plan | [Appendix C](docs/adblock-prd-v1.1.md#16-appendix-c--indian-web-ad-network-filter-list-proprietary-regional-extension) |
 
 ## Current repo state
-Sprint 0 (repository bootstrap) is in progress on `dev`, Commits 1–4 of 5 complete:
+Sprint 0 (repository bootstrap) is **complete** on `dev`, all 5 commits landed:
 - **Commit 1** — repo scaffolding (`Config/`, `docs/ADR/`, `docs/Architecture/`, lint/format config).
 - **Commit 2** — migrated the hand-authored `ADBLX.xcodeproj` to XcodeGen (`project.yml` is now the source of truth; see [`README.md`](README.md)).
 - **Commit 3** — added all 6 extension targets (4 Content Blockers, `ADBLXPacketTunnel`, `ADBLXSafariWebExtension`) as placeholders — they build, but have no capabilities and no runtime behavior yet.
 - **Commit 4** — added the `group.com.ADBLX.shared` App Group entitlement to 6 targets (`ADBLXPacketTunnel` deferred — Personal Team can't provision its Network Extension entitlement) and a GitHub Actions CI workflow (generate/drift-check/build/`ADBLXTests`).
+- **Commit 5** — validated the runtime pipeline: `ADBLXAdsBlocker` reads 70 synthetic rules from the App Group (with permanent bundle fallback), `ContentBlockerBootstrap` installs and reloads once per install, minimal MetricKit receiver, `Performance/Baselines.md` and `docs/Architecture/ManualVerification.md` established.
 
 Full current target topology, folder layout, and what's deliberately not implemented yet: [`docs/Architecture/TargetTopology.md`](docs/Architecture/TargetTopology.md).
 
-Remaining Sprint 0 work: Commit 5 (functional verification — App Group round-trip, real bundled rule snapshot, `reloadContentBlocker()`, MetricKit, performance baselines).
+Sprint 0 is done. The next major milestone is the RuleCompiler and filter update pipeline (Sprint 1), not further project scaffolding.

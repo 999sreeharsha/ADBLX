@@ -1,6 +1,6 @@
 # Target Topology
 
-**Status:** current as of Sprint 0 Commit 4. Living document — update in place as targets, build settings, or capabilities change. For the "why" behind these decisions, see the linked specs; this document covers only the "how it currently works."
+**Status:** current as of Sprint 0 Commit 5 (Sprint 0 complete). Living document — update in place as targets, build settings, or capabilities change. For the "why" behind these decisions, see the linked specs; this document covers only the "how it currently works."
 
 ## Build system
 
@@ -93,7 +93,11 @@ Identifier: `group.com.ADBLX.shared` — follows the `com.ADBLX.*` bundle ID nam
 
 Configured via `entitlements:` in `project.yml` per target, generating a `.entitlements` file at build time (same generated-artifact pattern as `Info.plist` — never hand-authored). `REGISTER_APP_GROUPS: YES` is set alongside on each entitled target so Automatic signing registers the capability with the App ID.
 
-`AppGroup.swift` (`ADBLX/AppGroup.swift`) exposes the identifier as `AppGroup.identifier`. It lives only in the app target — no `Packages/ADBLXShared` linkage yet (still gated on unwritten ADR-0003); revisit when a real cross-target need arises.
+`AppGroup.swift` exposes the identifier as `AppGroup.identifier`, duplicated in exactly 2 places: `ADBLX/AppGroup.swift` (app target) and `Extensions/ADBLXAdsBlocker/AppGroup.swift` (the one extension migrated to read from the App Group in Commit 5). No `Packages/ADBLXShared` linkage yet (still gated on unwritten ADR-0003); revisit if a third target needs it.
+
+`ADBLXAdsBlocker` is the only Content Blocker reading from the App Group (`Rules/Ads.json`, with a permanent bundle-resource fallback) — see `ContentBlockerRequestHandler.swift`. `ADBLXPrivacyBlocker`/`ADBLXAnnoyancesBlocker`/`ADBLXRegionalBlocker` still bundle `[]` and are unmigrated; replicating the pattern to them is future work.
+
+`ContentBlockerBootstrap` (`ADBLX/ContentBlockerBootstrap.swift`) runs on every launch, dispatched off the main actor from `ADBLXApp`. Its rule copy is idempotent (checks whether `Rules/Ads.json` already exists before copying), but it calls `SFContentBlockerManager.reloadContentBlocker(withIdentifier:)` unconditionally on every launch — a **Sprint-0-only** stand-in (documented via a code comment) for the missing "extension was just enabled in Safari" signal Apple doesn't expose; Sprint 1's manifest/version-comparison logic replaces this with reload-only-on-change. Logging uses `os.Logger`, subsystem `com.ADBLX.ADBLX`, categories `Bootstrap`/`AppGroup`/`MetricKit`.
 
 ### Shared container contract
 
