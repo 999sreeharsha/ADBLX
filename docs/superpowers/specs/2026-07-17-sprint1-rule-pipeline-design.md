@@ -61,10 +61,24 @@ actor FilterPipeline {
         reloader: ReloadCoordinator
     )
 
-    func install(filterID: String, source: Data) async throws
-    func installBundledSnapshotIfNeeded() async throws
+    func install(filterID: String, source: Data) async throws -> PipelineResult
+    func installBundledSnapshotIfNeeded() async throws -> PipelineResult
+}
+
+struct PipelineResult {
+    var filterID: String
+    var compiledRuleCount: Int
+    var installedRuleCount: Int
+    var compileStatistics: RuleStatistics
+    var reloadResults: [ReloadCoordinator.ReloadResult]
 }
 ```
+
+`install`/`installBundledSnapshotIfNeeded` return a `PipelineResult` rather than `Void` —
+callers (ViewModel, logging, future Metrics/UI status) read one summary object instead of
+interrogating five services after the fact. Not `Equatable`: `ReloadCoordinator.ReloadResult`
+carries an `Error?`, which doesn't conform — pipeline tests assert on individual `PipelineResult`
+fields rather than whole-struct equality.
 
 Dependencies are injected through the initializer (not constructed internally), so:
 - Every stage is independently mockable in `FilterPipeline` tests.
@@ -94,12 +108,17 @@ via `FileManager` (violates Part 3: "no other type touches these paths directly"
 calls outside `ReloadCoordinator` returns zero results"). Shipping the new pipeline alongside
 the untouched bootstrap leaves both Part acceptance criteria failing.
 
-**Resolution:** reduce `ContentBlockerBootstrap` to a single call at launch:
+**Resolution:** reduce `ContentBlockerBootstrap` to a single call at launch. No singleton — the
+design is DI throughout (§2.1/§2.7), so `FilterPipeline` is constructed once at a composition
+root and handed to whatever needs it, not reached via a static `.shared`:
 
 ```swift
+// Composition root — e.g. ADBLXApp or a small AppCompositionRoot type
+let pipeline = AppCompositionRoot.makeFilterPipeline()
+
 enum ContentBlockerBootstrap {
-    static func ensureInitialRulesInstalled() async {
-        try? await FilterPipeline.shared.installBundledSnapshotIfNeeded()
+    static func ensureInitialRulesInstalled(pipeline: FilterPipeline) async {
+        _ = try? await pipeline.installBundledSnapshotIfNeeded()
     }
 }
 ```
@@ -107,7 +126,8 @@ enum ContentBlockerBootstrap {
 All copy/reload/logging logic currently inline in `ContentBlockerBootstrap` moves into
 `FilterStore` / `AtomicRuleWriter` / `ReloadCoordinator` via `FilterPipeline`. The file is not
 deleted this sprint (launch call site stays), but shrinks to near-empty. `MetricsSubscriber`'s
-existing call sites into `ContentBlockerBootstrap` are updated to match the new signature.
+existing call sites into `ContentBlockerBootstrap` are updated to match the new signature and to
+receive the pipeline instance from the composition root rather than constructing one inline.
 
 ### 2.4 Bundled fixtures
 
@@ -243,7 +263,7 @@ the target automatically — no `project.yml` changes required. Same for new tes
 | `AtomicRuleWriter` (Part 4) | Fault-injected write/fsync/replace via `AtomicFilesystem` seam | See §2.6 — replaces literal kill-during-write |
 | `ReloadCoordinator` (Part 5) | Grep for direct `SFContentBlockerManager` calls outside this file returns zero | Requires §2.3 migration to actually pass |
 | `FilterValidator` (Part 9) | Empty / oversized / non-UTF8 / invalid-JSON in-memory cases | No new fixture files — see §2.4 |
-| `FilterPipeline` (Part 1.5) | Full pipeline run against `ADBLX/Resources/blockerList.json`, with each injected stage mockable | New — proves end-to-end wiring, not just individual stages |
+| `FilterPipeline` (Part 1.5) | Full pipeline run against `ADBLX/Resources/blockerList.json`, with each injected stage mockable; assert returned `PipelineResult` fields | New — proves end-to-end wiring and the result contract, not just individual stages |
 
 ---
 
