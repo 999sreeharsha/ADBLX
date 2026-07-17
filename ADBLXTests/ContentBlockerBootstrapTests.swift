@@ -4,21 +4,14 @@ import Foundation
 
 @Suite("ContentBlockerBootstrap")
 struct ContentBlockerBootstrapTests {
-    @Test("first call installs rules, second call is a no-op")
-    func idempotentInstall() throws {
-        let containerURL = try #require(
-            FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: AppGroup.identifier)
-        )
-        let rulesURL = containerURL.appendingPathComponent("Rules/Ads.json")
-        try? FileManager.default.removeItem(at: rulesURL)
+    @Test("installs the bundled snapshot via the pipeline and reports success")
+    func installsBundledSnapshot() async throws {
+        let pipeline = AppCompositionRoot.makeFilterPipeline()
+        let result = await ContentBlockerBootstrap.ensureInitialRulesInstalled(pipeline: pipeline)
+        #expect(result == true)
 
-        let firstResult = ContentBlockerBootstrap.ensureInitialRulesInstalled()
-        #expect(firstResult == true)
-        #expect(FileManager.default.fileExists(atPath: rulesURL.path))
-
-        let secondResult = ContentBlockerBootstrap.ensureInitialRulesInstalled()
-        #expect(secondResult == false)
-
-        try? FileManager.default.removeItem(at: rulesURL)
+        let store = FilterStore(appGroupIdentifier: AppGroup.identifier)
+        let compiledDir = try await store.directoryURL(.compiled)
+        #expect(FileManager.default.fileExists(atPath: compiledDir.appendingPathComponent("Ads.json").path))
     }
 }

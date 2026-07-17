@@ -4,6 +4,7 @@ import MetricKit
 @main
 struct ADBLXApp: App {
     private let metricsSubscriber = MetricsSubscriber()
+    private let filterPipeline = AppCompositionRoot.makeFilterPipeline()
 
     init() {
         MXMetricManager.shared.add(metricsSubscriber)
@@ -13,8 +14,9 @@ struct ADBLXApp: App {
         WindowGroup {
             ContentView()
                 .task {
+                    let pipeline = filterPipeline
                     Task.detached(priority: .utility) {
-                        ContentBlockerBootstrap.reloadIfNeeded()
+                        await ContentBlockerBootstrap.ensureInitialRulesInstalled(pipeline: pipeline)
                     }
                 }
         }
