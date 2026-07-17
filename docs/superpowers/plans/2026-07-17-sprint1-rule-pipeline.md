@@ -51,16 +51,56 @@ needed — new files under `ADBLX/` and `ADBLXTests/` attach automatically).
 
 ---
 
-### Task 1: Filtering module skeleton
+### Task 1: Filtering module skeleton + simulator discovery script
 
 **Files:**
 - Create: `ADBLX/Filtering/README.md`
+- Create: `Scripts/find-simulator-udid.sh`
 
 **Interfaces:**
-- Produces: nothing code-facing — this task establishes the directory and its placement rules
-  for every subsequent task.
+- Produces: `Scripts/find-simulator-udid.sh` — an executable that prints one available iOS
+  Simulator UDID to stdout. Every `xcodebuild` invocation in every later task's Run: commands
+  calls `$(Scripts/find-simulator-udid.sh)` instead of a hardcoded device name, so tasks don't
+  fail uniformly on a machine that doesn't happen to have "iPhone 16" installed. Mirrors the
+  dynamic-discovery logic `.github/workflows/ci.yml` already uses, as a single reusable script
+  instead of the CI-only inline python.
 
-- [ ] **Step 1: Create the module README**
+- [ ] **Step 1: Create the simulator discovery script**
+
+```bash
+# Scripts/find-simulator-udid.sh
+#!/usr/bin/env bash
+set -euo pipefail
+
+xcrun simctl list devices available -j | python3 -c '
+import json, sys
+
+data = json.load(sys.stdin)
+for runtime, devices in data["devices"].items():
+    if "iOS" not in runtime:
+        continue
+    for d in devices:
+        if d["name"].startswith("iPhone"):
+            print(d["udid"])
+            sys.exit(0)
+
+sys.exit(1)
+'
+```
+
+```bash
+chmod +x /Users/sreeharshag/Work/ADBLX/Scripts/find-simulator-udid.sh
+```
+
+- [ ] **Step 2: Verify the script finds a real device**
+
+Run: `cd /Users/sreeharshag/Work/ADBLX && Scripts/find-simulator-udid.sh`
+Expected: a single UUID-formatted line (e.g. `A1B2C3D4-...`), exit code 0. If this fails with
+exit code 1 and no output, no available iOS simulator with a name starting "iPhone" exists on
+this machine — install one via Xcode → Settings → Platforms before continuing to any later
+task, since every later Run: command depends on this script succeeding.
+
+- [ ] **Step 3: Create the module README**
 
 ```markdown
 # Filtering module — target placement
@@ -86,16 +126,16 @@ passthrough `RuleCompiler`, not a real compiler — see
 `docs/superpowers/specs/2026-07-17-sprint1-rule-pipeline-design.md`.
 ```
 
-- [ ] **Step 2: Verify the project still builds with the new empty directory**
+- [ ] **Step 4: Verify the project still builds with the new empty directory**
 
-Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination 'platform=iOS Simulator,name=iPhone 16' build`
+Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination "id=$(Scripts/find-simulator-udid.sh)" build`
 Expected: `** BUILD SUCCEEDED **`
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
-git add ADBLX/Filtering/README.md
-git commit -m "feat: add Filtering module skeleton and target-placement rules"
+git add ADBLX/Filtering/README.md Scripts/find-simulator-udid.sh
+git commit -m "feat: add Filtering module skeleton and simulator discovery script"
 ```
 
 ---
@@ -212,7 +252,7 @@ struct FilteringModelsTests {
 
 - [ ] **Step 2: Run tests to verify they fail to compile**
 
-Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination 'platform=iOS Simulator,name=iPhone 16' -only-testing:ADBLXTests/FilteringModelsTests test`
+Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination "id=$(Scripts/find-simulator-udid.sh)" -only-testing:ADBLXTests/FilteringModelsTests test`
 Expected: build fails — `cannot find 'RuleStatistics' in scope` (and similarly for the other four types)
 
 - [ ] **Step 3: Write the models**
@@ -320,7 +360,7 @@ struct InstalledFilter: Codable, Equatable, Identifiable {
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination 'platform=iOS Simulator,name=iPhone 16' -only-testing:ADBLXTests/FilteringModelsTests test`
+Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination "id=$(Scripts/find-simulator-udid.sh)" -only-testing:ADBLXTests/FilteringModelsTests test`
 Expected: `** TEST SUCCEEDED **`, 5 tests passed
 
 - [ ] **Step 5: Commit**
@@ -362,7 +402,7 @@ struct ChecksumTests {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination 'platform=iOS Simulator,name=iPhone 16' -only-testing:ADBLXTests/ChecksumTests test`
+Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination "id=$(Scripts/find-simulator-udid.sh)" -only-testing:ADBLXTests/ChecksumTests test`
 Expected: build fails — `cannot find 'Checksum' in scope`
 
 - [ ] **Step 3: Write the implementation**
@@ -387,7 +427,7 @@ enum Checksum {
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination 'platform=iOS Simulator,name=iPhone 16' -only-testing:ADBLXTests/ChecksumTests test`
+Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination "id=$(Scripts/find-simulator-udid.sh)" -only-testing:ADBLXTests/ChecksumTests test`
 Expected: `** TEST SUCCEEDED **`
 
 - [ ] **Step 5: Commit**
@@ -464,7 +504,7 @@ struct FilterValidatorTests {
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination 'platform=iOS Simulator,name=iPhone 16' -only-testing:ADBLXTests/FilterValidatorTests test`
+Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination "id=$(Scripts/find-simulator-udid.sh)" -only-testing:ADBLXTests/FilterValidatorTests test`
 Expected: build fails — `cannot find 'FilterValidator' in scope`
 
 - [ ] **Step 3: Write the implementation**
@@ -512,7 +552,7 @@ struct FilterValidator {
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination 'platform=iOS Simulator,name=iPhone 16' -only-testing:ADBLXTests/FilterValidatorTests test`
+Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination "id=$(Scripts/find-simulator-udid.sh)" -only-testing:ADBLXTests/FilterValidatorTests test`
 Expected: `** TEST SUCCEEDED **`, 5 tests passed
 
 - [ ] **Step 5: Commit**
@@ -580,7 +620,7 @@ struct PassthroughRuleCompilerTests {
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination 'platform=iOS Simulator,name=iPhone 16' -only-testing:ADBLXTests/PassthroughRuleCompilerTests test`
+Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination "id=$(Scripts/find-simulator-udid.sh)" -only-testing:ADBLXTests/PassthroughRuleCompilerTests test`
 Expected: build fails — `cannot find 'PassthroughRuleCompiler' in scope`
 
 - [ ] **Step 3: Write the implementation**
@@ -655,7 +695,7 @@ struct PassthroughRuleCompiler: RuleCompiler {
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination 'platform=iOS Simulator,name=iPhone 16' -only-testing:ADBLXTests/PassthroughRuleCompilerTests test`
+Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination "id=$(Scripts/find-simulator-udid.sh)" -only-testing:ADBLXTests/PassthroughRuleCompilerTests test`
 Expected: `** TEST SUCCEEDED **`, 3 tests passed
 
 - [ ] **Step 5: Commit**
@@ -733,7 +773,7 @@ struct PassthroughAdsPartitionerTests {
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination 'platform=iOS Simulator,name=iPhone 16' -only-testing:ADBLXTests/PassthroughAdsPartitionerTests test`
+Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination "id=$(Scripts/find-simulator-udid.sh)" -only-testing:ADBLXTests/PassthroughAdsPartitionerTests test`
 Expected: build fails — `cannot find 'PassthroughAdsPartitioner' in scope`
 
 - [ ] **Step 3: Write the implementation**
@@ -794,7 +834,7 @@ struct PassthroughAdsPartitioner: RulePartitioner {
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination 'platform=iOS Simulator,name=iPhone 16' -only-testing:ADBLXTests/PassthroughAdsPartitionerTests test`
+Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination "id=$(Scripts/find-simulator-udid.sh)" -only-testing:ADBLXTests/PassthroughAdsPartitionerTests test`
 Expected: `** TEST SUCCEEDED **`, 2 tests passed
 
 - [ ] **Step 5: Commit**
@@ -856,7 +896,7 @@ struct FilterStoreTests {
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination 'platform=iOS Simulator,name=iPhone 16' -only-testing:ADBLXTests/FilterStoreTests test`
+Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination "id=$(Scripts/find-simulator-udid.sh)" -only-testing:ADBLXTests/FilterStoreTests test`
 Expected: build fails — `cannot find 'FilterStore' in scope`
 
 - [ ] **Step 3: Write the implementation**
@@ -946,7 +986,7 @@ enum FilterStoreError: Error {
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination 'platform=iOS Simulator,name=iPhone 16' -only-testing:ADBLXTests/FilterStoreTests test`
+Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination "id=$(Scripts/find-simulator-udid.sh)" -only-testing:ADBLXTests/FilterStoreTests test`
 Expected: `** TEST SUCCEEDED **`, 2 tests passed
 
 - [ ] **Step 5: Commit**
@@ -1068,7 +1108,7 @@ struct AtomicRuleWriterTests {
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination 'platform=iOS Simulator,name=iPhone 16' -only-testing:ADBLXTests/AtomicRuleWriterTests test`
+Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination "id=$(Scripts/find-simulator-udid.sh)" -only-testing:ADBLXTests/AtomicRuleWriterTests test`
 Expected: build fails — `cannot find type 'AtomicFilesystem' in scope`
 
 - [ ] **Step 3: Write the implementation**
@@ -1162,7 +1202,7 @@ struct AtomicRuleWriter {
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination 'platform=iOS Simulator,name=iPhone 16' -only-testing:ADBLXTests/AtomicRuleWriterTests test`
+Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination "id=$(Scripts/find-simulator-udid.sh)" -only-testing:ADBLXTests/AtomicRuleWriterTests test`
 Expected: `** TEST SUCCEEDED **`, 3 tests passed
 
 - [ ] **Step 5: Commit**
@@ -1182,10 +1222,23 @@ git commit -m "feat: add AtomicRuleWriter with fault-injectable filesystem seam"
 
 **Interfaces:**
 - Consumes: nothing from earlier tasks.
-- Produces: `actor ReloadCoordinator { struct ReloadResult { var extensionIdentifier: String;
-  var success: Bool; var error: Error?; var duration: TimeInterval }; func
+- Produces: `actor ReloadCoordinator { init(timeoutSeconds: Int = 10); struct ReloadResult { var
+  extensionIdentifier: String; var success: Bool; var error: Error?; var duration:
+  TimeInterval }; enum ReloadError: Error { case underlying(Error), timedOut }; func
   reload(extensionIdentifier: String) async -> ReloadResult; func
   reload(extensionIdentifiers: [String]) async -> [ReloadResult] }`.
+
+**Why this needs a timeout:** `SFContentBlockerManager.reloadContentBlocker`'s completion
+handler has no documented upper bound and no cancellation handle. Without a bound, a callback
+that never fires — e.g. the extension was never enabled in Safari Settings, which has already
+caused a multi-hour debugging incident in this project's Sprint 0 (bundle ID nesting) — hangs
+this call, and anything awaiting it, forever. A `TaskGroup` can't fix this: Swift implicitly
+awaits every child task before a `withTaskGroup` closure returns, even cancelled ones, so a
+stuck `withCheckedContinuation` child would still block the group forever. The fix races the
+real callback against an *unstructured* `Task` timer — unstructured tasks aren't implicitly
+awaited by their parent, so the function returns as soon as either branch wins. A `ResumeOnce`
+guard ensures the continuation is resumed exactly once even if the real callback fires after
+the timeout already won.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -1197,9 +1250,9 @@ import Foundation
 
 @Suite("ReloadCoordinator")
 struct ReloadCoordinatorTests {
-    @Test("returns a failed result with a captured error for an unknown extension identifier")
+    @Test("returns a failed result with a captured error for an unknown extension identifier, bounded by the timeout")
     func failsGracefullyForUnknownIdentifier() async {
-        let coordinator = ReloadCoordinator()
+        let coordinator = ReloadCoordinator(timeoutSeconds: 3)
         let result = await coordinator.reload(extensionIdentifier: "com.ADBLX.does-not-exist")
 
         #expect(result.extensionIdentifier == "com.ADBLX.does-not-exist")
@@ -1209,7 +1262,7 @@ struct ReloadCoordinatorTests {
 
     @Test("reload(extensionIdentifiers:) returns one result per identifier, in order")
     func reloadsMultipleInOrder() async {
-        let coordinator = ReloadCoordinator()
+        let coordinator = ReloadCoordinator(timeoutSeconds: 3)
         let results = await coordinator.reload(extensionIdentifiers: ["a", "b"])
         #expect(results.map(\.extensionIdentifier) == ["a", "b"])
     }
@@ -1218,7 +1271,7 @@ struct ReloadCoordinatorTests {
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination 'platform=iOS Simulator,name=iPhone 16' -only-testing:ADBLXTests/ReloadCoordinatorTests test`
+Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination "id=$(Scripts/find-simulator-udid.sh)" -only-testing:ADBLXTests/ReloadCoordinatorTests test`
 Expected: build fails — `cannot find 'ReloadCoordinator' in scope`
 
 - [ ] **Step 3: Write the implementation**
@@ -1234,6 +1287,9 @@ import SafariServices
 ///
 /// Maps to FR-06 (reload affected extensions after compile; report per-extension status).
 /// Target: main app ONLY (extensions cannot reload themselves or each other).
+///
+/// Bounded by `timeoutSeconds` — see this task's "Why this needs a timeout" note in the plan
+/// for why a plain TaskGroup race doesn't work here and an unstructured Task does.
 actor ReloadCoordinator {
     struct ReloadResult {
         var extensionIdentifier: String
@@ -1247,19 +1303,45 @@ actor ReloadCoordinator {
 
     enum ReloadError: Error {
         case underlying(Error)
+        case timedOut
+    }
+
+    private let timeoutSeconds: Int
+
+    init(timeoutSeconds: Int = 10) {
+        self.timeoutSeconds = timeoutSeconds
     }
 
     /// Reloads a single Content Blocker extension by its bundle identifier.
     /// Errors are returned, never swallowed — callers (typically a view model) surface
-    /// "enable in Settings"-style messaging per FR-06's UI requirement.
+    /// "enable in Settings"-style messaging per FR-06's UI requirement. Never hangs past
+    /// `timeoutSeconds`, even if SFContentBlockerManager's completion handler never fires.
     func reload(extensionIdentifier: String) async -> ReloadResult {
         let start = Date()
-        return await withCheckedContinuation { continuation in
+        let timeoutSeconds = self.timeoutSeconds
+
+        return await withCheckedContinuation { (continuation: CheckedContinuation<ReloadResult, Never>) in
+            let resumeGuard = ResumeOnce()
+
             SFContentBlockerManager.reloadContentBlocker(withIdentifier: extensionIdentifier) { error in
+                guard resumeGuard.markAndCheckFirst() else { return }
                 continuation.resume(returning: ReloadResult(
                     extensionIdentifier: extensionIdentifier,
                     success: error == nil,
                     error: error,
+                    duration: Date().timeIntervalSince(start)
+                ))
+            }
+
+            // Unstructured, not a TaskGroup child: see the task-level note on why a
+            // TaskGroup's implicit wait-for-all-children would defeat the timeout entirely.
+            Task {
+                try? await Task.sleep(for: .seconds(timeoutSeconds))
+                guard resumeGuard.markAndCheckFirst() else { return }
+                continuation.resume(returning: ReloadResult(
+                    extensionIdentifier: extensionIdentifier,
+                    success: false,
+                    error: ReloadError.timedOut,
                     duration: Date().timeIntervalSince(start)
                 ))
             }
@@ -1276,18 +1358,34 @@ actor ReloadCoordinator {
         return results
     }
 }
+
+/// Guarantees a `CheckedContinuation` is resumed exactly once when two independent callback
+/// sources (the real SFContentBlockerManager callback and the timeout Task) race to resume it.
+/// A double-resume crashes at runtime, so this lock-guarded flag is load-bearing, not decor.
+private final class ResumeOnce: @unchecked Sendable {
+    private let lock = NSLock()
+    private var hasResumed = false
+
+    func markAndCheckFirst() -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        if hasResumed { return false }
+        hasResumed = true
+        return true
+    }
+}
 ```
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination 'platform=iOS Simulator,name=iPhone 16' -only-testing:ADBLXTests/ReloadCoordinatorTests test`
+Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination "id=$(Scripts/find-simulator-udid.sh)" -only-testing:ADBLXTests/ReloadCoordinatorTests test`
 Expected: `** TEST SUCCEEDED **`, 2 tests passed
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add ADBLX/Filtering/Deployment/ReloadCoordinator.swift ADBLXTests/Filtering/ReloadCoordinatorTests.swift
-git commit -m "feat: add ReloadCoordinator as sole SFContentBlockerManager call site"
+git commit -m "feat: add ReloadCoordinator with a bounded reload timeout"
 ```
 
 ---
@@ -1368,7 +1466,7 @@ struct FilterPipelineTests {
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination 'platform=iOS Simulator,name=iPhone 16' -only-testing:ADBLXTests/FilterPipelineTests test`
+Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination "id=$(Scripts/find-simulator-udid.sh)" -only-testing:ADBLXTests/FilterPipelineTests test`
 Expected: build fails — `cannot find 'FilterPipeline' in scope`
 
 - [ ] **Step 3: Write the implementation**
@@ -1479,7 +1577,7 @@ enum FilterPipelineError: Error {
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination 'platform=iOS Simulator,name=iPhone 16' -only-testing:ADBLXTests/FilterPipelineTests test`
+Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination "id=$(Scripts/find-simulator-udid.sh)" -only-testing:ADBLXTests/FilterPipelineTests test`
 Expected: `** TEST SUCCEEDED **`, 2 tests passed
 
 - [ ] **Step 5: Commit**
@@ -1539,7 +1637,7 @@ struct ContentBlockerBootstrapTests {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination 'platform=iOS Simulator,name=iPhone 16' -only-testing:ADBLXTests/ContentBlockerBootstrapTests test`
+Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination "id=$(Scripts/find-simulator-udid.sh)" -only-testing:ADBLXTests/ContentBlockerBootstrapTests test`
 Expected: build fails — `cannot find 'AppCompositionRoot' in scope` (and/or `ensureInitialRulesInstalled(pipeline:)` has no matching signature)
 
 - [ ] **Step 3: Write the composition root**
@@ -1633,7 +1731,7 @@ struct ADBLXApp: App {
 
 - [ ] **Step 6: Run test to verify it passes**
 
-Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination 'platform=iOS Simulator,name=iPhone 16' -only-testing:ADBLXTests/ContentBlockerBootstrapTests test`
+Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination "id=$(Scripts/find-simulator-udid.sh)" -only-testing:ADBLXTests/ContentBlockerBootstrapTests test`
 Expected: `** TEST SUCCEEDED **`
 
 - [ ] **Step 7: Grep-verify Part 3 and Part 5 acceptance criteria now hold**
@@ -1723,7 +1821,7 @@ final class ContentBlockerRequestHandler: NSObject, NSExtensionRequestHandling {
 
 - [ ] **Step 2: Verify the extension target still builds**
 
-Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination 'platform=iOS Simulator,name=iPhone 16' build`
+Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination "id=$(Scripts/find-simulator-udid.sh)" build`
 Expected: `** BUILD SUCCEEDED **`
 
 - [ ] **Step 3: Manually verify end-to-end on the simulator**
@@ -1825,6 +1923,26 @@ command with expected output.
 `InstalledFilter`, `RuleStatistics`, `FilterGroup`, `AtomicFilesystem`/`RealFilesystem` field
 names and types are identical everywhere they're referenced across Tasks 2–12 (cross-checked
 against each task's Interfaces block).
+
+**ABORT review (pre-execution stress test):** run against this plan before execution began.
+Verdict: GO WITH CONDITIONS, both applied —
+1. Every task's `xcodebuild` destination previously hardcoded `iPhone 16`, which would have
+   failed all 13 tasks uniformly on any machine without that exact simulator. Task 1 now
+   creates `Scripts/find-simulator-udid.sh`, and every later Run: command resolves the device
+   dynamically via `$(Scripts/find-simulator-udid.sh)`.
+2. `ReloadCoordinator.reload` had no bound on `SFContentBlockerManager`'s completion callback —
+   a callback that never fires (e.g. extension never enabled in Safari Settings, the exact
+   failure class that caused a Sprint 0 incident) would hang the call, and anything awaiting
+   it, forever. Task 9 now races the real callback against an unstructured-Task timeout
+   (`timeoutSeconds`, default 10s) guarded by a single-resume lock (`ResumeOnce`).
+
+Two risks the review flagged as acceptable, not blocking, and left as-is: `AtomicRuleWriter`'s
+`WriteError.renameFailed(errno:)` reads the C `errno` global after catching a thrown Swift
+`Error` from `FileManager.replaceItemAt`, which doesn't guarantee `errno` reflects the actual
+failure — a diagnostics-quality gap, not a correctness one (the atomic-write guarantee itself
+is still correctly proven by Task 8's tests). And the rule count `70` (from the real
+`blockerList.json` fixture) is asserted as a literal in three test files with no shared
+constant — acceptable per this plan's YAGNI stance on fixtures (§2.4 of the design spec).
 
 ---
 
