@@ -25,7 +25,9 @@ final class ContentBlockerRequestHandler: NSObject, NSExtensionRequestHandling {
 
     private static func rulesURL() -> URL? {
         if let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: AppGroup.identifier) {
-            let appGroupURL = containerURL.appendingPathComponent("Rules/Ads.json")
+            // Sprint 1: FilterStore/FilterPipeline write compiled output to Compiled/<Group>.json,
+            // not the Sprint 0 Rules/Ads.json path.
+            let appGroupURL = containerURL.appendingPathComponent("Compiled/Ads.json")
             if FileManager.default.fileExists(atPath: appGroupURL.path) {
                 logger.info("Using App Group rules (\(ruleCount(at: appGroupURL)) rules)")
                 return appGroupURL
