@@ -44,11 +44,19 @@ edits needed — new files under `ADBLX/` and `ADBLXTests/` attach automatically
   a suite in parallel by default. Any suite where multiple tests read-modify-write the
   *same* fixed App Group path (`installed_filters.json`, `Compiled/Ads.json`,
   `manifest.json`) must be declared `@Suite(.serialized, "Name")` to avoid racing on
-  that shared file — a lost-update race here is a real flake, not a hypothetical.
-  `FilterPipelineTests`, `FilterStoreTests`, `ManifestStoreTests`, and
+  that shared file within the suite — a lost-update race here is a real flake, not a
+  hypothetical. `FilterPipelineTests`, `FilterStoreTests`, `ManifestStoreTests`, and
   `UpdateCoordinatorTests` all need this; suites that only use per-test temp files or
   in-memory mocks (`UpdatePlannerTests`, `ManifestClientTests`,
-  `FilterDownloadClientTests`, `HTTPSessionTests`) don't.
+  `FilterDownloadClientTests`, `HTTPSessionTests`) don't. **This does not eliminate
+  racing *across* those four suites** — `.serialized` only prevents concurrent test
+  execution within one suite, and all four target the same real App Group container
+  (`AppGroup.identifier` / `group.com.ADBLX.shared`, the only App Group ID actually
+  registered in this project's entitlements — an additional test-only App Group ID is
+  not an available fix without a provisioning change). Task 10's full-suite run is the
+  only place this residual cross-suite race is reachable (every other task's
+  `-only-testing:` command runs one suite at a time and is race-free); see Task 10 for
+  how this is handled.
 - **New files attach automatically:** all new files in this plan go under `ADBLX/` or
   `ADBLXTests/`, both `syncedFolder` targets in `project.yml` — run `xcodegen generate`
   before building, but no manual `project.yml` edits are needed.
@@ -1003,15 +1011,27 @@ git commit -m "feat: add FilterDownloadClient for downloading manifest entries t
 **Interfaces:**
 - Consumes: `FilterStore.read(_:in:)` (existing), `ReloadCoordinator.reload(extensionIdentifiers:)` (existing).
 - Produces: `enum ReloadStrategy { case immediate, case deferred }` (new), `func
-  install(filterID: String, source: Data, reloadStrategy: ReloadStrategy = .immediate)
-  async throws -> PipelineResult` (signature change, default preserves Sprint 1
-  behavior). `UpdateCoordinator` (Task 9) calls `install(filterID:source:reloadStrategy:
-  .deferred)`.
+  install(filterID: String, source: Data, version: String = "bundled-snapshot",
+  reloadStrategy: ReloadStrategy = .immediate) async throws -> PipelineResult`
+  (signature change, both new parameters default to preserve Sprint 1 behavior exactly).
+  `UpdateCoordinator` (Task 9) calls `install(filterID:source:version:reloadStrategy:)`
+  passing the downloaded filter's real manifest version and `.deferred`.
 
 **This task changes existing, tested behavior — read both existing tests in
 `FilterPipelineTests.swift` before editing `FilterPipeline.swift` so the accumulation
 fix doesn't break `installsBundledSnapshotEndToEnd`, which asserts a single-element
 `installed_filters.json`.**
+
+**Why the `version` parameter matters (found in ABORT review, not in the original
+design pass):** without it, `install()` always writes `installedVersion:
+"bundled-snapshot"` to `installed_filters.json` regardless of what was actually
+installed. `UpdatePlanner` (Task 3) requires `installedVersion == entry.version` to
+emit `.keep`. A manifest-driven install would then never match on a later run — the
+planner would emit `.install` for the same unchanged filter on every run that isn't
+short-circuited by a 304, silently defeating "download only changed filters"
+(acceptance criterion 3) while every test in Tasks 1–9 still passes, because none of
+them exercise a second `run()` against an already-installed filter. Task 9 adds the
+test that would have caught this.
 
 - [ ] **Step 1: Serialize the suite, then write the failing tests**
 
@@ -1080,6 +1100,21 @@ Then append the new tests:
 
         #expect(filters.map(\.id) == ["filter-a"])
     }
+
+    @Test("install(version:) records the passed version, not the bundled-snapshot default")
+    func installRecordsPassedVersion() async throws {
+        let pipeline = makePipeline()
+        let source = Data("[{\"trigger\":{\"url-filter\":\".*\"},\"action\":{\"type\":\"block\"}}]".utf8)
+
+        _ = try await pipeline.install(filterID: "filter-versioned", source: source, version: "2026-07-18", reloadStrategy: .deferred)
+
+        let store = FilterStore(appGroupIdentifier: AppGroup.identifier)
+        let metadataDir = try await store.directoryURL(.metadata)
+        let data = try Data(contentsOf: metadataDir.appendingPathComponent("installed_filters.json"))
+        let filters = try JSONDecoder().decode([InstalledFilter].self, from: data)
+
+        #expect(filters.first(where: { $0.id == "filter-versioned" })?.installedVersion == "2026-07-18")
+    }
 ```
 
 - [ ] **Step 2: Run tests to verify they fail**
@@ -1128,6 +1163,13 @@ actor FilterPipeline {
     /// callers (ViewModel, logging, future Metrics/UI status) read this one object instead of
     /// interrogating each stage afterward.
     ///
+    /// `version`: the value recorded as `InstalledFilter.installedVersion`. Defaults to
+    /// `"bundled-snapshot"`, matching Sprint 1's only caller. `UpdateCoordinator`
+    /// (Sprint 2) passes the manifest entry's real version — `UpdatePlanner` compares
+    /// this value against `FilterManifest.Entry.version` to decide `.keep` vs
+    /// `.install` on the next run, so an un-passed (default) version here would make a
+    /// manifest-driven install never converge to `.keep`.
+    ///
     /// `reloadStrategy`: `.immediate` (default) reloads the affected extensions before
     /// returning, matching Sprint 1 behavior exactly. `.deferred` skips the reload —
     /// used by `UpdateCoordinator` (Sprint 2) so a multi-filter batch triggers exactly
@@ -1136,6 +1178,7 @@ actor FilterPipeline {
     func install(
         filterID: String,
         source: Data,
+        version: String = "bundled-snapshot",
         reloadStrategy: ReloadStrategy = .immediate
     ) async throws -> PipelineResult {
         try validator.validate(source)
@@ -1161,7 +1204,7 @@ actor FilterPipeline {
         let installedFilter = InstalledFilter(
             id: filterID,
             group: .ads,
-            installedVersion: "bundled-snapshot",
+            installedVersion: version,
             checksumSHA256: Checksum.sha256Hex(of: source),
             lastUpdated: compiled.statistics.lastUpdated,
             ruleCount: compiled.ruleCount
@@ -1229,7 +1272,7 @@ enum FilterPipelineError: Error {
 - [ ] **Step 4: Run tests to verify they pass, including the existing Sprint 1 tests**
 
 Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination "id=$(Scripts/find-simulator-udid.sh)" -only-testing:ADBLXTests/FilterPipelineTests test`
-Expected: `** TEST SUCCEEDED **`, 5 tests passed (2 existing Sprint 1 tests still pass unmodified + 3 new). If `installsBundledSnapshotEndToEnd` fails, check that a stale `installed_filters.json` from a prior manual run isn't polluting the App Group container — the accumulation fix means old entries from unrelated `filterID`s now persist across runs where they previously got overwritten.
+Expected: `** TEST SUCCEEDED **`, 6 tests passed (2 existing Sprint 1 tests still pass unmodified + 4 new). If `installsBundledSnapshotEndToEnd` fails, check that a stale `installed_filters.json` from a prior manual run isn't polluting the App Group container — the accumulation fix means old entries from unrelated `filterID`s now persist across runs where they previously got overwritten.
 
 - [ ] **Step 5: Commit**
 
@@ -1711,6 +1754,52 @@ struct UpdateCoordinatorTests {
         try? FileManager.default.removeItem(at: compiledFile)
         try? FileManager.default.removeItem(at: metadataFile)
     }
+
+    @Test("a second run against an unchanged manifest converges to .upToDate via the planner, not just via 304")
+    func secondRunConvergesToUpToDateViaPlanner() async throws {
+        // Regression test for a gap found in ABORT review: if FilterPipeline.install
+        // doesn't record the real manifest version (Task 7's `version:` parameter),
+        // UpdatePlanner can never match installedVersion == entry.version, so this
+        // filter would re-download and re-install on every run forever, even when the
+        // manifest hasn't changed and the server never sends a 304. This test proves
+        // convergence through the planner path, independent of ETag/304 behavior — the
+        // mock manifest response is a 200 both times, not a 304.
+        let store = FilterStore(appGroupIdentifier: AppGroup.identifier)
+        let metadataDir = try await store.directoryURL(.metadata)
+        try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("manifest.json"))
+        try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("installed_filters.json"))
+
+        let manifest = FilterManifest(manifestVersion: "1", entries: [manifestEntry(checksum: Checksum.sha256Hex(of: filterSourceJSON()))])
+        let manifestData = try JSONEncoder().encode(manifest)
+        let manifestResponse = HTTPURLResponse(url: manifestEndpoint, statusCode: 200, httpVersion: nil, headerFields: nil)!
+        let filterResponse = HTTPURLResponse(url: filterSourceURL, statusCode: 200, httpVersion: nil, headerFields: nil)!
+
+        let pipeline = FilterPipeline(
+            validator: FilterValidator(), compiler: PassthroughRuleCompiler(),
+            partitioner: PassthroughAdsPartitioner(adsExtensionIdentifier: adsExtensionIdentifier),
+            store: store, writer: AtomicRuleWriter(), reloader: ReloadCoordinator()
+        )
+        let coordinator = makeCoordinator(
+            manifestResponse: (manifestData, manifestResponse),
+            filterResponse: (filterSourceJSON(), filterResponse),
+            pipeline: pipeline, store: store
+        )
+
+        let firstResult = try await coordinator.run()
+        guard case .updated = firstResult else {
+            Issue.record("expected first run to be .updated, got \(firstResult)")
+            return
+        }
+
+        let secondResult = try await coordinator.run()
+        guard case .upToDate = secondResult else {
+            Issue.record("expected second run to be .upToDate (planner should emit .keep, not .install), got \(secondResult)")
+            return
+        }
+
+        try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("manifest.json"))
+        try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("installed_filters.json"))
+    }
 }
 ```
 
@@ -1807,7 +1896,12 @@ actor UpdateCoordinator {
                 // Bridge because FilterPipeline.install is Data-based from Sprint 1. If
                 // a future overload accepts a URL directly, this read disappears.
                 let data = try Data(contentsOf: filter.tempFileURL)
-                _ = try await pipeline.install(filterID: filter.filterID, source: data, reloadStrategy: .deferred)
+                // version: filter.version is required, not cosmetic — UpdatePlanner compares
+                // InstalledFilter.installedVersion against FilterManifest.Entry.version to
+                // decide .keep vs .install on the next run. Omitting it (leaving the
+                // "bundled-snapshot" default) would make this filter never converge to
+                // .keep, defeating "download only changed filters" on every subsequent run.
+                _ = try await pipeline.install(filterID: filter.filterID, source: data, version: filter.version, reloadStrategy: .deferred)
             }
             try await manifestStore.save(manifest, etag: etag)
             let reloadResults = await reloader.reload(extensionIdentifiers: affectedExtensionIDs)
@@ -1833,7 +1927,7 @@ actor UpdateCoordinator {
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination "id=$(Scripts/find-simulator-udid.sh)" -only-testing:ADBLXTests/UpdateCoordinatorTests test`
-Expected: `** TEST SUCCEEDED **`, 4 tests passed.
+Expected: `** TEST SUCCEEDED **`, 5 tests passed.
 
 - [ ] **Step 5: Commit**
 
@@ -1860,6 +1954,22 @@ Expected: `** TEST SUCCEEDED **`, all suites pass — Sprint 0/1 suites (`AppGro
 `RuleCompilerTests`, `RulePartitionerTests`) plus every Sprint 2 suite added in this
 plan (`HTTPSessionTests`, `UpdatePlannerTests`, `ManifestStoreTests`,
 `ManifestClientTests`, `FilterDownloadClientTests`, `UpdateCoordinatorTests`).
+
+**Known residual flakiness risk at this step specifically (not at any single-suite
+`-only-testing:` step in Tasks 1–9):** `FilterPipelineTests`, `FilterStoreTests`,
+`ManifestStoreTests`, and `UpdateCoordinatorTests` are each internally serialized
+(`.serialized`), but Swift Testing can still run *different* suites concurrently
+against each other, and all four write to the same real App Group container
+(`group.com.ADBLX.shared` — the only App Group ID registered in this project's
+entitlements; there's no test-only App Group available to isolate against without a
+provisioning change, which is out of scope here). If this step fails intermittently
+with a JSON-decoding error or an unexpected `installed_filters.json`/`Compiled/Ads.json`
+content mismatch — and the same failing test passes when re-run via its own
+single-suite `-only-testing:` command — that's this cross-suite race, not a real
+implementation bug. Re-run Step 1 once before investigating further. If it's
+consistently flaky, the durable fix (parameterizing `FilterStore`'s fixed filenames or
+container subpath per test — not attempted in this plan) is follow-up work, not a
+Sprint 2 blocker.
 
 - [ ] **Step 2: Clean build from scratch**
 
@@ -1891,3 +2001,18 @@ scheduling (`BGAppRefreshTask`). `UpdateCoordinator.run()` is written to be call
 from either a foreground trigger or a future scheduler without modification — wiring an
 actual caller (a "Check for Updates" button, a launch-time check, or a background task)
 is Sprint 3+ scope per the design doc's "Out of scope for Sprint 2" section.
+
+**Blocking risk for whoever does that wiring (found in ABORT review):**
+`ContentBlockerBootstrap`/`installBundledSnapshotIfNeeded()` unconditionally reinstalls
+the bundled snapshot on every app launch — that's unchanged Sprint 1 behavior, and nothing
+in this plan touches it. The moment a Sprint 3+ launch path calls
+`UpdateCoordinator.run()` *in addition to* the existing bootstrap call (rather than
+*instead of* it), the sequence becomes: update installs a real EasyList → app relaunches
+→ bootstrap overwrites `Compiled/Ads.json` and `installed_filters.json` back to the
+bundled snapshot → the update is silently reverted. This plan does not fix it, because
+nothing in Sprint 2 calls `run()` yet, so it's unreachable today — but whichever plan
+wires up the first real caller of `UpdateCoordinator.run()` must either gate
+`installBundledSnapshotIfNeeded()` behind "no update has ever succeeded" (e.g. skip it
+if `ManifestStore.load()` returns non-nil) or remove the unconditional bootstrap call
+entirely in favor of `UpdateCoordinator.run()`. Flagging here so it isn't rediscovered
+the hard way after Sprint 3 ships.
