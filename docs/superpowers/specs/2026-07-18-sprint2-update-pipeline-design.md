@@ -46,6 +46,33 @@ This is an intentional Sprint 2 limitation, not a product limitation. Once
 `.unsupportedGroup` restriction without changing the update architecture described
 here.
 
+### Known dependency on Sprint 1's single-entry metadata overwrite
+
+A second, related gap: `FilterPipeline.install()` currently overwrites
+`installed_filters.json` with a single-element array on every call — it doesn't read
+the existing list and merge. Its own comment says as much: "Multi-filter accumulation
+arrives with the manifest-driven flow" — i.e., this sprint. Sprint 2 fixes this
+specific piece: `install()` reads the existing `installed_filters.json`, replaces the
+entry for `filterID` if present (by id) or appends it, and writes the merged array
+back. This is a metadata-only fix.
+
+It does **not** fix compiled-rule merging: `PassthroughAdsPartitioner` still produces
+exactly one `Compiled/Ads.json` per `install()` call, so installing two different
+`.ads`-group filters back-to-back would still have the second overwrite the first's
+compiled rules, even after the metadata fix. Rule composition across multiple sources
+in one group is a distinct, larger change (deferred; see note below) — Sprint 2 does
+not attempt it.
+
+To keep the planner honest about this, `UpdatePlanner` enforces: **at most one
+`.install` action per `FilterGroup` per plan.** If a manifest has two `.ads`-group
+entries that would both need installing, only the first (in manifest order) becomes
+`.install`; the rest become `.groupConflict(FilterManifest.Entry)` — a distinct,
+observable action, not a silent overwrite. This invariant is removed once
+`RulePartitioner`/`FilterPipeline` support true multi-source composition per group,
+which is deferred to a later sprint as its own architectural change (conceptually:
+`FilterPipeline.install` moving from "one source list" to "all source lists for a
+group").
+
 ## Architecture
 
 ```
@@ -193,12 +220,13 @@ a `.keep` action either. `UpdateAction` gets a fourth case for this instead of o
 `.keep`'s meaning:
 
 ```swift
-enum UpdateAction {
+enum UpdateAction: Equatable {
     case install(FilterManifest.Entry)
     case remove(filterID: String)
-    case keep(filterID: String)              // installed, unchanged, still entitled
-    case skipPremium(FilterManifest.Entry)    // not installed, gated, no purchase flow yet
-    case unsupportedGroup(FilterManifest.Entry) // non-.ads group, RulePartitioner can't route it yet
+    case keep(filterID: String)                 // installed, unchanged, still entitled
+    case skipPremium(FilterManifest.Entry)       // not installed, gated, no purchase flow yet
+    case unsupportedGroup(FilterManifest.Entry)  // non-.ads group, RulePartitioner can't route it yet
+    case groupConflict(FilterManifest.Entry)     // 2nd+ .ads entry needing install in one plan
 }
 ```
 
@@ -206,6 +234,9 @@ Sprint 2 has no StoreKit, so every `premium: true` entry not already installed p
 `.skipPremium` and is excluded from the download/install batch entirely; this is
 revisited when StoreKit lands. Every non-`.ads` entry produces `.unsupportedGroup` for
 the reason covered under "Known dependency on Sprint 1's partitioning scope" above.
+Every `.ads`-group entry after the first that would need `.install` in the same plan
+produces `.groupConflict` instead, per "Known dependency on Sprint 1's single-entry
+metadata overwrite" above — at most one `.install` per `FilterGroup`.
 
 ### `FilterPipeline` (existing, additive change only)
 
@@ -224,6 +255,12 @@ other existing caller are unaffected. When `reloadStrategy == .deferred`, `insta
 performs validate→compile→partition→write→persist-metadata but skips the
 `ReloadCoordinator` call; `reloadResults` on the returned `PipelineResult` is empty in
 that case. `UpdateCoordinator` is responsible for the one reload call per batch.
+
+Additionally (see "Known dependency on Sprint 1's single-entry metadata overwrite"),
+`install()` changes from overwriting `installed_filters.json` with a one-element array
+to reading the existing array, replacing the entry matching `filterID` if present (by
+`id`) or appending it, and writing the merged array back. `Compiled/<Group>.json`
+writing is unchanged — still one file per group, still overwritten per call.
 
 ### `FilterStore` (existing, extended)
 
@@ -349,7 +386,8 @@ All unit-level, no real network or server (per the DI decision above):
 
 - **`UpdatePlanner`**: pure function — new filter, changed version/checksum, removed
   filter, unchanged filter, never-installed premium entry (`.skipPremium`), non-`.ads`
-  entry (`.unsupportedGroup`), empty manifest, empty installed list.
+  entry (`.unsupportedGroup`), two `.ads`-group entries both needing install in one
+  manifest (`.groupConflict` on the second), empty manifest, empty installed list.
 - **`ManifestClient`**: mocked `HTTPSession` — 200 with valid JSON, 304, 404, 500,
   malformed JSON body, request timeout, ETag header round-trip.
 - **`ManifestStore`**: save then load round-trips `CachedManifest` (manifest + ETag)
@@ -362,7 +400,8 @@ All unit-level, no real network or server (per the DI decision above):
   reproduces exact prior byte content of `Compiled/` and `Metadata/`.
 - **`FilterPipeline.install(reloadStrategy:)`**: `.immediate` behaves identically to
   Sprint 1's existing tests; `.deferred` skips the reload call and returns empty
-  `reloadResults`.
+  `reloadResults`; installing filter B after filter A leaves both A and B present in
+  `installed_filters.json` (accumulation, not overwrite).
 - **`UpdateCoordinator`**: end-to-end with mocked `HTTPSession` and an injectable
   filesystem failure (matching the `AtomicFilesystem`/`FailingFilesystem` pattern already
   used in `AtomicRuleWriterTests`) to prove: up-to-date short-circuit on 304, full
