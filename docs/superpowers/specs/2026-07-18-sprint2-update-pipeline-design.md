@@ -16,6 +16,31 @@ architecture moves.
 Maps to PRD FR-03 (manifest fetch), FR-04 (checksum verification), FR-05 (atomic
 update + rollback), FR-06 (reload after install).
 
+### Known dependency on Sprint 1's partitioning scope
+
+Sprint 1's `RulePartitioner` is `PassthroughAdsPartitioner`: it unconditionally tags
+every compiled rule set as `group: .ads` and routes it to one injected
+`adsExtensionIdentifier`, regardless of which filter was compiled. There is no
+group→extension-identifier mapping for Privacy/Annoyances/Regional yet — those
+extensions still ship their Sprint 0 bundled JSON, untouched by the pipeline.
+
+This means `UpdateCoordinator` can only safely drive filters in the `.ads` group
+through `FilterPipeline.install(...)` this sprint. A manifest entry for EasyPrivacy or
+a regional list would compile successfully but get mislabeled and routed to the Ads
+extension by the current partitioner — a correctness bug, not a hypothetical.
+
+Decision: `UpdatePlanner` restricts `.install` actions to `.ads`-group entries only.
+Non-`.ads` manifest entries produce a distinct `.unsupportedGroup(FilterManifest.Entry)`
+action (not `.skipPremium`, not silently dropped) and are excluded from the
+download/install batch. This keeps the plan's output honest about what it isn't doing,
+and gives the coordinator a typed case to log/surface rather than an entry that
+silently vanishes. Multi-group routing in `RulePartitioner` is follow-up work for a
+later sprint; until then, "EasyList, EasyPrivacy, Fanboy" in the original sprint
+framing describes the eventual steady state, not what Sprint 2 installs. With `.ads`
+as the only routable group, `affectedExtensionIDs` in the data flow below collapses to
+the single injected `adsExtensionIdentifier` — no group→identifier mapping table is
+needed this sprint.
+
 ## Architecture
 
 ```
@@ -27,7 +52,7 @@ Filtering/
     Utilities/
         Checksum.swift              extended: verify(fileURL:against:) throws
     Storage/
-        FilterStore.swift           extended: Directory.previousCompiled, .previousMetadata
+        FilterStore.swift           extended: snapshotForRollback()/restore(), Previous/ root
     Pipeline/
         FilterPipeline.swift        extended: install(..., reloadStrategy:)
     Deployment/
@@ -157,9 +182,25 @@ enum UpdatePlanner {
 ```
 
 Comparison is by `(id, version, checksumSHA256)` against the matching `InstalledFilter`.
-Premium-gated entries the user hasn't unlocked are excluded from `.install` up front
-(Sprint 2 has no StoreKit — treat all `premium: true` entries as `.keep`/no-op for now,
-since there's nothing to gate against yet; this is revisited when StoreKit lands).
+Premium-gated entries the user hasn't unlocked are excluded from `.install` — but a
+never-installed premium entry has no `InstalledFilter` to "keep," so it doesn't produce
+a `.keep` action either. `UpdateAction` gets a fourth case for this instead of overloading
+`.keep`'s meaning:
+
+```swift
+enum UpdateAction {
+    case install(FilterManifest.Entry)
+    case remove(filterID: String)
+    case keep(filterID: String)              // installed, unchanged, still entitled
+    case skipPremium(FilterManifest.Entry)    // not installed, gated, no purchase flow yet
+    case unsupportedGroup(FilterManifest.Entry) // non-.ads group, RulePartitioner can't route it yet
+}
+```
+
+Sprint 2 has no StoreKit, so every `premium: true` entry not already installed produces
+`.skipPremium` and is excluded from the download/install batch entirely; this is
+revisited when StoreKit lands. Every non-`.ads` entry produces `.unsupportedGroup` for
+the reason covered under "Known dependency on Sprint 1's partitioning scope" above.
 
 ### `FilterPipeline` (existing, additive change only)
 
@@ -182,13 +223,12 @@ that case. `UpdateCoordinator` is responsible for the one reload call per batch.
 ### `FilterStore` (existing, extended)
 
 Adds a way to snapshot and restore the store's entire mutable state, mirroring the
-existing directory layout rather than tracking individual files:
+existing directory layout rather than tracking individual files. No new `Directory`
+cases are needed — `Previous/` is a sibling root next to `Filters/`/`Compiled/`/
+`Metadata/`, not a variant reachable through the existing `Directory` enum (which
+describes *current* state, not rollback state):
 
 ```swift
-extension FilterStore.Directory {
-    // existing: .filters, .compiled, .metadata
-}
-
 actor FilterStore {
     // existing methods unchanged
     func snapshotForRollback() throws -> RollbackSnapshot
@@ -250,9 +290,9 @@ UpdateCoordinator.run()
   // all downloads verified before any write touches Compiled/ or Metadata/
 
   snapshot = try store.snapshotForRollback()
-  // extension IDs derived from the union of groups touched by the batch, mapped through
-  // the same group→extension-bundle-ID mapping RulePartitioner already owns
-  affectedExtensionIDs = extensionIDs(for: downloaded)
+  // .ads is the only routable group this sprint (see "Known dependency" above), so this
+  // is the single injected adsExtensionIdentifier, not a general group→ID lookup
+  affectedExtensionIDs = [adsExtensionIdentifier]
   do {
       for filter in downloaded {
           let data = try Data(contentsOf: filter.tempFileURL)
@@ -301,9 +341,12 @@ scheduler is built this sprint.
 All unit-level, no real network or server (per the DI decision above):
 
 - **`UpdatePlanner`**: pure function — new filter, changed version/checksum, removed
-  filter, unchanged filter, premium entry (inert), empty manifest, empty installed list.
+  filter, unchanged filter, never-installed premium entry (`.skipPremium`), non-`.ads`
+  entry (`.unsupportedGroup`), empty manifest, empty installed list.
 - **`ManifestClient`**: mocked `HTTPSession` — 200 with valid JSON, 304, 404, 500,
   malformed JSON body, request timeout, ETag header round-trip.
+- **`ManifestStore`**: save then load round-trips `CachedManifest` (manifest + ETag)
+  byte-for-byte; `load()` returns `nil` when nothing has been saved yet.
 - **`FilterDownloadClient`**: mocked `HTTPSession` — success writes expected bytes to a
   temp file, non-2xx throws, network error throws.
 - **`Checksum.verify`**: matching hash passes, mismatched hash throws
