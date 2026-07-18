@@ -41,6 +41,11 @@ as the only routable group, `affectedExtensionIDs` in the data flow below collap
 the single injected `adsExtensionIdentifier` — no group→identifier mapping table is
 needed this sprint.
 
+This is an intentional Sprint 2 limitation, not a product limitation. Once
+`RulePartitioner` supports multi-group routing, `UpdatePlanner` can remove the
+`.unsupportedGroup` restriction without changing the update architecture described
+here.
+
 ## Architecture
 
 ```
@@ -295,6 +300,8 @@ UpdateCoordinator.run()
   affectedExtensionIDs = [adsExtensionIdentifier]
   do {
       for filter in downloaded {
+          // Bridge because FilterPipeline.install is Data-based from Sprint 1. If a future
+          // overload accepts a URL directly, this read disappears — not worth adding now.
           let data = try Data(contentsOf: filter.tempFileURL)
           _ = try await pipeline.install(filterID: filter.filterID, source: data, reloadStrategy: .deferred)
       }
