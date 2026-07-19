@@ -134,21 +134,33 @@ New, in `Filtering/Models/`:
 
 ```swift
 struct FilterSource: Equatable {
-    var filterID: String
-    var group: FilterGroup
-    var version: String
-    var checksumSHA256: String
-    var data: Data
+    let filterID: String
+    let version: String
+    let checksumSHA256: String
+    let data: Data
 }
 
 struct GroupComposition: Equatable {
-    var group: FilterGroup
-    var sources: [FilterSource]   // order is authoritative — see "Ordering" above
+    let group: FilterGroup
+    let sources: [FilterSource]   // order is authoritative — see "Ordering" above
 }
 ```
 
-Pure data types. No compiler, partitioner, or pipeline changes. Existing tests
-unchanged; new tests cover construction and equality only.
+`FilterSource` deliberately has no `group` field. If it did, nothing would stop
+`GroupComposition.group` from disagreeing with an individual source's group —
+a redundant invariant the type system can't check. Instead:
+
+**Invariant:** all `FilterSource`s inside a `GroupComposition` belong to the
+`GroupComposition.group`. This is established once, by `UpdatePlanner` (which
+only ever buckets an entry into the group bucket matching `entry.group`) and by
+`installBundledSnapshotIfNeeded` (which hand-builds a single-source, single-group
+composition). Downstream components (`CompositionService`, `RuleCompiler`,
+`GroupPartitioner`, `FilterPipeline`) rely on this invariant and do not
+revalidate it.
+
+Pure data types, `let`-only (immutable value objects — nothing downstream should
+mutate a composition in flight). No compiler, partitioner, or pipeline changes.
+Existing tests unchanged; new tests cover construction and equality only.
 
 **Acceptance criteria**
 - Existing tests unchanged.
@@ -168,10 +180,10 @@ New `Filtering/Models/ComposedRules.swift`:
 
 ```swift
 struct ComposedRules: Equatable {
-    var group: FilterGroup
-    var data: Data          // re-encoded, single JSON array
-    var sourceCount: Int
-    var ruleCount: Int      // sum of decoded array lengths, pre-compile
+    let group: FilterGroup
+    let data: Data          // re-encoded, single JSON array
+    let sourceCount: Int
+    let ruleCount: Int      // sum of decoded array lengths, pre-compile
 }
 ```
 
