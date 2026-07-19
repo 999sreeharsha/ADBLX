@@ -31,7 +31,7 @@
 **Interfaces:**
 - Produces: `FilterSource(filterID: String, version: String, checksumSHA256: String, data: Data)`, `GroupComposition(group: FilterGroup, sources: [FilterSource])`, both `Equatable`, `let`-only.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Append to `ADBLXTests/Filtering/FilteringModelsTests.swift`, inside the `FilteringModelsTests` struct:
 
@@ -58,12 +58,12 @@ Append to `ADBLXTests/Filtering/FilteringModelsTests.swift`, inside the `Filteri
     }
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination "id=$(Scripts/find-simulator-udid.sh)" -only-testing:ADBLXTests/FilteringModelsTests test`
 Expected: FAIL — `cannot find 'FilterSource' in scope` / `cannot find 'GroupComposition' in scope`.
 
-- [ ] **Step 3: Create the models**
+- [x] **Step 3: Create the models**
 
 ```swift
 // ADBLX/Filtering/Models/FilterSource.swift
@@ -104,12 +104,12 @@ struct GroupComposition: Equatable {
 }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination "id=$(Scripts/find-simulator-udid.sh)" -only-testing:ADBLXTests/FilteringModelsTests test`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add ADBLX/Filtering/Models/FilterSource.swift ADBLX/Filtering/Models/GroupComposition.swift ADBLXTests/Filtering/FilteringModelsTests.swift
@@ -128,7 +128,7 @@ git commit -m "feat: add FilterSource and GroupComposition composition models"
 - Consumes: nothing new (uses existing `FilterGroup`).
 - Produces: `ComposedRules(group: FilterGroup, data: Data, sourceCount: Int, ruleCount: Int)`, `Equatable`, `let`-only. `CompositionService` (Task 3) returns this.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Append to `FilteringModelsTests`:
 
@@ -143,12 +143,12 @@ Append to `FilteringModelsTests`:
     }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination "id=$(Scripts/find-simulator-udid.sh)" -only-testing:ADBLXTests/FilteringModelsTests test`
 Expected: FAIL — `cannot find 'ComposedRules' in scope`.
 
-- [ ] **Step 3: Create the model**
+- [x] **Step 3: Create the model**
 
 ```swift
 // ADBLX/Filtering/Models/ComposedRules.swift
@@ -165,12 +165,12 @@ struct ComposedRules: Equatable {
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: same command as Step 2.
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add ADBLX/Filtering/Models/ComposedRules.swift ADBLXTests/Filtering/FilteringModelsTests.swift
