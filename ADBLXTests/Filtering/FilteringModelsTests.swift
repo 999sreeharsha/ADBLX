@@ -92,4 +92,13 @@ struct FilteringModelsTests {
         #expect(ordered.sources.map(\.filterID) == ["easylist", "peter-lowe"])
         #expect(ordered != reordered)
     }
+
+    @Test("ComposedRules equality is field-based")
+    func composedRulesEquality() {
+        let a = ComposedRules(group: .ads, data: Data("[]".utf8), sourceCount: 2, ruleCount: 10)
+        let b = ComposedRules(group: .ads, data: Data("[]".utf8), sourceCount: 2, ruleCount: 10)
+        let c = ComposedRules(group: .ads, data: Data("[]".utf8), sourceCount: 2, ruleCount: 11)
+        #expect(a == b)
+        #expect(a != c)
+    }
 }
