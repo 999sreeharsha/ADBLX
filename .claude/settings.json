@@ -16,5 +16,26 @@
       "Bash(rtk grep *)",
       "Bash(sort -t: -k1 -n)"
     ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 .claude/hooks/check-swift-testing-only.py"
+          },
+          {
+            "type": "command",
+            "command": "python3 .claude/hooks/check-filterstore-serialized.py"
+          },
+          {
+            "type": "command",
+            "command": "python3 .claude/hooks/check-nonisolated-services.py"
+          }
+        ]
+      }
+    ]
   }
 }
