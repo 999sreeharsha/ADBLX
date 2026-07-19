@@ -3,7 +3,7 @@ import Testing
 import Foundation
 @testable import ADBLX
 
-@Suite("FilterPipeline")
+@Suite("FilterPipeline", .serialized)
 struct FilterPipelineTests {
     private func makePipeline() -> FilterPipeline {
         FilterPipeline(
@@ -45,5 +45,62 @@ struct FilterPipelineTests {
         await #expect(throws: FilterValidator.ValidationError.self) {
             _ = try await pipeline.install(filterID: "bad", source: Data())
         }
+    }
+
+    @Test("reloadStrategy .deferred skips the reload call and returns empty reloadResults")
+    func deferredReloadSkipsReloadCall() async throws {
+        let pipeline = makePipeline()
+        let source = Data("[{\"trigger\":{\"url-filter\":\".*\"},\"action\":{\"type\":\"block\"}}]".utf8)
+
+        let result = try await pipeline.install(filterID: "deferred-test", source: source, reloadStrategy: .deferred)
+
+        #expect(result.reloadResults.isEmpty)
+    }
+
+    @Test("installing a second filter after a first accumulates both in installed_filters.json")
+    func installingSecondFilterAccumulatesMetadata() async throws {
+        let pipeline = makePipeline()
+        let source = Data("[{\"trigger\":{\"url-filter\":\".*\"},\"action\":{\"type\":\"block\"}}]".utf8)
+
+        _ = try await pipeline.install(filterID: "filter-a", source: source, reloadStrategy: .deferred)
+        _ = try await pipeline.install(filterID: "filter-b", source: source, reloadStrategy: .deferred)
+
+        let store = FilterStore(appGroupIdentifier: AppGroup.identifier)
+        let metadataDir = try await store.directoryURL(.metadata)
+        let data = try Data(contentsOf: metadataDir.appendingPathComponent("installed_filters.json"))
+        let filters = try JSONDecoder().decode([InstalledFilter].self, from: data)
+
+        #expect(Set(filters.map(\.id)).isSuperset(of: ["filter-a", "filter-b"]))
+    }
+
+    @Test("re-installing the same filterID replaces its entry instead of duplicating it")
+    func reinstallingSameFilterIDReplacesEntry() async throws {
+        let pipeline = makePipeline()
+        let source = Data("[{\"trigger\":{\"url-filter\":\".*\"},\"action\":{\"type\":\"block\"}}]".utf8)
+
+        _ = try await pipeline.install(filterID: "filter-a", source: source, reloadStrategy: .deferred)
+        _ = try await pipeline.install(filterID: "filter-a", source: source, reloadStrategy: .deferred)
+
+        let store = FilterStore(appGroupIdentifier: AppGroup.identifier)
+        let metadataDir = try await store.directoryURL(.metadata)
+        let data = try Data(contentsOf: metadataDir.appendingPathComponent("installed_filters.json"))
+        let filters = try JSONDecoder().decode([InstalledFilter].self, from: data)
+
+        #expect(filters.filter { $0.id == "filter-a" }.count == 1)
+    }
+
+    @Test("install(version:) records the passed version, not the bundled-snapshot default")
+    func installRecordsPassedVersion() async throws {
+        let pipeline = makePipeline()
+        let source = Data("[{\"trigger\":{\"url-filter\":\".*\"},\"action\":{\"type\":\"block\"}}]".utf8)
+
+        _ = try await pipeline.install(filterID: "filter-versioned", source: source, version: "2026-07-18", reloadStrategy: .deferred)
+
+        let store = FilterStore(appGroupIdentifier: AppGroup.identifier)
+        let metadataDir = try await store.directoryURL(.metadata)
+        let data = try Data(contentsOf: metadataDir.appendingPathComponent("installed_filters.json"))
+        let filters = try JSONDecoder().decode([InstalledFilter].self, from: data)
+
+        #expect(filters.first(where: { $0.id == "filter-versioned" })?.installedVersion == "2026-07-18")
     }
 }

@@ -34,7 +34,25 @@ actor FilterPipeline {
     /// Runs the full pipeline for one filter source and returns a summary of what happened —
     /// callers (ViewModel, logging, future Metrics/UI status) read this one object instead of
     /// interrogating each stage afterward.
-    func install(filterID: String, source: Data) async throws -> PipelineResult {
+    ///
+    /// `version`: the value recorded as `InstalledFilter.installedVersion`. Defaults to
+    /// `"bundled-snapshot"`, matching Sprint 1's only caller. `UpdateCoordinator`
+    /// (Sprint 2) passes the manifest entry's real version — `UpdatePlanner` compares
+    /// this value against `FilterManifest.Entry.version` to decide `.keep` vs
+    /// `.install` on the next run, so an un-passed (default) version here would make a
+    /// manifest-driven install never converge to `.keep`.
+    ///
+    /// `reloadStrategy`: `.immediate` (default) reloads the affected extensions before
+    /// returning, matching Sprint 1 behavior exactly. `.deferred` skips the reload —
+    /// used by `UpdateCoordinator` (Sprint 2) so a multi-filter batch triggers exactly
+    /// one reload after every filter in the batch has installed successfully, rather
+    /// than one reload per filter.
+    func install(
+        filterID: String,
+        source: Data,
+        version: String = "bundled-snapshot",
+        reloadStrategy: ReloadStrategy = .immediate
+    ) async throws -> PipelineResult {
         try validator.validate(source)
         let compiled = try await compiler.compile(source: source, filterID: filterID)
         let partitions = try await partitioner.partition(compiled)
@@ -49,23 +67,35 @@ actor FilterPipeline {
             extensionIdentifiers.append(partition.extensionIdentifier)
         }
 
-        // Sprint 1: single-entry overwrite (only the Ads filter is pipeline-managed this
-        // sprint). Multi-filter accumulation arrives with the manifest-driven flow in Part 10.
+        // Sprint 2: accumulate rather than overwrite — read the existing list, replace
+        // this filterID's entry if present (by id) or append it, write the merged array
+        // back. Compiled/<Group>.json above is still one file per group, still
+        // overwritten per call — true multi-source rule composition per group is
+        // deferred (see Sprint 2 design doc, "Known dependency on Sprint 1's
+        // single-entry metadata overwrite").
         let installedFilter = InstalledFilter(
             id: filterID,
             group: .ads,
-            installedVersion: "bundled-snapshot",
+            installedVersion: version,
             checksumSHA256: Checksum.sha256Hex(of: source),
             lastUpdated: compiled.statistics.lastUpdated,
             ruleCount: compiled.ruleCount
         )
-        let installedFiltersData = try JSONEncoder().encode([installedFilter])
+        var existingFilters = (try? await loadInstalledFilters()) ?? []
+        existingFilters.removeAll { $0.id == filterID }
+        existingFilters.append(installedFilter)
+        let installedFiltersData = try JSONEncoder().encode(existingFilters)
         try await store.writeMetadata(installedFiltersData, filename: "installed_filters.json")
 
         let statisticsData = try JSONEncoder().encode(compiled.statistics)
         try await store.writeMetadata(statisticsData, filename: "statistics.json")
 
-        let reloadResults = await reloader.reload(extensionIdentifiers: extensionIdentifiers)
+        let reloadResults: [ReloadCoordinator.ReloadResult]
+        if reloadStrategy == .immediate {
+            reloadResults = await reloader.reload(extensionIdentifiers: extensionIdentifiers)
+        } else {
+            reloadResults = []
+        }
 
         return PipelineResult(
             filterID: filterID,
@@ -86,6 +116,16 @@ actor FilterPipeline {
         let data = try Data(contentsOf: bundledURL)
         return try await install(filterID: "ads-bundled", source: data)
     }
+
+    private func loadInstalledFilters() async throws -> [InstalledFilter] {
+        let data = try await store.read("installed_filters.json", in: .metadata)
+        return try JSONDecoder().decode([InstalledFilter].self, from: data)
+    }
+}
+
+enum ReloadStrategy {
+    case immediate
+    case deferred
 }
 
 struct PipelineResult {
