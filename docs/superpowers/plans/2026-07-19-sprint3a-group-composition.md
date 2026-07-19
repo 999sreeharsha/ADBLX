@@ -189,7 +189,7 @@ git commit -m "feat: add ComposedRules model"
 - Consumes: `FilterSource`, `FilterGroup`, `ComposedRules` (Tasks 1-2).
 - Produces: `protocol CompositionService { nonisolated func compose(_ sources: [FilterSource], group: FilterGroup) throws -> ComposedRules }`, `struct JSONArrayCompositionService: CompositionService`, `enum CompositionServiceError: Error, Equatable { case invalidSource(filterID: String) }`. `FilterPipeline` (Task 7) depends on `CompositionService`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```swift
 // ADBLXTests/Filtering/CompositionServiceTests.swift
@@ -258,12 +258,12 @@ struct CompositionServiceTests {
 }
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination "id=$(Scripts/find-simulator-udid.sh)" -only-testing:ADBLXTests/CompositionServiceTests test`
 Expected: FAIL — `cannot find 'JSONArrayCompositionService' in scope`.
 
-- [ ] **Step 3: Implement CompositionService**
+- [x] **Step 3: Implement CompositionService**
 
 ```swift
 // ADBLX/Filtering/Compilation/CompositionService.swift
@@ -303,12 +303,12 @@ struct JSONArrayCompositionService: CompositionService {
 }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: same command as Step 2.
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add ADBLX/Filtering/Compilation/CompositionService.swift ADBLXTests/Filtering/CompositionServiceTests.swift

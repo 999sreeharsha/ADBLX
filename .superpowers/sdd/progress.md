@@ -8,5 +8,9 @@ Baseline: xcodegen generate + xcodebuild test succeeded (all suites) before any 
 - [x] Task 1: FilterSource and GroupComposition models (commit a3f32cf, review clean)
 - [x] Task 2: ComposedRules model (commit 7055548, review clean — implementer subagent hit a session-limit error before writing its report/commit; controller verified the staged diff matched the brief, re-ran tests, and completed the commit)
 
+## Session 2: Task 3
+- [x] Task 3: CompositionService (commit 33d359d, review clean)
+
 ## Minor findings log (from task reviews, roll up for final review)
-(none yet)
+- Task 3: `JSONArrayCompositionService.compose` discards the underlying `JSONSerialization` error via `try?`, collapsing malformed-JSON and valid-non-array failures into one diagnostic-free case (CompositionService.swift:40). Matches brief verbatim; not a defect against this task.
+- Task 3: doc comment says "every `FilterSource` in a `GroupComposition`" but the signature takes a bare `[FilterSource]` — harmless forward-reference, imprecise phrasing (CompositionService.swift:20).
