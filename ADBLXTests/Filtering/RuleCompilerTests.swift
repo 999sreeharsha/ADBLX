@@ -9,9 +9,9 @@ struct PassthroughRuleCompilerTests {
     func compilesValidArray() async throws {
         let source = Data("[{\"a\":1},{\"a\":2},{\"a\":3}]".utf8)
         let compiler = PassthroughRuleCompiler()
-        let result = try await compiler.compile(source: source, filterID: "test-filter")
+        let result = try await compiler.compile(source: source, group: .ads)
 
-        #expect(result.sourceFilterID == "test-filter")
+        #expect(result.group == .ads)
         #expect(result.ruleCount == 3)
         #expect(result.rawJSON == source)
         #expect(result.statistics.rulesLoaded == 3)
@@ -23,7 +23,7 @@ struct PassthroughRuleCompilerTests {
     func throwsOnEmpty() async {
         let compiler = PassthroughRuleCompiler()
         await #expect(throws: RuleCompilerError.self) {
-            _ = try await compiler.compile(source: Data(), filterID: "test-filter")
+            _ = try await compiler.compile(source: Data(), group: .ads)
         }
     }
 
@@ -31,7 +31,7 @@ struct PassthroughRuleCompilerTests {
     func throwsOnInvalidJSON() async {
         let compiler = PassthroughRuleCompiler()
         await #expect(throws: RuleCompilerError.self) {
-            _ = try await compiler.compile(source: Data("not json".utf8), filterID: "test-filter")
+            _ = try await compiler.compile(source: Data("not json".utf8), group: .ads)
         }
     }
 }

@@ -7,7 +7,7 @@ struct PassthroughAdsPartitionerTests {
     @Test("partitions within budget into a single Ads partition")
     func partitionsWithinBudget() async throws {
         let ruleSet = CompiledRuleSet(
-            sourceFilterID: "ads-bundled",
+            group: .ads,
             rawJSON: Data("[]".utf8),
             ruleCount: 70,
             statistics: RuleStatistics(
@@ -27,7 +27,7 @@ struct PassthroughAdsPartitionerTests {
     @Test("throws when rule count exceeds the per-extension budget")
     func throwsWhenOverBudget() async {
         let ruleSet = CompiledRuleSet(
-            sourceFilterID: "ads-bundled",
+            group: .ads,
             rawJSON: Data("[]".utf8),
             ruleCount: 150_001,
             statistics: RuleStatistics(

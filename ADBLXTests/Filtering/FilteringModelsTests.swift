@@ -27,7 +27,7 @@ struct FilteringModelsTests {
             lastUpdated: Date(timeIntervalSince1970: 1_752_000_000)
         )
         let original = CompiledRuleSet(
-            sourceFilterID: "ads-bundled", rawJSON: Data("[]".utf8), ruleCount: 3,
+            group: .ads, rawJSON: Data("[]".utf8), ruleCount: 3,
             statistics: stats
         )
         let data = try JSONEncoder().encode(original)

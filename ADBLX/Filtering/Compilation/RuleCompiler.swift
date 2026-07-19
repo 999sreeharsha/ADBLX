@@ -1,6 +1,6 @@
 import Foundation
 
-/// Converts a normalized filter source into Safari content-blocker JSON.
+/// Converts a normalized, composed filter source into Safari content-blocker JSON.
 ///
 /// Sprint 1 ships `PassthroughRuleCompiler` only (bundled test JSON → copy, no real parsing).
 /// The SafariConverterLib-backed implementation lands once ADR-0001 (GPL-3.0 licensing
@@ -9,11 +9,13 @@ import Foundation
 ///
 /// Target: main app ONLY — never in a Content Blocker extension (6MB memory ceiling makes
 /// real compilation there a non-starter regardless of which implementation this becomes).
-/// The requirement is `nonisolated` — see Task 3's note on SWIFT_DEFAULT_ACTOR_ISOLATION.
+/// The requirement is `nonisolated` — see Task 3's (Sprint 1) note on
+/// SWIFT_DEFAULT_ACTOR_ISOLATION.
 protocol RuleCompiler: Sendable {
-    /// Compiles raw filter source data into a `CompiledRuleSet`.
-    /// Must run off the main actor for any non-trivial input size.
-    nonisolated func compile(source: Data, filterID: String) async throws -> CompiledRuleSet
+    /// Compiles already-composed `source` (see `CompositionService`) into a
+    /// `CompiledRuleSet` for `group`. Must run off the main actor for any non-trivial
+    /// input size.
+    nonisolated func compile(source: Data, group: FilterGroup) async throws -> CompiledRuleSet
 }
 
 enum RuleCompilerError: Error {
@@ -25,7 +27,7 @@ enum RuleCompilerError: Error {
 /// — there is no real compilation work happening yet. Do not report this implementation's
 /// timings as NFR-01 verification.
 struct PassthroughRuleCompiler: RuleCompiler {
-    nonisolated func compile(source: Data, filterID: String) async throws -> CompiledRuleSet {
+    nonisolated func compile(source: Data, group: FilterGroup) async throws -> CompiledRuleSet {
         guard !source.isEmpty else {
             throw RuleCompilerError.invalidSource
         }
@@ -48,7 +50,7 @@ struct PassthroughRuleCompiler: RuleCompiler {
         )
 
         return CompiledRuleSet(
-            sourceFilterID: filterID,
+            group: group,
             rawJSON: source,
             ruleCount: ruleCount ?? 0,
             statistics: stats

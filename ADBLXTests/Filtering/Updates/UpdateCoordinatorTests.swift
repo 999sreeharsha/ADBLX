@@ -145,7 +145,7 @@ struct UpdateCoordinatorTests {
     @Test("install failure mid-batch rolls back to prior Compiled/ and Metadata/ state with exactly one reload")
     func installFailureRollsBackWithOneReload() async throws {
         struct AlwaysFailingCompiler: RuleCompiler {
-            nonisolated func compile(source: Data, filterID: String) async throws -> CompiledRuleSet {
+            nonisolated func compile(source: Data, group: FilterGroup) async throws -> CompiledRuleSet {
                 throw RuleCompilerError.invalidSource
             }
         }
@@ -251,7 +251,7 @@ struct UpdateCoordinatorTests {
         }
 
         struct AlwaysFailingCompiler: RuleCompiler {
-            nonisolated func compile(source: Data, filterID: String) async throws -> CompiledRuleSet {
+            nonisolated func compile(source: Data, group: FilterGroup) async throws -> CompiledRuleSet {
                 throw RuleCompilerError.invalidSource
             }
         }

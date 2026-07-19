@@ -54,7 +54,7 @@ actor FilterPipeline {
         reloadStrategy: ReloadStrategy = .immediate
     ) async throws -> PipelineResult {
         try validator.validate(source)
-        let compiled = try await compiler.compile(source: source, filterID: filterID)
+        let compiled = try await compiler.compile(source: source, group: .ads)
         let partitions = try await partitioner.partition(compiled)
 
         var installedRuleCount = 0
