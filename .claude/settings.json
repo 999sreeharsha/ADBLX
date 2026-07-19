@@ -7,7 +7,14 @@
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
       "Bash(xcodegen dump *)",
-      "Read(//Users/sreeharshag/Desktop/**)"
+      "Read(//Users/sreeharshag/Desktop/**)",
+      "Read(//Users/sreeharshag/Downloads/ADBLX-Scaffold/Filtering/Storage/**)",
+      "Read(//Users/sreeharshag/Downloads/ADBLX-Scaffold/Filtering/Compilation/**)",
+      "Read(//Users/sreeharshag/Downloads/ADBLX-Scaffold/Filtering/Deployment/**)",
+      "Read(//Users/sreeharshag/Downloads/ADBLX-Scaffold/Filtering/Validation/**)",
+      "Bash(rtk wc *)",
+      "Bash(rtk grep *)",
+      "Bash(sort -t: -k1 -n)"
     ]
   }
 }
