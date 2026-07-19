@@ -71,4 +71,25 @@ struct FilteringModelsTests {
         let decoded = try JSONDecoder().decode(InstalledFilter.self, from: data)
         #expect(decoded == original)
     }
+
+    @Test("FilterSource equality is field-based")
+    func filterSourceEquality() {
+        let a = FilterSource(filterID: "easylist", version: "2026-07-19", checksumSHA256: "abc", data: Data("[]".utf8))
+        let b = FilterSource(filterID: "easylist", version: "2026-07-19", checksumSHA256: "abc", data: Data("[]".utf8))
+        let c = FilterSource(filterID: "peter-lowe", version: "2026-07-19", checksumSHA256: "abc", data: Data("[]".utf8))
+        #expect(a == b)
+        #expect(a != c)
+    }
+
+    @Test("GroupComposition preserves source order and is not equal under reordering")
+    func groupCompositionPreservesOrder() {
+        let easyList = FilterSource(filterID: "easylist", version: "v1", checksumSHA256: "a", data: Data("[]".utf8))
+        let peterLowe = FilterSource(filterID: "peter-lowe", version: "v1", checksumSHA256: "b", data: Data("[]".utf8))
+
+        let ordered = GroupComposition(group: .ads, sources: [easyList, peterLowe])
+        let reordered = GroupComposition(group: .ads, sources: [peterLowe, easyList])
+
+        #expect(ordered.sources.map(\.filterID) == ["easylist", "peter-lowe"])
+        #expect(ordered != reordered)
+    }
 }
