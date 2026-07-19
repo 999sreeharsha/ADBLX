@@ -5,6 +5,8 @@ import Foundation
 ///   Filters/     — raw/normalized filter list source data
 ///   Compiled/    — partitioned, compiled JSON ready for each Content Blocker extension
 ///   Metadata/    — installed_filters.json, manifest.json, statistics.json
+///   Previous/    — rollback snapshot root (Compiled/, Metadata/ copies); only exists
+///                  transiently during an UpdateCoordinator batch (Sprint 2)
 ///
 /// No other type in the app should call `FileManager` against the App Group container
 /// directly. Route all reads/writes through this actor so there's one place that understands
@@ -72,6 +74,74 @@ actor FilterStore {
     func directoryURL(_ directory: Directory) throws -> URL {
         try url(for: directory)
     }
+
+    /// Copies the current `Compiled/` and `Metadata/` directories into a `Previous/`
+    /// root, replacing any leftover snapshot from an earlier run. Call before any write
+    /// in an update batch begins; pair with `restore(_:)` on failure.
+    func snapshotForRollback() throws -> RollbackSnapshot {
+        let previousRoot = try previousRootURL()
+        if fileManager.fileExists(atPath: previousRoot.path) {
+            try fileManager.removeItem(at: previousRoot)
+        }
+        try fileManager.createDirectory(at: previousRoot, withIntermediateDirectories: true)
+
+        let compiledSnapshot = previousRoot.appendingPathComponent("Compiled", isDirectory: true)
+        let metadataSnapshot = previousRoot.appendingPathComponent("Metadata", isDirectory: true)
+
+        try copyDirectoryContents(from: try url(for: .compiled), to: compiledSnapshot)
+        try copyDirectoryContents(from: try url(for: .metadata), to: metadataSnapshot)
+
+        return RollbackSnapshot(compiledSnapshotDir: compiledSnapshot, metadataSnapshotDir: metadataSnapshot)
+    }
+
+    /// Replaces the entire current contents of `Compiled/` and `Metadata/` with the
+    /// snapshot's contents (files present only in the current state and absent from the
+    /// snapshot are removed), then discards the `Previous/` root.
+    func restore(_ snapshot: RollbackSnapshot) throws {
+        try replaceDirectoryContents(at: try url(for: .compiled), with: snapshot.compiledSnapshotDir)
+        try replaceDirectoryContents(at: try url(for: .metadata), with: snapshot.metadataSnapshotDir)
+
+        let previousRoot = try previousRootURL()
+        try? fileManager.removeItem(at: previousRoot)
+    }
+
+    private func previousRootURL() throws -> URL {
+        try containerURL().appendingPathComponent("Previous", isDirectory: true)
+    }
+
+    private func copyDirectoryContents(from source: URL, to destination: URL) throws {
+        if fileManager.fileExists(atPath: destination.path) {
+            try fileManager.removeItem(at: destination)
+        }
+        try fileManager.createDirectory(at: destination, withIntermediateDirectories: true)
+        guard fileManager.fileExists(atPath: source.path) else { return }
+        for name in try fileManager.contentsOfDirectory(atPath: source.path) {
+            try fileManager.copyItem(
+                at: source.appendingPathComponent(name),
+                to: destination.appendingPathComponent(name)
+            )
+        }
+    }
+
+    private func replaceDirectoryContents(at destination: URL, with source: URL) throws {
+        if fileManager.fileExists(atPath: destination.path) {
+            try fileManager.removeItem(at: destination)
+        }
+        try fileManager.createDirectory(at: destination, withIntermediateDirectories: true)
+        for name in try fileManager.contentsOfDirectory(atPath: source.path) {
+            try fileManager.copyItem(
+                at: source.appendingPathComponent(name),
+                to: destination.appendingPathComponent(name)
+            )
+        }
+    }
+}
+
+/// Opaque to callers outside this file — a copy of `Compiled/` and `Metadata/` taken by
+/// `snapshotForRollback()`, consumed by `restore(_:)`.
+struct RollbackSnapshot {
+    fileprivate let compiledSnapshotDir: URL
+    fileprivate let metadataSnapshotDir: URL
 }
 
 enum FilterStoreError: Error {
