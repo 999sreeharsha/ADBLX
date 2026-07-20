@@ -27,11 +27,11 @@ struct UpdatePlannerTests {
         )
     }
 
-    @Test("new manifest entry with no installed counterpart produces .install")
+    @Test("new manifest entry with no installed counterpart produces .install for its group")
     func newEntryProducesInstall() {
         let manifest = FilterManifest(manifestVersion: "1", entries: [entry(id: "easylist")])
         let plan = UpdatePlanner.plan(manifest: manifest, installed: [])
-        #expect(plan.actions == [.install(entry(id: "easylist"))])
+        #expect(plan.actions == [.install(group: .ads, entries: [entry(id: "easylist")])])
     }
 
     @Test("unchanged installed entry produces .keep")
@@ -45,14 +45,14 @@ struct UpdatePlannerTests {
     func changedVersionProducesInstall() {
         let manifest = FilterManifest(manifestVersion: "1", entries: [entry(id: "easylist", version: "2026-07-19")])
         let plan = UpdatePlanner.plan(manifest: manifest, installed: [installed(id: "easylist", version: "2026-07-18")])
-        #expect(plan.actions == [.install(entry(id: "easylist", version: "2026-07-19"))])
+        #expect(plan.actions == [.install(group: .ads, entries: [entry(id: "easylist", version: "2026-07-19")])])
     }
 
     @Test("changed checksum on an installed entry produces .install")
     func changedChecksumProducesInstall() {
         let manifest = FilterManifest(manifestVersion: "1", entries: [entry(id: "easylist", checksum: "checksum-b")])
         let plan = UpdatePlanner.plan(manifest: manifest, installed: [installed(id: "easylist", checksum: "checksum-a")])
-        #expect(plan.actions == [.install(entry(id: "easylist", checksum: "checksum-b"))])
+        #expect(plan.actions == [.install(group: .ads, entries: [entry(id: "easylist", checksum: "checksum-b")])])
     }
 
     @Test("installed filter absent from the manifest produces .remove")
@@ -76,26 +76,62 @@ struct UpdatePlannerTests {
             manifest: manifest,
             installed: [installed(id: "premium-list", version: "v1")]
         )
-        #expect(plan.actions == [.install(entry(id: "premium-list", version: "v2", premium: true))])
+        #expect(plan.actions == [.install(group: .ads, entries: [entry(id: "premium-list", version: "v2", premium: true)])])
     }
 
-    @Test("non-.ads group entry produces .unsupportedGroup")
-    func nonAdsGroupProducesUnsupportedGroup() {
+    @Test("non-.ads group entry produces .install for its own group, not .unsupportedGroup")
+    func nonAdsGroupProducesInstallForItsGroup() {
         let manifest = FilterManifest(manifestVersion: "1", entries: [entry(id: "easyprivacy", group: .privacy)])
         let plan = UpdatePlanner.plan(manifest: manifest, installed: [])
-        #expect(plan.actions == [.unsupportedGroup(entry(id: "easyprivacy", group: .privacy))])
+        #expect(plan.actions == [.install(group: .privacy, entries: [entry(id: "easyprivacy", group: .privacy)])])
     }
 
-    @Test("second .ads entry needing install in the same plan produces .groupConflict")
-    func secondAdsInstallInSamePlanProducesGroupConflict() {
+    @Test("two .ads entries needing install in the same plan produce one .install carrying both, in manifest order")
+    func twoAdsInstallsProduceOneGroupedAction() {
         let manifest = FilterManifest(manifestVersion: "1", entries: [
             entry(id: "easylist"),
             entry(id: "peter-lowe", checksum: "checksum-c"),
         ])
         let plan = UpdatePlanner.plan(manifest: manifest, installed: [])
         #expect(plan.actions == [
-            .install(entry(id: "easylist")),
-            .groupConflict(entry(id: "peter-lowe", checksum: "checksum-c")),
+            .install(group: .ads, entries: [
+                entry(id: "easylist"),
+                entry(id: "peter-lowe", checksum: "checksum-c"),
+            ]),
+        ])
+    }
+
+    @Test("entries across all four groups produce one .install action per group, in first-encountered order")
+    func entriesAcrossAllGroupsProduceOneActionPerGroup() {
+        let manifest = FilterManifest(manifestVersion: "1", entries: [
+            entry(id: "easylist", group: .ads),
+            entry(id: "easyprivacy", group: .privacy),
+            entry(id: "fanboy-annoyances", group: .annoyances),
+            entry(id: "regional-fr", group: .regional),
+        ])
+        let plan = UpdatePlanner.plan(manifest: manifest, installed: [])
+        #expect(plan.actions == [
+            .install(group: .ads, entries: [entry(id: "easylist", group: .ads)]),
+            .install(group: .privacy, entries: [entry(id: "easyprivacy", group: .privacy)]),
+            .install(group: .annoyances, entries: [entry(id: "fanboy-annoyances", group: .annoyances)]),
+            .install(group: .regional, entries: [entry(id: "regional-fr", group: .regional)]),
+        ])
+    }
+
+    @Test("grouping is by FilterGroup key, not manifest adjacency — interleaved entries for the same group still merge into one action")
+    func interleavedEntriesForSameGroupStillMerge() {
+        let manifest = FilterManifest(manifestVersion: "1", entries: [
+            entry(id: "easylist", group: .ads),
+            entry(id: "easyprivacy", group: .privacy),
+            entry(id: "peter-lowe", group: .ads, checksum: "checksum-c"),
+        ])
+        let plan = UpdatePlanner.plan(manifest: manifest, installed: [])
+        #expect(plan.actions == [
+            .install(group: .ads, entries: [
+                entry(id: "easylist", group: .ads),
+                entry(id: "peter-lowe", group: .ads, checksum: "checksum-c"),
+            ]),
+            .install(group: .privacy, entries: [entry(id: "easyprivacy", group: .privacy)]),
         ])
     }
 

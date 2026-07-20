@@ -55,10 +55,12 @@ actor UpdateCoordinator {
 
         let installedFilters = try await currentInstalledFilters()
         let plan = UpdatePlanner.plan(manifest: manifest, installed: installedFilters)
-        let installs: [FilterManifest.Entry] = plan.actions.compactMap {
-            if case .install(let entry) = $0 { return entry }
+        // TEMPORARY bridge for the new grouped .install(group:entries:) shape —
+        // Task 10 replaces this whole block with per-group download/compose/install.
+        let installs: [FilterManifest.Entry] = plan.actions.compactMap { action -> [FilterManifest.Entry]? in
+            if case .install(_, let entries) = action { return entries }
             return nil
-        }
+        }.flatMap { $0 }
 
         guard !installs.isEmpty else {
             try await manifestStore.save(manifest, etag: etag)

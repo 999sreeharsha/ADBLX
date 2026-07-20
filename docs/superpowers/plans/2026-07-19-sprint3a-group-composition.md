@@ -1202,7 +1202,7 @@ If clean, there is nothing to commit for this task — proceed to Task 9. This s
 - Produces: `enum UpdateAction { case install(group: FilterGroup, entries: [FilterManifest.Entry]); case remove(filterID: String); case keep(filterID: String); case skipPremium(FilterManifest.Entry) }` — `.unsupportedGroup` and `.groupConflict` are gone. `UpdateCoordinator` (Task 10) consumes `.install(group:entries:)`.
 - Ordering: entries destined for `.install` are grouped by `FilterGroup` (first-encountered-group order for the groups themselves; manifest order preserved within each group's `entries` array) — grouping is by key, not manifest adjacency.
 
-- [ ] **Step 1: Write the failing tests (full replacement)**
+- [x] **Step 1: Write the failing tests (full replacement)**
 
 ```swift
 // ADBLXTests/Filtering/Updates/UpdatePlannerTests.swift
@@ -1351,12 +1351,12 @@ struct UpdatePlannerTests {
 }
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination "id=$(Scripts/find-simulator-udid.sh)" -only-testing:ADBLXTests/UpdatePlannerTests test`
 Expected: FAIL — `type 'UpdateAction' has no member 'install' with matching labels` (still the old per-entry `.install(FilterManifest.Entry)` case) / `.unsupportedGroup` and `.groupConflict` tests will not compile since those cases still exist and the new tests reference the new shape.
 
-- [ ] **Step 3: Rewrite UpdatePlan.swift**
+- [x] **Step 3: Rewrite UpdatePlan.swift**
 
 ```swift
 // ADBLX/Filtering/Updates/UpdatePlan.swift
@@ -1430,7 +1430,7 @@ enum UpdatePlanner {
 }
 ```
 
-- [ ] **Step 4: Patch UpdateCoordinator's call site so the target still compiles**
+- [x] **Step 4: Patch UpdateCoordinator's call site so the target still compiles**
 
 `UpdateAction.install` just changed shape from `install(FilterManifest.Entry)` to
 `install(group: FilterGroup, entries: [FilterManifest.Entry])`. `UpdateCoordinator.swift`
@@ -1460,12 +1460,12 @@ to:
         }.flatMap { $0 }
 ```
 
-- [ ] **Step 5: Run the full test target to verify everything compiles and passes**
+- [x] **Step 5: Run the full test target to verify everything compiles and passes**
 
 Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination "id=$(Scripts/find-simulator-udid.sh)" test`
 Expected: PASS (all suites) — this confirms both the new `UpdatePlannerTests` and the still-`.ads`-only `UpdateCoordinatorTests` (unchanged in this task, still passing against the temporary bridge) are green together.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add ADBLX/Filtering/Updates/UpdatePlan.swift ADBLXTests/Filtering/Updates/UpdatePlannerTests.swift ADBLX/Filtering/Updates/UpdateCoordinator.swift
