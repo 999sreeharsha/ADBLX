@@ -535,7 +535,7 @@ git commit -m "refactor: RuleCompiler compiles composed rules for a group, not a
 - Produces: `struct GroupExtensionIdentifiers { let ads, privacy, annoyances, regional: String; subscript(_ group: FilterGroup) -> String }`; `protocol RulePartitioner { nonisolated func partition(_ ruleSet: CompiledRuleSet, group: FilterGroup) async throws -> PartitionedRules }` (singular return, not `[PartitionedRules]` — a `CompiledRuleSet` now corresponds to exactly one group by construction); `struct GroupPartitioner: RulePartitioner`.
 - `GroupExtensionIdentifiers` has no optional/dictionary lookup: every group maps to a non-optional `String` field, and its `subscript` is an exhaustive `switch` over `FilterGroup` — an unmapped group is a compile error, not a runtime case.
 
-- [ ] **Step 1: Write the failing tests (full replacement)**
+- [x] **Step 1: Write the failing tests (full replacement)**
 
 ```swift
 // ADBLXTests/Filtering/RulePartitionerTests.swift
@@ -597,12 +597,12 @@ struct GroupPartitionerTests {
 }
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination "id=$(Scripts/find-simulator-udid.sh)" -only-testing:ADBLXTests/GroupPartitionerTests test`
 Expected: FAIL — `cannot find 'GroupExtensionIdentifiers' in scope` / `cannot find 'GroupPartitioner' in scope`.
 
-- [ ] **Step 3: Implement GroupPartitioner (full replacement)**
+- [x] **Step 3: Implement GroupPartitioner (full replacement)**
 
 ```swift
 // ADBLX/Filtering/Deployment/RulePartitioner.swift
@@ -673,7 +673,7 @@ struct GroupPartitioner: RulePartitioner {
 }
 ```
 
-- [ ] **Step 4: Update AppCompositionRoot's mapping**
+- [x] **Step 4: Update AppCompositionRoot's mapping**
 
 ```swift
 // ADBLX/AppCompositionRoot.swift
@@ -706,12 +706,12 @@ enum AppCompositionRoot {
 
 Note: `FilterPipeline.init` still doesn't take a `compositionService:` parameter yet — that's Task 7. This step only swaps the `partitioner:` argument's type.
 
-- [ ] **Step 5: Run the GroupPartitionerTests suite to verify it passes**
+- [x] **Step 5: Run the GroupPartitionerTests suite to verify it passes**
 
 Run: same command as Step 2.
 Expected: PASS. (The rest of the target will not yet compile — `FilterPipeline.swift`, `FilterPipelineTests.swift`, and `UpdateCoordinatorTests.swift` still construct `PassthroughAdsPartitioner`, which no longer exists. That's fixed in Task 6, immediately next — don't run the full suite yet.)
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add ADBLX/Filtering/Deployment/RulePartitioner.swift ADBLX/AppCompositionRoot.swift ADBLXTests/Filtering/RulePartitionerTests.swift
