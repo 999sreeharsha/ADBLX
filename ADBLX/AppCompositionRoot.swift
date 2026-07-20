@@ -16,6 +16,7 @@ enum AppCompositionRoot {
         FilterPipeline(
             validator: FilterValidator(),
             compiler: PassthroughRuleCompiler(),
+            compositionService: JSONArrayCompositionService(),
             partitioner: GroupPartitioner(extensionIdentifiers: extensionIdentifiers),
             store: FilterStore(appGroupIdentifier: AppGroup.identifier),
             writer: AtomicRuleWriter(),

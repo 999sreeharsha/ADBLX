@@ -17,7 +17,7 @@ enum ContentBlockerBootstrap {
     nonisolated static func ensureInitialRulesInstalled(pipeline: FilterPipeline) async -> Bool {
         do {
             let result = try await pipeline.installBundledSnapshotIfNeeded()
-            logger.info("Filter pipeline installed \(result.installedRuleCount) rule(s) for \(result.filterID, privacy: .public)")
+            logger.info("Filter pipeline installed \(result.installedRuleCount) rule(s) for \(result.group.rawValue, privacy: .public)")
             return true
         } catch {
             logger.error("Filter pipeline install failed: \(error, privacy: .public)")

@@ -16,6 +16,7 @@ struct FilterPipelineTests {
         FilterPipeline(
             validator: FilterValidator(),
             compiler: PassthroughRuleCompiler(),
+            compositionService: JSONArrayCompositionService(),
             partitioner: GroupPartitioner(extensionIdentifiers: groupExtensionIdentifiers),
             store: FilterStore(appGroupIdentifier: AppGroup.identifier),
             writer: AtomicRuleWriter(),
@@ -28,7 +29,7 @@ struct FilterPipelineTests {
         let pipeline = makePipeline()
         let result = try await pipeline.installBundledSnapshotIfNeeded()
 
-        #expect(result.filterID == "ads-bundled")
+        #expect(result.group == .ads)
         #expect(result.compiledRuleCount == 70)
         #expect(result.installedRuleCount == 70)
         #expect(result.compileStatistics.rulesLoaded == 70)
@@ -109,5 +110,50 @@ struct FilterPipelineTests {
         let filters = try JSONDecoder().decode([InstalledFilter].self, from: data)
 
         #expect(filters.first(where: { $0.id == "filter-versioned" })?.installedVersion == "2026-07-18")
+    }
+
+    @Test("install(composition:) composes multiple sources into one Compiled/Ads.json write and two metadata entries")
+    func installComposesMultipleSourcesIntoOneWrite() async throws {
+        let pipeline = makePipeline()
+        let easyList = FilterSource(
+            filterID: "easylist", version: "2026-07-19", checksumSHA256: "a",
+            data: Data("[{\"trigger\":{\"url-filter\":\"a.*\"},\"action\":{\"type\":\"block\"}}]".utf8)
+        )
+        let peterLowe = FilterSource(
+            filterID: "peter-lowe", version: "2026-07-19", checksumSHA256: "b",
+            data: Data("[{\"trigger\":{\"url-filter\":\"b.*\"},\"action\":{\"type\":\"block\"}}]".utf8)
+        )
+        let composition = GroupComposition(group: .ads, sources: [easyList, peterLowe])
+
+        let result = try await pipeline.install(composition, reloadStrategy: .deferred)
+
+        #expect(result.group == .ads)
+        #expect(result.compiledRuleCount == 2)
+        #expect(result.installedRuleCount == 2)
+
+        let store = FilterStore(appGroupIdentifier: AppGroup.identifier)
+        let compiledDir = try await store.directoryURL(.compiled)
+        let writtenData = try Data(contentsOf: compiledDir.appendingPathComponent("Ads.json"))
+        let writtenRules = try JSONSerialization.jsonObject(with: writtenData) as? [Any]
+        #expect(writtenRules?.count == 2)
+
+        let metadataDir = try await store.directoryURL(.metadata)
+        let metadataData = try Data(contentsOf: metadataDir.appendingPathComponent("installed_filters.json"))
+        let filters = try JSONDecoder().decode([InstalledFilter].self, from: metadataData)
+        #expect(Set(filters.map(\.id)).isSuperset(of: ["easylist", "peter-lowe"]))
+    }
+
+    @Test("install(composition:) reload .deferred returns empty reloadResults")
+    func installCompositionDeferredReloadSkipsReloadCall() async throws {
+        let pipeline = makePipeline()
+        let source = FilterSource(
+            filterID: "deferred-test", version: "v1", checksumSHA256: "a",
+            data: Data("[{\"trigger\":{\"url-filter\":\".*\"},\"action\":{\"type\":\"block\"}}]".utf8)
+        )
+        let composition = GroupComposition(group: .ads, sources: [source])
+
+        let result = try await pipeline.install(composition, reloadStrategy: .deferred)
+
+        #expect(result.reloadResults.isEmpty)
     }
 }

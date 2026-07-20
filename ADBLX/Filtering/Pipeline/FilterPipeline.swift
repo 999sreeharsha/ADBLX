@@ -1,15 +1,16 @@
 // ADBLX/Filtering/Pipeline/FilterPipeline.swift
 import Foundation
 
-/// Sole orchestrator of the rule pipeline: validate → compile → partition → atomic write →
-/// persist metadata → reload. Every other Filtering/ type stays single-purpose; this is the
-/// one place that knows the sequence, owns timing, and will own progress/cancellation/retry
-/// as those needs arrive.
+/// Sole orchestrator of the rule pipeline: validate → compose → compile → partition →
+/// atomic write → persist metadata → reload. Every other Filtering/ type stays
+/// single-purpose; this is the one place that knows the sequence, owns timing, and will
+/// own progress/cancellation/retry as those needs arrive.
 ///
 /// Target: main app ONLY.
 actor FilterPipeline {
     private let validator: FilterValidator
     private let compiler: RuleCompiler
+    private let compositionService: CompositionService
     private let partitioner: RulePartitioner
     private let store: FilterStore
     private let writer: AtomicRuleWriter
@@ -18,6 +19,7 @@ actor FilterPipeline {
     init(
         validator: FilterValidator,
         compiler: RuleCompiler,
+        compositionService: CompositionService,
         partitioner: RulePartitioner,
         store: FilterStore,
         writer: AtomicRuleWriter,
@@ -25,61 +27,47 @@ actor FilterPipeline {
     ) {
         self.validator = validator
         self.compiler = compiler
+        self.compositionService = compositionService
         self.partitioner = partitioner
         self.store = store
         self.writer = writer
         self.reloader = reloader
     }
 
-    /// Runs the full pipeline for one filter source and returns a summary of what happened —
-    /// callers (ViewModel, logging, future Metrics/UI status) read this one object instead of
-    /// interrogating each stage afterward.
-    ///
-    /// `version`: the value recorded as `InstalledFilter.installedVersion`. Defaults to
-    /// `"bundled-snapshot"`, matching Sprint 1's only caller. `UpdateCoordinator`
-    /// (Sprint 2) passes the manifest entry's real version — `UpdatePlanner` compares
-    /// this value against `FilterManifest.Entry.version` to decide `.keep` vs
-    /// `.install` on the next run, so an un-passed (default) version here would make a
-    /// manifest-driven install never converge to `.keep`.
-    ///
-    /// `reloadStrategy`: `.immediate` (default) reloads the affected extensions before
-    /// returning, matching Sprint 1 behavior exactly. `.deferred` skips the reload —
-    /// used by `UpdateCoordinator` (Sprint 2) so a multi-filter batch triggers exactly
-    /// one reload after every filter in the batch has installed successfully, rather
-    /// than one reload per filter.
+    /// Installs an entire group's composition in one pass: validate every source, compose
+    /// them into one rule set, compile once, partition once, write `Compiled/<Group>.json`
+    /// once, merge every source into `installed_filters.json`, then reload per
+    /// `reloadStrategy`. This is the pipeline's single entry point — see the Sprint 3A
+    /// design doc for why Sprint 1/2's one-filter-at-a-time `install` was replaced by this.
     func install(
-        filterID: String,
-        source: Data,
-        version: String = "bundled-snapshot",
+        _ composition: GroupComposition,
         reloadStrategy: ReloadStrategy = .immediate
     ) async throws -> PipelineResult {
-        try validator.validate(source)
-        let compiled = try await compiler.compile(source: source, group: .ads)
-        let partition = try await partitioner.partition(compiled, group: .ads)
+        for source in composition.sources {
+            try validator.validate(source.data)
+        }
+
+        let composed = try compositionService.compose(composition.sources, group: composition.group)
+        let compiled = try await compiler.compile(source: composed.data, group: composition.group)
+        let partition = try await partitioner.partition(compiled, group: composition.group)
 
         let destinationURL = try await store.directoryURL(.compiled)
             .appendingPathComponent("\(partition.group.rawValue.capitalized).json")
         try writer.write(partition.json, to: destinationURL)
-        let installedRuleCount = partition.ruleCount
-        let extensionIdentifiers = [partition.extensionIdentifier]
 
-        // Sprint 2: accumulate rather than overwrite — read the existing list, replace
-        // this filterID's entry if present (by id) or append it, write the merged array
-        // back. Compiled/<Group>.json above is still one file per group, still
-        // overwritten per call — true multi-source rule composition per group is
-        // deferred (see Sprint 2 design doc, "Known dependency on Sprint 1's
-        // single-entry metadata overwrite").
-        let installedFilter = InstalledFilter(
-            id: filterID,
-            group: .ads,
-            installedVersion: version,
-            checksumSHA256: Checksum.sha256Hex(of: source),
-            lastUpdated: compiled.statistics.lastUpdated,
-            ruleCount: compiled.ruleCount
-        )
         var existingFilters = (try? await loadInstalledFilters()) ?? []
-        existingFilters.removeAll { $0.id == filterID }
-        existingFilters.append(installedFilter)
+        for source in composition.sources {
+            let installedFilter = InstalledFilter(
+                id: source.filterID,
+                group: composition.group,
+                installedVersion: source.version,
+                checksumSHA256: source.checksumSHA256,
+                lastUpdated: compiled.statistics.lastUpdated,
+                ruleCount: compiled.ruleCount
+            )
+            existingFilters.removeAll { $0.id == source.filterID }
+            existingFilters.append(installedFilter)
+        }
         let installedFiltersData = try JSONEncoder().encode(existingFilters)
         try await store.writeMetadata(installedFiltersData, filename: "installed_filters.json")
 
@@ -88,18 +76,41 @@ actor FilterPipeline {
 
         let reloadResults: [ReloadCoordinator.ReloadResult]
         if reloadStrategy == .immediate {
-            reloadResults = await reloader.reload(extensionIdentifiers: extensionIdentifiers)
+            reloadResults = await reloader.reload(extensionIdentifiers: [partition.extensionIdentifier])
         } else {
             reloadResults = []
         }
 
         return PipelineResult(
-            filterID: filterID,
+            group: composition.group,
             compiledRuleCount: compiled.ruleCount,
-            installedRuleCount: installedRuleCount,
+            installedRuleCount: partition.ruleCount,
             compileStatistics: compiled.statistics,
             reloadResults: reloadResults
         )
+    }
+
+    /// TRANSITIONAL — Sprint 1/2's single-filter entry point. Kept only so
+    /// `UpdateCoordinator` keeps compiling until it migrates onto
+    /// `install(_:reloadStrategy:)` directly (Sprint 3A Task 10). Delegates to the new
+    /// method with a one-source, `.ads` `GroupComposition` — deleted in Task 11 once
+    /// `UpdateCoordinator` no longer calls it.
+    func install(
+        filterID: String,
+        source: Data,
+        version: String = "bundled-snapshot",
+        reloadStrategy: ReloadStrategy = .immediate
+    ) async throws -> PipelineResult {
+        let composition = GroupComposition(
+            group: .ads,
+            sources: [FilterSource(
+                filterID: filterID,
+                version: version,
+                checksumSHA256: Checksum.sha256Hex(of: source),
+                data: source
+            )]
+        )
+        return try await install(composition, reloadStrategy: reloadStrategy)
     }
 
     /// Sprint 1: always (re)installs from the bundled snapshot on every call — "IfNeeded"
@@ -110,7 +121,16 @@ actor FilterPipeline {
             throw FilterPipelineError.bundledSnapshotMissing
         }
         let data = try Data(contentsOf: bundledURL)
-        return try await install(filterID: "ads-bundled", source: data)
+        let composition = GroupComposition(
+            group: .ads,
+            sources: [FilterSource(
+                filterID: "ads-bundled",
+                version: "bundled-snapshot",
+                checksumSHA256: Checksum.sha256Hex(of: data),
+                data: data
+            )]
+        )
+        return try await install(composition)
     }
 
     private func loadInstalledFilters() async throws -> [InstalledFilter] {
@@ -125,7 +145,7 @@ enum ReloadStrategy {
 }
 
 struct PipelineResult {
-    var filterID: String
+    var group: FilterGroup
     var compiledRuleCount: Int
     var installedRuleCount: Int
     var compileStatistics: RuleStatistics

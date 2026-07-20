@@ -58,6 +58,7 @@ struct UpdateCoordinatorTests {
         let filterResponse = HTTPURLResponse(url: filterSourceURL, statusCode: 200, httpVersion: nil, headerFields: nil)!
         let pipeline = FilterPipeline(
             validator: FilterValidator(), compiler: PassthroughRuleCompiler(),
+            compositionService: JSONArrayCompositionService(),
             partitioner: GroupPartitioner(extensionIdentifiers: groupExtensionIdentifiers),
             store: store, writer: AtomicRuleWriter(), reloader: ReloadCoordinator()
         )
@@ -91,6 +92,7 @@ struct UpdateCoordinatorTests {
 
         let pipeline = FilterPipeline(
             validator: FilterValidator(), compiler: PassthroughRuleCompiler(),
+            compositionService: JSONArrayCompositionService(),
             partitioner: GroupPartitioner(extensionIdentifiers: groupExtensionIdentifiers),
             store: store, writer: AtomicRuleWriter(), reloader: ReloadCoordinator()
         )
@@ -131,6 +133,7 @@ struct UpdateCoordinatorTests {
 
         let pipeline = FilterPipeline(
             validator: FilterValidator(), compiler: PassthroughRuleCompiler(),
+            compositionService: JSONArrayCompositionService(),
             partitioner: GroupPartitioner(extensionIdentifiers: groupExtensionIdentifiers),
             store: store, writer: AtomicRuleWriter(), reloader: ReloadCoordinator()
         )
@@ -171,6 +174,7 @@ struct UpdateCoordinatorTests {
 
         let pipeline = FilterPipeline(
             validator: FilterValidator(), compiler: AlwaysFailingCompiler(),
+            compositionService: JSONArrayCompositionService(),
             partitioner: GroupPartitioner(extensionIdentifiers: groupExtensionIdentifiers),
             store: store, writer: AtomicRuleWriter(), reloader: ReloadCoordinator()
         )
@@ -214,6 +218,7 @@ struct UpdateCoordinatorTests {
 
         let pipeline = FilterPipeline(
             validator: FilterValidator(), compiler: PassthroughRuleCompiler(),
+            compositionService: JSONArrayCompositionService(),
             partitioner: GroupPartitioner(extensionIdentifiers: groupExtensionIdentifiers),
             store: store, writer: AtomicRuleWriter(), reloader: ReloadCoordinator()
         )
@@ -276,6 +281,7 @@ struct UpdateCoordinatorTests {
 
         let pipeline = FilterPipeline(
             validator: FilterValidator(), compiler: AlwaysFailingCompiler(),
+            compositionService: JSONArrayCompositionService(),
             partitioner: GroupPartitioner(extensionIdentifiers: groupExtensionIdentifiers),
             store: store, writer: AtomicRuleWriter(), reloader: ReloadCoordinator()
         )
