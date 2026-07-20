@@ -20,6 +20,10 @@ Baseline: xcodegen generate + xcodebuild test succeeded (all suites) before any 
 ## Session 5: Task 6
 - [x] Task 6: Wire GroupPartitioner through FilterPipeline and remaining tests (commit 501929d, review clean — full suite independently reran by controller: 76 unit tests / 19 suites + 6 UI tests all green; implementer's report undercounted due to xcodebuild printing a per-bundle summary)
 
+## Session 6: Tasks 7-8 (plan's "Session 5: Tasks 7-8")
+- [x] Task 7: FilterPipeline gains install(_ composition:reloadStrategy:) (commits e820286, 3e51464 — review found an Important, plan-mandated issue: InstalledFilter.ruleCount is the group's aggregate compiled count written into every source's entry, not a per-source count, since composition never tracked per-source counts. Human decision: carry forward for Sprint 3A, documented on the field itself and in docs/gotchas.md rather than expanding scope back into Task 3's CompositionService. Full suite green, 81 tests.)
+- [x] Task 8: installBundledSnapshotIfNeeded already migrated — confirm and lock in (no diff — controller verified directly: installsBundledSnapshotEndToEnd passes, installBundledSnapshotIfNeeded calls install(composition) with no residual adapter reference, git status clean)
+
 ## Minor findings log (from task reviews, roll up for final review)
 - Task 3: `JSONArrayCompositionService.compose` discards the underlying `JSONSerialization` error via `try?`, collapsing malformed-JSON and valid-non-array failures into one diagnostic-free case (CompositionService.swift:40). Matches brief verbatim; not a defect against this task.
 - Task 3: doc comment says "every `FilterSource` in a `GroupComposition`" but the signature takes a bare `[FilterSource]` — harmless forward-reference, imprecise phrasing (CompositionService.swift:20).

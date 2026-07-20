@@ -843,7 +843,7 @@ git commit -m "refactor: wire GroupPartitioner through FilterPipeline and test c
 - Consumes: `GroupComposition`, `CompositionService`, `JSONArrayCompositionService` (Tasks 1, 3).
 - Produces: `FilterPipeline.install(_ composition: GroupComposition, reloadStrategy: ReloadStrategy = .immediate) async throws -> PipelineResult`. `PipelineResult.filterID: String` is replaced with `PipelineResult.group: FilterGroup` (a multi-source install has no single filter identity to report — see Task 4's rationale for `CompiledRuleSet`). `FilterPipeline.install(filterID:source:version:reloadStrategy:)` becomes a **transitional** adapter, kept only so `UpdateCoordinator` keeps compiling until Task 10 migrates it; it is deleted in Task 11.
 
-- [ ] **Step 1: Write the failing tests first**
+- [x] **Step 1: Write the failing tests first**
 
 In `ADBLXTests/Filtering/FilterPipelineTests.swift`, update `makePipeline()` to inject a `compositionService:` and fix the one existing assertion that reads `result.filterID`:
 
@@ -922,12 +922,12 @@ Then append two new tests to the same suite:
     }
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination "id=$(Scripts/find-simulator-udid.sh)" -only-testing:ADBLXTests/FilterPipelineTests test`
 Expected: FAIL — `incorrect argument label` / `install(_:reloadStrategy:)` not found / `PipelineResult` has no member `group`.
 
-- [ ] **Step 3: Implement the new install method (full replacement)**
+- [x] **Step 3: Implement the new install method (full replacement)**
 
 ```swift
 // ADBLX/Filtering/Pipeline/FilterPipeline.swift
@@ -1089,7 +1089,7 @@ enum FilterPipelineError: Error {
 }
 ```
 
-- [ ] **Step 4: Fix ContentBlockerBootstrap's log line**
+- [x] **Step 4: Fix ContentBlockerBootstrap's log line**
 
 In `ADBLX/ContentBlockerBootstrap.swift`, change:
 
@@ -1103,7 +1103,7 @@ to:
             logger.info("Filter pipeline installed \(result.installedRuleCount) rule(s) for \(result.group.rawValue, privacy: .public)")
 ```
 
-- [ ] **Step 5: Add compositionService to AppCompositionRoot**
+- [x] **Step 5: Add compositionService to AppCompositionRoot**
 
 In `ADBLX/AppCompositionRoot.swift`, in `makeFilterPipeline()`, add the new argument:
 
@@ -1121,7 +1121,7 @@ In `ADBLX/AppCompositionRoot.swift`, in `makeFilterPipeline()`, add the new argu
     }
 ```
 
-- [ ] **Step 6: Add compositionService to every UpdateCoordinatorTests FilterPipeline(...) construction**
+- [x] **Step 6: Add compositionService to every UpdateCoordinatorTests FilterPipeline(...) construction**
 
 In `ADBLXTests/Filtering/Updates/UpdateCoordinatorTests.swift`, in all six `FilterPipeline(...)` constructions, add `compositionService: JSONArrayCompositionService(),` immediately after `compiler: ...,` (or `compiler: AlwaysFailingCompiler(),` where that local type is used) and before `partitioner:`. For example, the coordinator-under-test in `notModifiedShortCircuits` changes from:
 
@@ -1146,12 +1146,12 @@ to:
 
 Apply the same one-line insertion to the other five constructions in this file (the `AlwaysFailingCompiler` ones included).
 
-- [ ] **Step 7: Run the full test target to verify everything compiles and passes**
+- [x] **Step 7: Run the full test target to verify everything compiles and passes**
 
 Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination "id=$(Scripts/find-simulator-udid.sh)" test`
 Expected: PASS (all suites).
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add ADBLX/Filtering/Pipeline/FilterPipeline.swift ADBLX/AppCompositionRoot.swift ADBLX/ContentBlockerBootstrap.swift ADBLXTests/Filtering/FilterPipelineTests.swift ADBLXTests/Filtering/Updates/UpdateCoordinatorTests.swift
@@ -1168,12 +1168,12 @@ Task 7's full replacement already migrated `installBundledSnapshotIfNeeded()` to
 - Verify only: `ADBLX/Filtering/Pipeline/FilterPipeline.swift` (`installBundledSnapshotIfNeeded`, already updated)
 - Test: `ADBLXTests/Filtering/FilterPipelineTests.swift` (`installsBundledSnapshotEndToEnd`, already updated in Task 7)
 
-- [ ] **Step 1: Re-run the existing bundled-snapshot test to confirm it exercises the composition path**
+- [x] **Step 1: Re-run the existing bundled-snapshot test to confirm it exercises the composition path**
 
 Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination "id=$(Scripts/find-simulator-udid.sh)" -only-testing:ADBLXTests/FilterPipelineTests/installsBundledSnapshotEndToEnd test`
 Expected: PASS — this test's assertions (`result.group == .ads`, `Compiled/Ads.json` exists with 70 rules, `installed_filters.json`/`statistics.json` exist) already prove `installBundledSnapshotIfNeeded` goes through `install(_ composition:)`, since that's the only method in `FilterPipeline` that writes `Compiled/Ads.json`.
 
-- [ ] **Step 2: Read `installBundledSnapshotIfNeeded` and confirm no residual call to the transitional adapter**
+- [x] **Step 2: Read `installBundledSnapshotIfNeeded` and confirm no residual call to the transitional adapter**
 
 ```bash
 grep -n "func installBundledSnapshotIfNeeded" -A 12 /Users/sreeharshag/Work/ADBLX/ADBLX/Filtering/Pipeline/FilterPipeline.swift
@@ -1181,7 +1181,7 @@ grep -n "func installBundledSnapshotIfNeeded" -A 12 /Users/sreeharshag/Work/ADBL
 
 Expected output: the method builds a `GroupComposition` and calls `install(composition)` — not `install(filterID:source:...)`.
 
-- [ ] **Step 3: Commit (no-op if Task 7 already committed this — skip if `git status` is clean)**
+- [x] **Step 3: Commit (no-op if Task 7 already committed this — skip if `git status` is clean)**
 
 ```bash
 git status --short
