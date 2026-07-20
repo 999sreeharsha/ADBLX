@@ -5,13 +5,18 @@ import Foundation
 /// so swapping PassthroughRuleCompiler for a SafariConverterLib-backed implementation (post
 /// ADR-0001) only ever changes this file.
 enum AppCompositionRoot {
-    static let adsExtensionIdentifier = "com.ADBLX.ADBLX.AdsBlocker"
+    static let extensionIdentifiers = GroupExtensionIdentifiers(
+        ads: "com.ADBLX.ADBLX.AdsBlocker",
+        privacy: "com.ADBLX.ADBLX.PrivacyBlocker",
+        annoyances: "com.ADBLX.ADBLX.AnnoyancesBlocker",
+        regional: "com.ADBLX.ADBLX.RegionalBlocker"
+    )
 
     static func makeFilterPipeline() -> FilterPipeline {
         FilterPipeline(
             validator: FilterValidator(),
             compiler: PassthroughRuleCompiler(),
-            partitioner: PassthroughAdsPartitioner(adsExtensionIdentifier: adsExtensionIdentifier),
+            partitioner: GroupPartitioner(extensionIdentifiers: extensionIdentifiers),
             store: FilterStore(appGroupIdentifier: AppGroup.identifier),
             writer: AtomicRuleWriter(),
             reloader: ReloadCoordinator()

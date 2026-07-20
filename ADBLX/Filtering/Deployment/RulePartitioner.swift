@@ -1,16 +1,33 @@
 import Foundation
 
-/// Splits compiled rules across the 4 Content Blocker extensions, respecting each
-/// extension's 150K-rule budget.
+/// Total mapping from `FilterGroup` to its Content Blocker extension's bundle identifier.
+/// Every field is required and non-optional, and `subscript` is an exhaustive `switch` —
+/// an unmapped group is a compile-time impossibility (a new `FilterGroup` case would fail
+/// to compile here until handled), not a runtime `.unmappedGroup`-style error case.
+struct GroupExtensionIdentifiers: Sendable {
+    let ads: String
+    let privacy: String
+    let annoyances: String
+    let regional: String
+
+    subscript(_ group: FilterGroup) -> String {
+        switch group {
+        case .ads: return ads
+        case .privacy: return privacy
+        case .annoyances: return annoyances
+        case .regional: return regional
+        }
+    }
+}
+
+/// Wraps one group's compiled rules for writing, plus which extension they belong to.
 ///
-/// Sprint 1 scope: passthrough for the Ads extension only. Privacy/Annoyances/Regional
-/// extensions continue to ship their existing Sprint 0 bundled-JSON copy unchanged this
-/// sprint — this is a deliberate scope line, not a regression against FR-01.
-///
-/// Target: main app ONLY. The requirement is `nonisolated` — see Task 3's note on
+/// Target: main app ONLY. The requirement is `nonisolated` — see Task 3's (Sprint 1) note on
 /// SWIFT_DEFAULT_ACTOR_ISOLATION.
 protocol RulePartitioner: Sendable {
-    nonisolated func partition(_ ruleSet: CompiledRuleSet) async throws -> [PartitionedRules]
+    /// A `CompiledRuleSet` corresponds to exactly one group by construction (it came from
+    /// one `GroupComposition`), so this returns a single `PartitionedRules`, not an array.
+    nonisolated func partition(_ ruleSet: CompiledRuleSet, group: FilterGroup) async throws -> PartitionedRules
 }
 
 struct PartitionedRules {
@@ -24,27 +41,25 @@ enum RulePartitionerError: Error {
     case ruleBudgetExceeded(group: FilterGroup, count: Int, limit: Int)
 }
 
-struct PassthroughAdsPartitioner: RulePartitioner {
+struct GroupPartitioner: RulePartitioner {
     /// Per PRD §6.1 / Appendix B.1 — 150K compiled rules per extension.
     static let ruleBudgetPerExtension = 150_000
 
-    let adsExtensionIdentifier: String
+    let extensionIdentifiers: GroupExtensionIdentifiers
 
-    nonisolated func partition(_ ruleSet: CompiledRuleSet) async throws -> [PartitionedRules] {
+    nonisolated func partition(_ ruleSet: CompiledRuleSet, group: FilterGroup) async throws -> PartitionedRules {
         guard ruleSet.ruleCount <= Self.ruleBudgetPerExtension else {
             throw RulePartitionerError.ruleBudgetExceeded(
-                group: .ads,
+                group: group,
                 count: ruleSet.ruleCount,
                 limit: Self.ruleBudgetPerExtension
             )
         }
-        return [
-            PartitionedRules(
-                extensionIdentifier: adsExtensionIdentifier,
-                group: .ads,
-                json: ruleSet.rawJSON,
-                ruleCount: ruleSet.ruleCount
-            )
-        ]
+        return PartitionedRules(
+            extensionIdentifier: extensionIdentifiers[group],
+            group: group,
+            json: ruleSet.rawJSON,
+            ruleCount: ruleSet.ruleCount
+        )
     }
 }
