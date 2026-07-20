@@ -731,7 +731,7 @@ git commit -m "refactor: GroupPartitioner replaces PassthroughAdsPartitioner wit
 - Consumes: `GroupPartitioner`, `GroupExtensionIdentifiers` (Task 5).
 - No new interfaces produced — this task only fixes compilation left over from Task 5's protocol change.
 
-- [ ] **Step 1: Fix FilterPipeline's partition call site**
+- [x] **Step 1: Fix FilterPipeline's partition call site**
 
 In `ADBLX/Filtering/Pipeline/FilterPipeline.swift`, inside `install(filterID:source:version:reloadStrategy:)`, replace:
 
@@ -763,7 +763,7 @@ with:
 
 (Everything below this in the method already references `installedRuleCount: Int` and `extensionIdentifiers: [String]` — both names and types are unchanged, so the rest of the method body needs no edits.)
 
-- [ ] **Step 2: Add a shared GroupExtensionIdentifiers constant to FilterPipelineTests and fix makePipeline()**
+- [x] **Step 2: Add a shared GroupExtensionIdentifiers constant to FilterPipelineTests and fix makePipeline()**
 
 In `ADBLXTests/Filtering/FilterPipelineTests.swift`, add a suite-level constant and update `makePipeline()`:
 
@@ -791,7 +791,7 @@ struct FilterPipelineTests {
 
 (Only the struct header and `makePipeline()` change; every `@Test` method below stays as-is for this task.)
 
-- [ ] **Step 3: Add the same constant to UpdateCoordinatorTests and fix every FilterPipeline(...) construction**
+- [x] **Step 3: Add the same constant to UpdateCoordinatorTests and fix every FilterPipeline(...) construction**
 
 In `ADBLXTests/Filtering/Updates/UpdateCoordinatorTests.swift`, add alongside the existing `adsExtensionIdentifier` constant:
 
@@ -816,12 +816,12 @@ with:
             partitioner: GroupPartitioner(extensionIdentifiers: groupExtensionIdentifiers),
 ```
 
-- [ ] **Step 4: Run the full test target to verify everything compiles and passes**
+- [x] **Step 4: Run the full test target to verify everything compiles and passes**
 
 Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination "id=$(Scripts/find-simulator-udid.sh)" test`
 Expected: PASS (all suites).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add ADBLX/Filtering/Pipeline/FilterPipeline.swift ADBLXTests/Filtering/FilterPipelineTests.swift ADBLXTests/Filtering/Updates/UpdateCoordinatorTests.swift

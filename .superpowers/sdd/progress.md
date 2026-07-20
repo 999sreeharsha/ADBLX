@@ -17,6 +17,9 @@ Baseline: xcodegen generate + xcodebuild test succeeded (all suites) before any 
 ## Session 4: Task 5
 - [x] Task 5: GroupPartitioner replaces PassthroughAdsPartitioner (commit b9f9043, review clean — intentional partial-compile checkpoint per plan; implementer made scratch uncommitted edits to FilterPipeline.swift/FilterPipelineTests.swift/UpdateCoordinatorTests.swift to locally verify buildability, controller discarded those before packaging the diff since Task 6 owns those files with its own exact-code brief)
 
+## Session 5: Task 6
+- [x] Task 6: Wire GroupPartitioner through FilterPipeline and remaining tests (commit 501929d, review clean — full suite independently reran by controller: 76 unit tests / 19 suites + 6 UI tests all green; implementer's report undercounted due to xcodebuild printing a per-bundle summary)
+
 ## Minor findings log (from task reviews, roll up for final review)
 - Task 3: `JSONArrayCompositionService.compose` discards the underlying `JSONSerialization` error via `try?`, collapsing malformed-JSON and valid-non-array failures into one diagnostic-free case (CompositionService.swift:40). Matches brief verbatim; not a defect against this task.
 - Task 3: doc comment says "every `FilterSource` in a `GroupComposition`" but the signature takes a bare `[FilterSource]` — harmless forward-reference, imprecise phrasing (CompositionService.swift:20).
