@@ -33,6 +33,21 @@ not just a batch of 1.
 
 Found in: `docs/superpowers/plans/2026-07-19-sprint3a-group-composition.md`, 2026-07-19
 
+## InstalledFilter.ruleCount is group-level, not per-source, once composition lands
+
+Sprint 3A's `FilterPipeline.install(_ composition:reloadStrategy:)` writes the
+same `compiled.ruleCount` (the whole group's aggregate compiled rule count)
+into every source's `InstalledFilter` entry, because `ComposedRules`/
+`CompositionService` never tracked per-source counts — only a group-level
+total. For a multi-source group, every source's `InstalledFilter.ruleCount`
+reports the same number, not that source's own contribution. Documented on
+the field itself (`InstalledFilter.swift`); if a future feature needs true
+per-source rule counts (e.g. a per-filter breakdown UI), `ComposedRules` will
+need to carry a `[String: Int]` per-source count map threaded through
+`CompositionService.compose`.
+
+Found in: `docs/superpowers/plans/2026-07-19-sprint3a-group-composition.md`, Task 7 review, 2026-07-20
+
 ## FilterPipeline's dependency-construction boilerplate is repeated verbatim across many test files
 
 `FilterPipeline(validator:compiler:compositionService:partitioner:store:writer:reloader:)`

@@ -8,5 +8,8 @@ struct InstalledFilter: Codable, Equatable, Identifiable {
     var installedVersion: String
     var checksumSHA256: String
     var lastUpdated: Date
+    /// Compiled rule count of the installed `group`'s artifact, not this filter's own
+    /// contribution — composition discards per-source counts, so every source in a
+    /// multi-source group reports the same group-level total.
     var ruleCount: Int
 }
