@@ -5,11 +5,18 @@ import Foundation
 
 @Suite("FilterPipeline", .serialized)
 struct FilterPipelineTests {
+    private let groupExtensionIdentifiers = GroupExtensionIdentifiers(
+        ads: "com.ADBLX.ADBLX.AdsBlocker",
+        privacy: "com.ADBLX.ADBLX.PrivacyBlocker",
+        annoyances: "com.ADBLX.ADBLX.AnnoyancesBlocker",
+        regional: "com.ADBLX.ADBLX.RegionalBlocker"
+    )
+
     private func makePipeline() -> FilterPipeline {
         FilterPipeline(
             validator: FilterValidator(),
             compiler: PassthroughRuleCompiler(),
-            partitioner: PassthroughAdsPartitioner(adsExtensionIdentifier: "com.ADBLX.ADBLX.AdsBlocker"),
+            partitioner: GroupPartitioner(extensionIdentifiers: groupExtensionIdentifiers),
             store: FilterStore(appGroupIdentifier: AppGroup.identifier),
             writer: AtomicRuleWriter(),
             reloader: ReloadCoordinator()

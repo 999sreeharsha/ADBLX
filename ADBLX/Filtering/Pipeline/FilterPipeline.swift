@@ -55,17 +55,13 @@ actor FilterPipeline {
     ) async throws -> PipelineResult {
         try validator.validate(source)
         let compiled = try await compiler.compile(source: source, group: .ads)
-        let partitions = try await partitioner.partition(compiled)
+        let partition = try await partitioner.partition(compiled, group: .ads)
 
-        var installedRuleCount = 0
-        var extensionIdentifiers: [String] = []
-        for partition in partitions {
-            let destinationURL = try await store.directoryURL(.compiled)
-                .appendingPathComponent("\(partition.group.rawValue.capitalized).json")
-            try writer.write(partition.json, to: destinationURL)
-            installedRuleCount += partition.ruleCount
-            extensionIdentifiers.append(partition.extensionIdentifier)
-        }
+        let destinationURL = try await store.directoryURL(.compiled)
+            .appendingPathComponent("\(partition.group.rawValue.capitalized).json")
+        try writer.write(partition.json, to: destinationURL)
+        let installedRuleCount = partition.ruleCount
+        let extensionIdentifiers = [partition.extensionIdentifier]
 
         // Sprint 2: accumulate rather than overwrite — read the existing list, replace
         // this filterID's entry if present (by id) or append it, write the merged array

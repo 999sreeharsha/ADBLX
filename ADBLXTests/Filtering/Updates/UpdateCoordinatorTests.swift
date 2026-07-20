@@ -7,6 +7,12 @@ struct UpdateCoordinatorTests {
     private let manifestEndpoint = URL(string: "https://example.com/manifest.json")!
     private let filterSourceURL = URL(string: "https://example.com/easylist.txt")!
     private let adsExtensionIdentifier = "com.ADBLX.ADBLX.AdsBlocker"
+    private let groupExtensionIdentifiers = GroupExtensionIdentifiers(
+        ads: "com.ADBLX.ADBLX.AdsBlocker",
+        privacy: "com.ADBLX.ADBLX.PrivacyBlocker",
+        annoyances: "com.ADBLX.ADBLX.AnnoyancesBlocker",
+        regional: "com.ADBLX.ADBLX.RegionalBlocker"
+    )
 
     private func manifestEntry(checksum: String) -> FilterManifest.Entry {
         FilterManifest.Entry(
@@ -52,7 +58,7 @@ struct UpdateCoordinatorTests {
         let filterResponse = HTTPURLResponse(url: filterSourceURL, statusCode: 200, httpVersion: nil, headerFields: nil)!
         let pipeline = FilterPipeline(
             validator: FilterValidator(), compiler: PassthroughRuleCompiler(),
-            partitioner: PassthroughAdsPartitioner(adsExtensionIdentifier: adsExtensionIdentifier),
+            partitioner: GroupPartitioner(extensionIdentifiers: groupExtensionIdentifiers),
             store: store, writer: AtomicRuleWriter(), reloader: ReloadCoordinator()
         )
         let coordinator = makeCoordinator(
@@ -85,7 +91,7 @@ struct UpdateCoordinatorTests {
 
         let pipeline = FilterPipeline(
             validator: FilterValidator(), compiler: PassthroughRuleCompiler(),
-            partitioner: PassthroughAdsPartitioner(adsExtensionIdentifier: adsExtensionIdentifier),
+            partitioner: GroupPartitioner(extensionIdentifiers: groupExtensionIdentifiers),
             store: store, writer: AtomicRuleWriter(), reloader: ReloadCoordinator()
         )
         let coordinator = makeCoordinator(
@@ -125,7 +131,7 @@ struct UpdateCoordinatorTests {
 
         let pipeline = FilterPipeline(
             validator: FilterValidator(), compiler: PassthroughRuleCompiler(),
-            partitioner: PassthroughAdsPartitioner(adsExtensionIdentifier: adsExtensionIdentifier),
+            partitioner: GroupPartitioner(extensionIdentifiers: groupExtensionIdentifiers),
             store: store, writer: AtomicRuleWriter(), reloader: ReloadCoordinator()
         )
         let coordinator = makeCoordinator(
@@ -165,7 +171,7 @@ struct UpdateCoordinatorTests {
 
         let pipeline = FilterPipeline(
             validator: FilterValidator(), compiler: AlwaysFailingCompiler(),
-            partitioner: PassthroughAdsPartitioner(adsExtensionIdentifier: adsExtensionIdentifier),
+            partitioner: GroupPartitioner(extensionIdentifiers: groupExtensionIdentifiers),
             store: store, writer: AtomicRuleWriter(), reloader: ReloadCoordinator()
         )
         let coordinator = makeCoordinator(
@@ -208,7 +214,7 @@ struct UpdateCoordinatorTests {
 
         let pipeline = FilterPipeline(
             validator: FilterValidator(), compiler: PassthroughRuleCompiler(),
-            partitioner: PassthroughAdsPartitioner(adsExtensionIdentifier: adsExtensionIdentifier),
+            partitioner: GroupPartitioner(extensionIdentifiers: groupExtensionIdentifiers),
             store: store, writer: AtomicRuleWriter(), reloader: ReloadCoordinator()
         )
         let coordinator = makeCoordinator(
@@ -270,7 +276,7 @@ struct UpdateCoordinatorTests {
 
         let pipeline = FilterPipeline(
             validator: FilterValidator(), compiler: AlwaysFailingCompiler(),
-            partitioner: PassthroughAdsPartitioner(adsExtensionIdentifier: adsExtensionIdentifier),
+            partitioner: GroupPartitioner(extensionIdentifiers: groupExtensionIdentifiers),
             store: store, writer: AtomicRuleWriter(), reloader: ReloadCoordinator()
         )
         let coordinator = makeCoordinator(
