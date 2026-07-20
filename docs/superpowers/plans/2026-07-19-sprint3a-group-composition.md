@@ -333,7 +333,7 @@ git commit -m "feat: add CompositionService merging multi-source JSON rule array
 
 This is a protocol-signature change, so every conformance across the whole test target must update in this same task or nothing compiles.
 
-- [ ] **Step 1: Update the failing round-trip test first**
+- [x] **Step 1: Update the failing round-trip test first**
 
 In `ADBLXTests/Filtering/FilteringModelsTests.swift`, replace `compiledRuleSetRoundTrip`:
 
@@ -355,12 +355,12 @@ In `ADBLXTests/Filtering/FilteringModelsTests.swift`, replace `compiledRuleSetRo
     }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination "id=$(Scripts/find-simulator-udid.sh)" -only-testing:ADBLXTests/FilteringModelsTests test`
 Expected: FAIL — `CompiledRuleSet` has no member `group` (build error, since `sourceFilterID` is still required).
 
-- [ ] **Step 3: Change CompiledRuleSet**
+- [x] **Step 3: Change CompiledRuleSet**
 
 ```swift
 // ADBLX/Filtering/Models/CompiledRuleSet.swift
@@ -382,7 +382,7 @@ struct CompiledRuleSet: Codable, Equatable {
 }
 ```
 
-- [ ] **Step 4: Change RuleCompiler and PassthroughRuleCompiler**
+- [x] **Step 4: Change RuleCompiler and PassthroughRuleCompiler**
 
 ```swift
 // ADBLX/Filtering/Compilation/RuleCompiler.swift
@@ -454,7 +454,7 @@ struct PassthroughRuleCompiler: RuleCompiler {
 }
 ```
 
-- [ ] **Step 5: Fix the FilterPipeline call site**
+- [x] **Step 5: Fix the FilterPipeline call site**
 
 In `ADBLX/Filtering/Pipeline/FilterPipeline.swift`, inside `install(filterID:source:version:reloadStrategy:)`, change:
 
@@ -470,7 +470,7 @@ to:
 
 (This method is still Sprint 1/2's single-filter, `.ads`-only entry point at this point in the plan — it becomes group-aware in Task 8.)
 
-- [ ] **Step 6: Fix RulePartitionerTests's two CompiledRuleSet constructions**
+- [x] **Step 6: Fix RulePartitionerTests's two CompiledRuleSet constructions**
 
 In `ADBLXTests/Filtering/RulePartitionerTests.swift`, in both `partitionsWithinBudget` and `throwsWhenOverBudget`, change:
 
@@ -488,7 +488,7 @@ to:
 
 (Two occurrences, one per test — leave everything else in that struct literal unchanged.)
 
-- [ ] **Step 7: Fix UpdateCoordinatorTests's two AlwaysFailingCompiler conformances**
+- [x] **Step 7: Fix UpdateCoordinatorTests's two AlwaysFailingCompiler conformances**
 
 In `ADBLXTests/Filtering/Updates/UpdateCoordinatorTests.swift`, both local `struct AlwaysFailingCompiler: RuleCompiler` definitions (in `installFailureRollsBackWithOneReload` and `restoreFailureDuringRollbackSurfacesRollbackFailed`) currently read:
 
@@ -510,12 +510,12 @@ Change both occurrences to:
         }
 ```
 
-- [ ] **Step 8: Run the full test target to verify everything compiles and passes**
+- [x] **Step 8: Run the full test target to verify everything compiles and passes**
 
 Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination "id=$(Scripts/find-simulator-udid.sh)" test`
 Expected: PASS (all suites — this is a protocol change, confirm nothing else references the old signature).
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add ADBLX/Filtering/Compilation/RuleCompiler.swift ADBLX/Filtering/Models/CompiledRuleSet.swift ADBLX/Filtering/Pipeline/FilterPipeline.swift ADBLXTests/Filtering/FilteringModelsTests.swift ADBLXTests/Filtering/RulePartitionerTests.swift ADBLXTests/Filtering/Updates/UpdateCoordinatorTests.swift
