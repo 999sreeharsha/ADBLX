@@ -43,7 +43,7 @@ struct UpdateCoordinatorTests {
             pipeline: pipeline,
             store: store,
             reloader: ReloadCoordinator(),
-            adsExtensionIdentifier: adsExtensionIdentifier
+            extensionIdentifiers: groupExtensionIdentifiers
         )
     }
 
