@@ -30,6 +30,9 @@ Baseline: xcodegen generate + xcodebuild test succeeded (all suites) before any 
 ## Session 8: Task 10
 - [x] Task 10: UpdateCoordinator installs one GroupComposition per group (commit df775f8, review clean — removes Task 9's temporary bridge; UpdateCoordinator.init now takes extensionIdentifiers: GroupExtensionIdentifiers instead of adsExtensionIdentifier: String, run() downloads/verifies per group then composes+installs one GroupComposition per group. UpdateCoordinatorTests suite: 6/6 green.)
 
+## Session 9: Task 11
+- [x] Task 11: Delete the transitional FilterPipeline.install(filterID:source:...) adapter (commit f618d09, review clean — confirmed only FilterPipelineTests.swift still called the adapter (UpdateCoordinator already migrated in Task 10); rewrote the five affected tests onto GroupComposition/install(_:reloadStrategy:), dropped the now-redundant installCompositionDeferredReloadSkipsReloadCall per the plan's dedup note. Full suite green, 79 tests / 19 suites — FilterPipeline now has exactly one install method.)
+
 ## Minor findings log (from task reviews, roll up for final review)
 - Task 3: `JSONArrayCompositionService.compose` discards the underlying `JSONSerialization` error via `try?`, collapsing malformed-JSON and valid-non-array failures into one diagnostic-free case (CompositionService.swift:40). Matches brief verbatim; not a defect against this task.
 - Task 3: doc comment says "every `FilterSource` in a `GroupComposition`" but the signature takes a bare `[FilterSource]` — harmless forward-reference, imprecise phrasing (CompositionService.swift:20).

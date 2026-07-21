@@ -1684,7 +1684,7 @@ git commit -m "refactor: UpdateCoordinator downloads, composes, and installs one
 
 By this point `UpdateCoordinator` (Task 10) no longer calls the transitional adapter — it builds `GroupComposition` directly. `FilterPipelineTests` is the last caller.
 
-- [ ] **Step 1: Confirm the adapter has no other callers**
+- [x] **Step 1: Confirm the adapter has no other callers**
 
 ```bash
 grep -rn "\.install(filterID:" /Users/sreeharshag/Work/ADBLX/ADBLX/ /Users/sreeharshag/Work/ADBLX/ADBLXTests/
@@ -1692,7 +1692,7 @@ grep -rn "\.install(filterID:" /Users/sreeharshag/Work/ADBLX/ADBLX/ /Users/sreeh
 
 Expected output: only hits inside `ADBLXTests/Filtering/FilterPipelineTests.swift` (the four tests rewritten below). If `UpdateCoordinator.swift` shows up here, stop — Task 10 wasn't fully applied; fix that first.
 
-- [ ] **Step 2: Rewrite the four FilterPipelineTests that use the adapter**
+- [x] **Step 2: Rewrite the four FilterPipelineTests that use the adapter**
 
 In `ADBLXTests/Filtering/FilterPipelineTests.swift`, replace `throwsOnInvalidSource`, `deferredReloadSkipsReloadCall`, `installingSecondFilterAccumulatesMetadata`, and `reinstallingSameFilterIDReplacesEntry`, and `installRecordsPassedVersion` with:
 
@@ -1786,12 +1786,12 @@ In `ADBLXTests/Filtering/FilterPipelineTests.swift`, replace `throwsOnInvalidSou
 
 (Note: `installComposesMultipleSourcesIntoOneWrite` and `installCompositionDeferredReloadSkipsReloadCall` from Task 7 already cover multi-source composition and deferred reload via the new API directly — `deferredReloadSkipsReloadCall` above is now redundant with `installCompositionDeferredReloadSkipsReloadCall`; delete `installCompositionDeferredReloadSkipsReloadCall` from Task 7 to avoid duplicate coverage, keeping the single `deferredReloadSkipsReloadCall` name for continuity with Sprint 1/2's test naming.)
 
-- [ ] **Step 3: Run tests to verify they fail (adapter still present, but tests now call install(_:reloadStrategy:) exclusively — this step just confirms no leftover reference to the old signature causes a silent pass)**
+- [x] **Step 3: Run tests to verify they fail (adapter still present, but tests now call install(_:reloadStrategy:) exclusively — this step just confirms no leftover reference to the old signature causes a silent pass)**
 
 Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination "id=$(Scripts/find-simulator-udid.sh)" -only-testing:ADBLXTests/FilterPipelineTests test`
 Expected: PASS (the adapter still exists at this point, but nothing calls it anymore — this is expected to already pass; the real proof of "deleted" comes in Step 5).
 
-- [ ] **Step 4: Delete the transitional adapter**
+- [x] **Step 4: Delete the transitional adapter**
 
 In `ADBLX/Filtering/Pipeline/FilterPipeline.swift`, remove this entire method:
 
@@ -1816,12 +1816,12 @@ In `ADBLX/Filtering/Pipeline/FilterPipeline.swift`, remove this entire method:
     }
 ```
 
-- [ ] **Step 5: Run the full test target to verify everything still compiles and passes with the adapter gone**
+- [x] **Step 5: Run the full test target to verify everything still compiles and passes with the adapter gone**
 
 Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination "id=$(Scripts/find-simulator-udid.sh)" test`
 Expected: PASS (all suites) — this is the proof: the whole target compiles with only one `install` method on `FilterPipeline`.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add ADBLX/Filtering/Pipeline/FilterPipeline.swift ADBLXTests/Filtering/FilterPipelineTests.swift
