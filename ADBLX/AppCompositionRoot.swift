@@ -23,4 +23,25 @@ enum AppCompositionRoot {
             reloader: ReloadCoordinator()
         )
     }
+
+    /// Holds every UI-facing service the app's screens depend on. Screens never
+    /// construct services themselves — they receive them from here (or, in tests,
+    /// construct their own mocks directly). Real implementations replace the
+    /// mocks returned by makeMockUIDependencies() in a later sprint; ViewModels
+    /// and Views do not change when that happens (Sprint 4 spec §5).
+    struct UIDependencies {
+        let homeService: HomeService
+        let protectionService: ProtectionService
+        let subscriptionService: SubscriptionService
+        let settingsService: SettingsService
+    }
+
+    static func makeMockUIDependencies() -> UIDependencies {
+        UIDependencies(
+            homeService: MockHomeService(),
+            protectionService: MockProtectionService(),
+            subscriptionService: MockSubscriptionService(),
+            settingsService: MockSettingsService()
+        )
+    }
 }
