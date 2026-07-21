@@ -33,6 +33,11 @@ Baseline: xcodegen generate + xcodebuild test succeeded (all suites) before any 
 ## Session 9: Task 11
 - [x] Task 11: Delete the transitional FilterPipeline.install(filterID:source:...) adapter (commit f618d09, review clean — confirmed only FilterPipelineTests.swift still called the adapter (UpdateCoordinator already migrated in Task 10); rewrote the five affected tests onto GroupComposition/install(_:reloadStrategy:), dropped the now-redundant installCompositionDeferredReloadSkipsReloadCall per the plan's dedup note. Full suite green, 79 tests / 19 suites — FilterPipeline now has exactly one install method.)
 
+## Session 10: Task 12 — Sprint 3A complete
+- [x] Task 12: Multi-group UpdateCoordinator integration tests (commit 77e1094 — both acceptance-criteria tests passed on first run with no production-code changes needed, confirming Tasks 1-11 were implemented correctly: `manifestAcrossAllGroupsInstallsEachGroupOnce` (ordered, hardcoded-literal reload-identifier assertion per the ABORT review amendment — not Set equality) and `multiGroupPartialFailureRollsBackEntireBatch` (Ads+Privacy succeed and write real content before Annoyances fails, proving rollback undoes the whole batch, not just the failing group). Post-Sprint Checklist greps clean (no `unsupportedGroup`/`groupConflict`/`PassthroughAdsPartitioner`/`sourceFilterID`/`func install(filterID:` hits outside an expected test-name reference). Full suite green: 83 unit tests / 19 suites + 6 UI tests.)
+
+Sprint 3A (all 12 tasks) is complete on branch `worktree-sprint3a-group-composition`. Ready for `superpowers:finishing-a-development-branch`.
+
 ## Minor findings log (from task reviews, roll up for final review)
 - Task 3: `JSONArrayCompositionService.compose` discards the underlying `JSONSerialization` error via `try?`, collapsing malformed-JSON and valid-non-array failures into one diagnostic-free case (CompositionService.swift:40). Matches brief verbatim; not a defect against this task.
 - Task 3: doc comment says "every `FilterSource` in a `GroupComposition`" but the signature takes a bare `[FilterSource]` — harmless forward-reference, imprecise phrasing (CompositionService.swift:20).

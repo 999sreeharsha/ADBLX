@@ -1840,7 +1840,7 @@ git commit -m "refactor: delete transitional FilterPipeline.install(filterID:sou
 
 > Amended after an ABORT review of this plan: the original single test used `Set` equality on reload identifiers, which cannot detect a transposed group→identifier mapping (e.g. Annoyances and Regional's bundle IDs swapped in `GroupExtensionIdentifiers`) because all four identifiers would still appear in the set regardless of which group they got paired with. It also had no coverage of a partial-failure rollback across multiple groups — Sprint 2's inherited rollback test only ever had one group to fail. Both gaps are closed below.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Append to `UpdateCoordinatorTests`:
 
@@ -2038,21 +2038,21 @@ Append to `UpdateCoordinatorTests`:
     }
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination "id=$(Scripts/find-simulator-udid.sh)" -only-testing:ADBLXTests/UpdateCoordinatorTests/manifestAcrossAllGroupsInstallsEachGroupOnce -only-testing:ADBLXTests/UpdateCoordinatorTests/multiGroupPartialFailureRollsBackEntireBatch test`
 Expected: FAIL if any earlier task's behavior is incomplete (e.g. only `.ads` gets installed, fewer than 4 reload results, the reload order doesn't match manifest order, or a partial-batch failure doesn't roll back every group) — if every prior task was implemented correctly, both may already PASS on first run; that's fine, they're still the required proof-of-acceptance tests and must be committed either way. If either fails, the failure message will point at which group didn't get installed/reloaded/rolled-back correctly.
 
-- [ ] **Step 3: If either failed, fix the gap; otherwise proceed**
+- [x] **Step 3: If either failed, fix the gap; otherwise proceed**
 
 No new production code should be needed if Tasks 1-11 were implemented as specified — both tests exercise existing code paths, not new ones. If `manifestAcrossAllGroupsInstallsEachGroupOnce` fails, re-check `UpdateCoordinator.run()`'s grouping/reload logic against Task 10's implementation. If `multiGroupPartialFailureRollsBackEntireBatch` fails, re-check that `store.snapshotForRollback()` is called before the per-group install loop (not inside it) and that `store.restore(snapshot)` runs unconditionally in the `catch` block, both per Task 10's implementation.
 
-- [ ] **Step 4: Run the full test target one final time**
+- [x] **Step 4: Run the full test target one final time**
 
 Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination "id=$(Scripts/find-simulator-udid.sh)" test`
 Expected: PASS (all suites) — this is Sprint 3A's final green build.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add ADBLXTests/Filtering/Updates/UpdateCoordinatorTests.swift
@@ -2063,9 +2063,9 @@ git commit -m "test: multi-group UpdateCoordinator integration — group/identif
 
 ## Post-Sprint Checklist
 
-- [ ] `grep -rn "unsupportedGroup\|groupConflict\|PassthroughAdsPartitioner\|sourceFilterID" ADBLX/ ADBLXTests/` returns no results.
-- [ ] `grep -rn "func install(filterID:" ADBLX/` returns no results (only `install(_ composition:reloadStrategy:)` remains).
-- [ ] Full suite green: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination "id=$(Scripts/find-simulator-udid.sh)" test`
+- [x] `grep -rn "unsupportedGroup\|groupConflict\|PassthroughAdsPartitioner\|sourceFilterID" ADBLX/ ADBLXTests/` returns no results.
+- [x] `grep -rn "func install(filterID:" ADBLX/` returns no results (only `install(_ composition:reloadStrategy:)` remains).
+- [x] Full suite green: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination "id=$(Scripts/find-simulator-udid.sh)" test`
 
 ---
 
