@@ -310,4 +310,196 @@ struct UpdateCoordinatorTests {
         try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("installed_filters.json"))
         try? FileManager.default.removeItem(at: try await store.directoryURL(.compiled).deletingLastPathComponent().appendingPathComponent("Previous"))
     }
+
+    @Test("manifest spanning all four groups installs each group once and reloads each affected extension once")
+    func manifestAcrossAllGroupsInstallsEachGroupOnce() async throws {
+        let store = FilterStore(appGroupIdentifier: AppGroup.identifier)
+        let metadataDir = try await store.directoryURL(.metadata)
+        let compiledDir = try await store.directoryURL(.compiled)
+        for filename in ["manifest.json", "installed_filters.json"] {
+            try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent(filename))
+        }
+        for filename in ["Ads.json", "Privacy.json", "Annoyances.json", "Regional.json"] {
+            try? FileManager.default.removeItem(at: compiledDir.appendingPathComponent(filename))
+        }
+
+        let privacyURL = URL(string: "https://example.com/easyprivacy.txt")!
+        let annoyancesURL = URL(string: "https://example.com/fanboy-annoyances.txt")!
+        let regionalURL = URL(string: "https://example.com/regional-fr.txt")!
+        let ruleJSON = filterSourceJSON()
+
+        let entries = [
+            manifestEntry(checksum: Checksum.sha256Hex(of: ruleJSON)),
+            FilterManifest.Entry(
+                id: "easyprivacy", name: "EasyPrivacy", group: .privacy, sourceURL: privacyURL,
+                version: "2026-07-19", checksumSHA256: Checksum.sha256Hex(of: ruleJSON), ruleCount: 1,
+                enabledByDefault: true, premium: false
+            ),
+            FilterManifest.Entry(
+                id: "fanboy-annoyances", name: "Fanboy Annoyances", group: .annoyances, sourceURL: annoyancesURL,
+                version: "2026-07-19", checksumSHA256: Checksum.sha256Hex(of: ruleJSON), ruleCount: 1,
+                enabledByDefault: true, premium: false
+            ),
+            FilterManifest.Entry(
+                id: "regional-fr", name: "Regional FR", group: .regional, sourceURL: regionalURL,
+                version: "2026-07-19", checksumSHA256: Checksum.sha256Hex(of: ruleJSON), ruleCount: 1,
+                enabledByDefault: true, premium: false
+            ),
+        ]
+        let manifest = FilterManifest(manifestVersion: "1", entries: entries)
+        let manifestData = try JSONEncoder().encode(manifest)
+        let manifestResponse = HTTPURLResponse(url: manifestEndpoint, statusCode: 200, httpVersion: nil, headerFields: nil)!
+        let okResponse = { (url: URL) in HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)! }
+
+        let session = MockHTTPSession(responses: [
+            manifestEndpoint: .success((manifestData, manifestResponse)),
+            filterSourceURL: .success((ruleJSON, okResponse(filterSourceURL))),
+            privacyURL: .success((ruleJSON, okResponse(privacyURL))),
+            annoyancesURL: .success((ruleJSON, okResponse(annoyancesURL))),
+            regionalURL: .success((ruleJSON, okResponse(regionalURL))),
+        ])
+        let pipeline = FilterPipeline(
+            validator: FilterValidator(), compiler: PassthroughRuleCompiler(),
+            compositionService: JSONArrayCompositionService(),
+            partitioner: GroupPartitioner(extensionIdentifiers: groupExtensionIdentifiers),
+            store: store, writer: AtomicRuleWriter(), reloader: ReloadCoordinator()
+        )
+        let coordinator = UpdateCoordinator(
+            manifestClient: ManifestClient(session: session, endpoint: manifestEndpoint),
+            manifestStore: ManifestStore(filterStore: store),
+            downloadClient: FilterDownloadClient(session: session),
+            pipeline: pipeline,
+            store: store,
+            reloader: ReloadCoordinator(),
+            extensionIdentifiers: groupExtensionIdentifiers
+        )
+
+        let result = try await coordinator.run()
+
+        guard case .updated(let installedIDs, let reloadResults) = result else {
+            Issue.record("expected .updated, got \(result)")
+            return
+        }
+        #expect(Set(installedIDs) == ["easylist", "easyprivacy", "fanboy-annoyances", "regional-fr"])
+        // Ordered, hardcoded-literal comparison — not a Set, and not built from the
+        // `groupExtensionIdentifiers` constant used to construct the SUT above. A Set
+        // comparison (or reusing the same constant on both sides) cannot catch a
+        // transposed group→identifier mapping: e.g. if `annoyances` and `regional`'s
+        // strings were swapped in `GroupExtensionIdentifiers`, all four identifiers would
+        // still appear, and an assertion built from the same swapped constant would agree
+        // with itself. `UpdateCoordinator.run()` builds `affectedExtensionIDs` via
+        // `installGroups.map { extensionIdentifiers[$0.group] }`, and `installGroups`
+        // preserves manifest order (Ads, Privacy, Annoyances, Regional — see the `entries`
+        // array above), so `reloadResults` — which `ReloadCoordinator.reload(extensionIdentifiers:)`
+        // produces in the same order it's given — must match this exact sequence.
+        #expect(reloadResults.map(\.extensionIdentifier) == [
+            "com.ADBLX.ADBLX.AdsBlocker",
+            "com.ADBLX.ADBLX.PrivacyBlocker",
+            "com.ADBLX.ADBLX.AnnoyancesBlocker",
+            "com.ADBLX.ADBLX.RegionalBlocker",
+        ])
+
+        for filename in ["Ads.json", "Privacy.json", "Annoyances.json", "Regional.json"] {
+            #expect(FileManager.default.fileExists(atPath: compiledDir.appendingPathComponent(filename).path))
+        }
+
+        for filename in ["manifest.json", "installed_filters.json"] {
+            try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent(filename))
+        }
+        for filename in ["Ads.json", "Privacy.json", "Annoyances.json", "Regional.json"] {
+            try? FileManager.default.removeItem(at: compiledDir.appendingPathComponent(filename))
+        }
+    }
+
+    @Test("failure in one group of a multi-group batch rolls back every group's writes, with a reload planned for every originally-affected group")
+    func multiGroupPartialFailureRollsBackEntireBatch() async throws {
+        // Fails compilation only for .annoyances — Ads and Privacy (earlier in
+        // UpdateCoordinator's per-group loop, per manifest order) must succeed and write
+        // real content BEFORE Annoyances throws, so this proves rollback undoes every
+        // group's writes in the batch, not just the one that failed. Sprint 2's inherited
+        // rollback test only ever had one group to fail — this is the first test of
+        // Sprint 3A's actual new failure surface: a partial failure partway through a
+        // multi-group batch.
+        struct FailsForGroupCompiler: RuleCompiler {
+            let failingGroup: FilterGroup
+            nonisolated func compile(source: Data, group: FilterGroup) async throws -> CompiledRuleSet {
+                guard group != failingGroup else { throw RuleCompilerError.invalidSource }
+                return try await PassthroughRuleCompiler().compile(source: source, group: group)
+            }
+        }
+
+        let store = FilterStore(appGroupIdentifier: AppGroup.identifier)
+        let metadataDir = try await store.directoryURL(.metadata)
+        let compiledDir = try await store.directoryURL(.compiled)
+        try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("manifest.json"))
+
+        let priorAds = Data("[\"prior-ads\"]".utf8)
+        let priorPrivacy = Data("[\"prior-privacy\"]".utf8)
+        try priorAds.write(to: compiledDir.appendingPathComponent("Ads.json"), options: .atomic)
+        try priorPrivacy.write(to: compiledDir.appendingPathComponent("Privacy.json"), options: .atomic)
+        try Data("[]".utf8).write(to: metadataDir.appendingPathComponent("installed_filters.json"), options: .atomic)
+
+        let privacyURL = URL(string: "https://example.com/easyprivacy-partial.txt")!
+        let annoyancesURL = URL(string: "https://example.com/fanboy-annoyances-partial.txt")!
+        let ruleJSON = filterSourceJSON()
+
+        let entries = [
+            manifestEntry(checksum: Checksum.sha256Hex(of: ruleJSON)),
+            FilterManifest.Entry(
+                id: "easyprivacy", name: "EasyPrivacy", group: .privacy, sourceURL: privacyURL,
+                version: "2026-07-19", checksumSHA256: Checksum.sha256Hex(of: ruleJSON), ruleCount: 1,
+                enabledByDefault: true, premium: false
+            ),
+            FilterManifest.Entry(
+                id: "fanboy-annoyances", name: "Fanboy Annoyances", group: .annoyances, sourceURL: annoyancesURL,
+                version: "2026-07-19", checksumSHA256: Checksum.sha256Hex(of: ruleJSON), ruleCount: 1,
+                enabledByDefault: true, premium: false
+            ),
+        ]
+        let manifest = FilterManifest(manifestVersion: "1", entries: entries)
+        let manifestData = try JSONEncoder().encode(manifest)
+        let manifestResponse = HTTPURLResponse(url: manifestEndpoint, statusCode: 200, httpVersion: nil, headerFields: nil)!
+        let okResponse = { (url: URL) in HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)! }
+
+        let session = MockHTTPSession(responses: [
+            manifestEndpoint: .success((manifestData, manifestResponse)),
+            filterSourceURL: .success((ruleJSON, okResponse(filterSourceURL))),
+            privacyURL: .success((ruleJSON, okResponse(privacyURL))),
+            annoyancesURL: .success((ruleJSON, okResponse(annoyancesURL))),
+        ])
+        let pipeline = FilterPipeline(
+            validator: FilterValidator(), compiler: FailsForGroupCompiler(failingGroup: .annoyances),
+            compositionService: JSONArrayCompositionService(),
+            partitioner: GroupPartitioner(extensionIdentifiers: groupExtensionIdentifiers),
+            store: store, writer: AtomicRuleWriter(), reloader: ReloadCoordinator()
+        )
+        let coordinator = UpdateCoordinator(
+            manifestClient: ManifestClient(session: session, endpoint: manifestEndpoint),
+            manifestStore: ManifestStore(filterStore: store),
+            downloadClient: FilterDownloadClient(session: session),
+            pipeline: pipeline,
+            store: store,
+            reloader: ReloadCoordinator(),
+            extensionIdentifiers: groupExtensionIdentifiers
+        )
+
+        let result = try await coordinator.run()
+
+        guard case .rolledBack = result else {
+            Issue.record("expected .rolledBack, got \(result)")
+            return
+        }
+
+        // Ads and Privacy both installed successfully (writing real compiled content)
+        // before Annoyances threw — rollback must restore ALL THREE to their prior
+        // state, not just undo the group that failed.
+        #expect(try Data(contentsOf: compiledDir.appendingPathComponent("Ads.json")) == priorAds)
+        #expect(try Data(contentsOf: compiledDir.appendingPathComponent("Privacy.json")) == priorPrivacy)
+        let installedFiltersData = try Data(contentsOf: metadataDir.appendingPathComponent("installed_filters.json"))
+        #expect(installedFiltersData == Data("[]".utf8))
+
+        try? FileManager.default.removeItem(at: compiledDir.appendingPathComponent("Ads.json"))
+        try? FileManager.default.removeItem(at: compiledDir.appendingPathComponent("Privacy.json"))
+        try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("installed_filters.json"))
+    }
 }
