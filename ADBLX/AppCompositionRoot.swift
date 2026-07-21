@@ -30,9 +30,10 @@ enum AppCompositionRoot {
     /// mocks returned by makeMockUIDependencies() in a later sprint; ViewModels
     /// and Views do not change when that happens (Sprint 4 spec §5).
     struct UIDependencies {
+        let homeService: HomeService
     }
 
     static func makeMockUIDependencies() -> UIDependencies {
-        UIDependencies()
+        UIDependencies(homeService: MockHomeService())
     }
 }

@@ -18,13 +18,18 @@ struct RootTabView: View {
 
     @ViewBuilder
     private func placeholder(for tab: AppTab) -> some View {
-        VStack(spacing: DesignSpacing.stackGap) {
-            Text(tab.title)
-                .font(DesignTypography.headlineMedium)
-                .foregroundStyle(DesignColors.onBackground)
+        switch tab {
+        case .home:
+            HomeView(viewModel: HomeViewModel(service: dependencies.homeService))
+        default:
+            VStack(spacing: DesignSpacing.stackGap) {
+                Text(tab.title)
+                    .font(DesignTypography.headlineMedium)
+                    .foregroundStyle(DesignColors.onBackground)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(DesignColors.background)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(DesignColors.background)
     }
 }
 
