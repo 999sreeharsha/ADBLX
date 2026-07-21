@@ -18,6 +18,7 @@
 - DNS Protection is P1: screen, navigation, copy, and premium messaging only — no `NEPacketTunnelProvider`, no VPN configuration, no backend (spec §3).
 - Design values come from the Stitch project `projects/16038318836427840964` ("Serene Shield" theme) via the Sprint 4A `DesignSystem` module — never raw literals in a View file.
 - Screen content/copy below is grounded in the actual Stitch screens (fetched during planning) where available, and in the PRD's functional requirements (FR-07 through FR-11) where Stitch content wasn't retrievable during planning due to a transient fetch failure — those cases are called out per task, with a step for the implementer to cross-check against the live Stitch screen during simulator validation.
+- **Rule-count granularity must match what the backend can actually report** (`docs/gotchas.md`: `InstalledFilter.ruleCount` is group-level only — `CompositionService`/`FilterPipeline` write the same aggregate count into every source in a group; there is no per-source/per-list count today). `ProtectionCategory.ruleCount` (one count per `FilterCategoryID`, i.e. per group) matches this and is kept. `FilterListEntry` (one entry per source *within* a group, e.g. "EasyList" inside Ads) does **not** get a `ruleCount` field — modeling an independent count per list would fabricate data the backend cannot produce, repeating the exact gap the gotcha documents. See Task 2 for the corrected shape.
 
 ---
 
@@ -400,9 +401,11 @@ AppCompositionRoot.UIDependencies and the Protection tab."
 
 **Interfaces:**
 - Consumes: `Card` (Sprint 4A); `ProtectionService`, `ProtectionViewModel`, `FilterCategoryID`, `ProtectionCategory` (Task 1 of this plan).
-- Produces: `FilterListEntry` (struct: `id: String`, `name: String`, `category: FilterCategoryID`, `version: String`, `ruleCount: Int`, `isEnabled: Bool`, `isPremium: Bool` — the per-list detail one level below `ProtectionCategory`); extends `ProtectionStatus` with `filterLists: [FilterListEntry]`; extends `ProtectionService` with `func setFilterList(_ id: String, enabled: Bool) async`; `AdvancedFilterListsView`.
+- Produces: `FilterListEntry` (struct: `id: String`, `name: String`, `category: FilterCategoryID`, `version: String`, `isEnabled: Bool`, `isPremium: Bool` — the per-list detail one level below `ProtectionCategory`, deliberately with **no `ruleCount` field**); extends `ProtectionStatus` with `filterLists: [FilterListEntry]`; extends `ProtectionService` with `func setFilterList(_ id: String, enabled: Bool) async`; `AdvancedFilterListsView`.
 
-Content matches FR-09 ("Filters screen renders catalog dynamically from manifest: groups, versions, rule-count meter per extension") and PRD §6.2's manifest fields (`id`, `name`, `group`, `version`, `ruleCount`, `premium`) — mirrored here as a UI-facing DTO, not the backend's `FilterManifest.Entry` directly. This is the screen where a user sees individual lists (e.g. "EasyList", "EasyPrivacy", "AdGuard Base") within each category, each independently toggleable, with premium lists showing a lock/badge for free users.
+Content matches FR-09 ("Filters screen renders catalog dynamically from manifest: groups, versions, rule-count meter per extension") and PRD §6.2's manifest fields (`id`, `name`, `group`, `version`, `premium`) — mirrored here as a UI-facing DTO, not the backend's `FilterManifest.Entry` directly. This is the screen where a user sees individual lists (e.g. "EasyList", "EasyPrivacy", "AdGuard Base") within each category, each independently toggleable, with premium lists showing a lock/badge for free users.
+
+**Per the Global Constraints' rule-count note:** `FilterListEntry` has no `ruleCount` — `CompositionService`/`FilterPipeline` only ever compute a group-level aggregate (`docs/gotchas.md`), so there is no real per-list count to show here. The rule-count meter FR-09 calls for lives one level up, on `ProtectionCategory` (Task 1), which is genuinely group-level data the backend can produce today. `AdvancedFilterListsView` shows each list's name, version, premium status, and toggle — not a count.
 
 - [ ] **Step 1: Write the failing test for the extended `ProtectionViewModel`**
 
@@ -416,7 +419,7 @@ struct ProtectionViewModelFilterListTests {
             isSafariExtensionEnabled: true,
             categories: [],
             filterLists: [
-                FilterListEntry(id: "easylist", name: "EasyList", category: .ads, version: "2026-07-15", ruleCount: 62_000, isEnabled: true, isPremium: false),
+                FilterListEntry(id: "easylist", name: "EasyList", category: .ads, version: "2026-07-15", isEnabled: true, isPremium: false),
             ]
         )
         let viewModel = ProtectionViewModel(service: StubFilterListService(statusToReturn: expected))
@@ -432,7 +435,7 @@ struct ProtectionViewModelFilterListTests {
             isSafariExtensionEnabled: true,
             categories: [],
             filterLists: [
-                FilterListEntry(id: "easylist", name: "EasyList", category: .ads, version: "2026-07-15", ruleCount: 62_000, isEnabled: true, isPremium: false),
+                FilterListEntry(id: "easylist", name: "EasyList", category: .ads, version: "2026-07-15", isEnabled: true, isPremium: false),
             ]
         )
         let service = StubFilterListService(statusToReturn: initial)
@@ -465,12 +468,15 @@ Expected: FAIL — `FilterListEntry` doesn't exist; `ProtectionStatus` has no `f
 // Modify: ADBLX/Features/Protection/ProtectionService.swift
 // Add below FilterCategoryID:
 
+/// No ruleCount: CompositionService/FilterPipeline only ever compute a
+/// group-level aggregate (docs/gotchas.md) — there is no real per-source
+/// count to show at this granularity. The rule-count meter FR-09 calls for
+/// lives on ProtectionCategory (Task 1), which is genuinely group-level.
 struct FilterListEntry: Equatable, Identifiable {
     var id: String
     let name: String
     let category: FilterCategoryID
     let version: String
-    let ruleCount: Int
     var isEnabled: Bool
     let isPremium: Bool
 }
@@ -492,10 +498,10 @@ protocol ProtectionService: Sendable {
 // Extend MockProtectionService's stored status literal (in its `status` property
 // initializer) by adding a `filterLists:` argument after `categories:`:
 //     filterLists: [
-//         FilterListEntry(id: "easylist", name: "EasyList", category: .ads, version: "2026-07-15", ruleCount: 62_000, isEnabled: true, isPremium: false),
-//         FilterListEntry(id: "easyprivacy", name: "EasyPrivacy", category: .privacy, version: "2026-07-15", ruleCount: 48_500, isEnabled: true, isPremium: false),
-//         FilterListEntry(id: "fanboy-annoyances", name: "Fanboy's Annoyances", category: .annoyances, version: "2026-07-10", ruleCount: 21_000, isEnabled: false, isPremium: true),
-//         FilterListEntry(id: "regional-in", name: "Regional: India", category: .regional, version: "2026-07-01", ruleCount: 10_542, isEnabled: false, isPremium: true),
+//         FilterListEntry(id: "easylist", name: "EasyList", category: .ads, version: "2026-07-15", isEnabled: true, isPremium: false),
+//         FilterListEntry(id: "easyprivacy", name: "EasyPrivacy", category: .privacy, version: "2026-07-15", isEnabled: true, isPremium: false),
+//         FilterListEntry(id: "fanboy-annoyances", name: "Fanboy's Annoyances", category: .annoyances, version: "2026-07-10", isEnabled: false, isPremium: true),
+//         FilterListEntry(id: "regional-in", name: "Regional: India", category: .regional, version: "2026-07-01", isEnabled: false, isPremium: true),
 //     ]
 // Add the matching method:
 //     func setFilterList(_ id: String, enabled: Bool) async {
@@ -576,7 +582,7 @@ struct AdvancedFilterListsView: View {
                             .foregroundStyle(DesignColors.tertiary)
                     }
                 }
-                Text("v\(list.version) · \(list.ruleCount) rules")
+                Text("v\(list.version)")
                     .font(DesignTypography.bodySmall)
                     .foregroundStyle(DesignColors.onSurfaceVariant)
             }
@@ -622,7 +628,7 @@ NavigationLink("Advanced Filter Lists") {
 Run: `xcodebuild build -scheme ADBLX -destination 'platform=iOS Simulator,name=iPhone 17'`
 Expected: BUILD SUCCEEDED, zero warnings.
 
-In Simulator: tap "Advanced Filter Lists" from Safari Protection; confirm lists group by category, premium lists show a lock icon, and each list's toggle is independent. Cross-check against the live Stitch screen (`projects/16038318836427840964/screens/c5ed6d008dbd439c9b961e42ba56a5a0`, title "Advanced Filter Lists") since this task's content was sourced from the PRD manifest schema rather than a direct screen fetch during planning. Verify Dynamic Type, Dark Mode, and VoiceOver (each row announces name, premium status if applicable, version/rule count, and on/off state).
+In Simulator: tap "Advanced Filter Lists" from Safari Protection; confirm lists group by category, premium lists show a lock icon, and each list's toggle is independent. Cross-check against the live Stitch screen (`projects/16038318836427840964/screens/c5ed6d008dbd439c9b961e42ba56a5a0`, title "Advanced Filter Lists") since this task's content was sourced from the PRD manifest schema rather than a direct screen fetch during planning. Verify Dynamic Type, Dark Mode, and VoiceOver (each row announces name, premium status if applicable, version, and on/off state).
 
 - [ ] **Step 9: Run the full test suite to confirm no regressions**
 
@@ -2025,3 +2031,4 @@ sprint."
 - **Spec coverage:** §3 IA — all remaining screens (Safari Protection, Advanced Filter Lists, DNS Protection, Premium, Settings, About, Update Progress, Onboarding) covered across Tasks 1–8, completing the frozen IA alongside Sprint 4A's Home. §3 P0/P1 split — DNS Protection (Task 3) explicitly has no ViewModel/service/backend, matching the P1 definition-of-done exactly. §4 design system — every task styles exclusively through Sprint 4A's `DesignSystem` tokens; new components (`ToggleRow`, `ComingSoonState`, `PremiumBadge`, `SettingsRow`) follow the "grown organically" rule (spec §7), each introduced in the first task that needs it. §5 presentation architecture — every P0 screen (Tasks 1, 2, 4, 5) has its own Service protocol + mock; About and DNS Protection correctly have neither, since they're static (spec §5 doesn't require a service where there's nothing to fetch/mutate). §6 definition of done — every screen task's build/run step explicitly checks Dynamic Type, Dark Mode, VoiceOver, and navigation. §7 commit sequence — this plan's 8 tasks map onto the spec's Commits 4 (Safari Protection) through 12 (Onboarding), with Update Progress correctly framed as infrastructure (Task 7) rather than a screen. §9 out of scope — no task wires real `FilterPipeline`/`UpdateCoordinator`/StoreKit/tunnel; `UpdateProgressModel.start()` explicitly notes its canned sequence is a stand-in.
 - **Placeholder scan:** no TBD/TODO. Task 5 Step 6's note about `AboutView` not existing yet until Task 6 is a genuine sequencing dependency (not a placeholder) — flagged explicitly with an instruction, not left implicit.
 - **Type consistency:** `ProtectionService`/`ProtectionViewModel`/`FilterCategoryID` introduced in Task 1 are extended (not redefined) in Task 2 — `ProtectionStatus` gains `filterLists` via modification, and the protocol gains `setFilterList` via modification, both shown as concrete diffs against Task 1's code rather than restated from scratch. `AppCompositionRoot.UIDependencies` is threaded through Tasks 1, 4, and 5 as a strictly additive struct (each task's Step shows the full updated struct so there's no drift between tasks). `SettingsRow`'s Interfaces-block signature (Task 5) initially stated a `destination: () -> Void` parameter that the Step 6 implementation and both call sites (Task 5's `SettingsView`, Task 6's usage note) never actually used — navigation is handled by the caller's `NavigationLink`, not by `SettingsRow`. Corrected the Interfaces block to `init(title: String, systemImage: String)` to match the real implementation.
+- **Post-ABORT-review correction (rule-count granularity):** an ABORT review of this plan flagged that `FilterListEntry.ruleCount: Int` (Task 2, per-source-within-a-group) fabricated data the backend cannot produce — `docs/gotchas.md` already documents that `CompositionService`/`FilterPipeline` only ever compute a group-level aggregate `InstalledFilter.ruleCount`, written identically into every source in a group, with no per-source count. This is the same gap Sprint 3A hit and documented; reintroducing it here via `FilterListEntry` would have been the identical bug one sprint later. Fixed by removing `ruleCount` from `FilterListEntry` entirely (Task 2's struct, both test literals, the mock's stored data, and the view's row text) — `AdvancedFilterListsView` now shows name/version/premium/toggle only, no count. `ProtectionCategory.ruleCount` (Task 1, per-group) is unaffected and correctly retained, since group-level aggregates are exactly what the backend can report today.
