@@ -1,6 +1,6 @@
 # Target Topology
 
-**Status:** current as of Sprint 2 (update pipeline complete). Living document — update in place as targets, build settings, or capabilities change. For the "why" behind these decisions, see the linked specs; this document covers only the "how it currently works."
+**Status:** current as of Sprint 3A (group composition complete). Living document — update in place as targets, build settings, or capabilities change. For the "why" behind these decisions, see the linked specs; this document covers only the "how it currently works."
 
 ## Build system
 
@@ -53,19 +53,30 @@ These identifiers are stable, long-standing Apple API surface, verified where po
 ADBLX/                          App source (synced folder)
     AppCompositionRoot.swift     Sole place that constructs a real FilterPipeline (DI, no singleton)
     ContentBlockerBootstrap.swift  Single delegation into FilterPipeline at launch
-    Filtering/                  Rule + update pipeline module — main app target ONLY (Sprint 1, Sprint 2)
+    Filtering/                  Rule + update pipeline module — main app target ONLY (Sprint 1-3A)
         README.md                Target-placement rules for this module
         Models/                  RuleStatistics, CompiledRuleSet, FilterManifest, FilterMetadata,
-                                  InstalledFilter, FilterGroup — all Codable/Equatable
+                                  InstalledFilter, FilterGroup, FilterSource, GroupComposition,
+                                  ComposedRules — all Codable/Equatable (the last three added Sprint 3A)
         Utilities/Checksum.swift  sha256Hex(of:) plus Sprint 2's verify(fileURL:against:) —
                                   now enforced by UpdateCoordinator before any downloaded
                                   filter reaches the App Group container
         Validation/FilterValidator.swift   Sanity checks: empty/oversized/non-UTF8/invalid-JSON
-        Compilation/RuleCompiler.swift     Protocol + PassthroughRuleCompiler stub (real compiler
-                                            gated on ADR-0001, GPL-3.0 licensing decision)
+        Compilation/
+            CompositionService.swift       Sprint 3A: protocol + JSONArrayCompositionService — merges
+                                            every FilterSource in a GroupComposition into one JSON
+                                            array (decode-concat-reencode, not raw byte concat) before
+                                            compilation; deterministic (.sortedKeys) output
+            RuleCompiler.swift              Protocol + PassthroughRuleCompiler stub (real compiler
+                                            gated on ADR-0001, GPL-3.0 licensing decision). Sprint 3A:
+                                            compile(source:group:) replaces compile(source:filterID:) —
+                                            compiles one group's already-composed rules, not one filter
         Deployment/
-            RulePartitioner.swift          Protocol + PassthroughAdsPartitioner (Ads-only this sprint,
-                                            150K-rule budget enforced)
+            RulePartitioner.swift          Sprint 3A: GroupExtensionIdentifiers (total FilterGroup →
+                                            bundle-ID mapping, exhaustive switch) + GroupPartitioner
+                                            replace PassthroughAdsPartitioner — one CompiledRuleSet
+                                            maps to exactly one group's PartitionedRules (not [_]).
+                                            150K-rule-per-extension budget enforced per group
             ReloadCoordinator.swift        Sole call site for SFContentBlockerManager; bounded
                                             timeout (default 10s) races an unstructured Task against
                                             the completion callback — see inline rationale
@@ -73,23 +84,33 @@ ADBLX/                          App source (synced folder)
             FilterStore.swift              Sole owner of the App Group filesystem layout (actor);
                                             Sprint 2 added snapshotForRollback()/restore(_:) via a
                                             transient Previous/ directory for batch rollback
-        Pipeline/FilterPipeline.swift       Actor orchestrating validate → compile → partition →
-                                            write → persist metadata → reload; returns PipelineResult.
-                                            Sprint 2 added version:/reloadStrategy: params (both
-                                            defaulted — Sprint 1 callers unaffected) and changed
-                                            installed_filters.json from overwrite to accumulate-by-id
-        Updates/                    Networked update pipeline — main app target ONLY (Sprint 2)
+        Pipeline/FilterPipeline.swift       Actor orchestrating validate → compose → compile →
+                                            partition → write → persist metadata → reload. Sprint 3A:
+                                            install(_ composition: GroupComposition, reloadStrategy:)
+                                            is the sole entry point — compiles/writes one
+                                            Compiled/<Group>.json per call from N composed FilterSources,
+                                            merging every source into installed_filters.json. The
+                                            Sprint 1/2 single-filter install(filterID:source:...)
+                                            adapter was deleted once UpdateCoordinator migrated (Task 11)
+        Updates/                    Networked update pipeline — main app target ONLY (Sprint 2-3A)
             HTTPSession.swift               Protocol seam over URLSession; MockHTTPSession test
                                             double lives here too (test-target-visible, main-target
                                             file) so later Updates/ tests can reuse it
             UpdatePlan.swift                UpdateAction/UpdatePlan/UpdatePlanner — pure diff of
-                                            manifest vs. installed filters, no I/O, no async
+                                            manifest vs. installed filters, no I/O, no async. Sprint 3A:
+                                            emits one .install(group:entries:) action per FilterGroup
+                                            (manifest order preserved) instead of one action per filter —
+                                            .unsupportedGroup/.groupConflict no longer exist
             ManifestStore.swift              Persists CachedManifest (manifest + ETag) via FilterStore
             ManifestClient.swift             Fetches manifest.json; ETag/If-None-Match/304 support
             FilterDownloadClient.swift       Downloads one filter's body to a temp file
-            UpdateCoordinator.swift          Top-level actor: fetch → plan → download-all →
-                                            verify-all → snapshot → install-all (deferred reload) →
-                                            commit → one reload, or roll back the batch on failure
+            UpdateCoordinator.swift          Top-level actor: fetch → plan (grouped) → download+verify
+                                            every group up front → snapshot → compose+install one
+                                            GroupComposition per group (deferred reload) → commit →
+                                            one reload per affected extension, or roll back the entire
+                                            batch on any failure. Sprint 3A: init takes
+                                            extensionIdentifiers: GroupExtensionIdentifiers, not a
+                                            single adsExtensionIdentifier: String
 ADBLXTests/                     Unit tests (synced folder), incl. ADBLXTests/Filtering/*
                                   and ADBLXTests/Filtering/Updates/*
 ADBLXUITests/                   UI tests (synced folder)
@@ -157,31 +178,45 @@ As of Sprint 1, **`FilterStore` (`ADBLX/Filtering/Storage/FilterStore.swift`) is
 
 **Sprint 2 blocking risk, not yet reachable:** `ContentBlockerBootstrap`'s unconditional reinstall-on-every-launch is still exactly the Sprint 1 behavior described above — nothing in Sprint 2 calls it differently, and nothing yet calls `UpdateCoordinator.run()` either, so the two paths never collide today. The moment a future launch path calls `UpdateCoordinator.run()` *in addition to* (not *instead of*) the bootstrap call, the sequence becomes: update installs a real filter → app relaunches → bootstrap unconditionally overwrites `Compiled/Ads.json`/`installed_filters.json` back to the bundled snapshot → the update is silently reverted. Whoever wires up the first real caller of `run()` must gate `installBundledSnapshotIfNeeded()` behind "no update has ever succeeded" (e.g. skip it if `ManifestStore.load()` returns non-nil) or remove the unconditional bootstrap call entirely.
 
-As of Sprint 2, `FilterStore` additionally exposes `snapshotForRollback()`/`restore(_:)` — copies `Compiled/`/`Metadata/` into a transient `Previous/` root before a batch update begins, and can replace current contents with that snapshot (including removing files created after the snapshot) if the batch fails partway. `UpdateCoordinator` (`ADBLX/Filtering/Updates/UpdateCoordinator.swift`) is the sole caller of both, and the sole actor orchestrating a full update transaction: fetch `manifest.json` (honoring ETag/304 via `ManifestClient`) → diff against `installed_filters.json` via `UpdatePlanner` → download every `.install` entry (`FilterDownloadClient`) → verify every download's checksum (`Checksum.verify`) before touching the App Group at all → snapshot → install each verified filter through `FilterPipeline.install(..., reloadStrategy: .deferred)` → commit the new manifest+ETag (`ManifestStore`) → exactly one `ReloadCoordinator.reload` across the affected extensions. Any failure after the snapshot triggers `restore(_:)`; if `restore` itself fails, `run()` returns `.rollbackFailed(originalReason:restoreError:)` rather than throwing — the `Previous/` snapshot is left on disk in that case rather than deleted, since `restore()` only removes it after both directory replacements succeed.
+As of Sprint 2, `FilterStore` additionally exposes `snapshotForRollback()`/`restore(_:)` — copies `Compiled/`/`Metadata/` into a transient `Previous/` root before a batch update begins, and can replace current contents with that snapshot (including removing files created after the snapshot) if the batch fails partway. `UpdateCoordinator` (`ADBLX/Filtering/Updates/UpdateCoordinator.swift`) is the sole caller of both, and the sole actor orchestrating a full update transaction: fetch `manifest.json` (honoring ETag/304 via `ManifestClient`) → diff against `installed_filters.json` via `UpdatePlanner`, grouped by `FilterGroup` (Sprint 3A) → download every group's entries and verify every download's checksum (`Checksum.verify`) before touching the App Group at all → snapshot once for the whole batch → compose and install one `GroupComposition` per affected group, one at a time, through `FilterPipeline.install(_:reloadStrategy: .deferred)` (keeps at most one group's decoded sources resident in memory) → commit the new manifest+ETag (`ManifestStore`) → exactly one `ReloadCoordinator.reload` across every affected extension, in the same group order the plan produced. Any failure after the snapshot — in any group, not just the first — triggers `restore(_:)` for the entire batch, undoing every group's writes, not only the failing one; if `restore` itself fails, `run()` returns `.rollbackFailed(originalReason:restoreError:)` rather than throwing — the `Previous/` snapshot is left on disk in that case rather than deleted, since `restore()` only removes it after both directory replacements succeed.
 
 `ReloadCoordinator` (`ADBLX/Filtering/Deployment/ReloadCoordinator.swift`) is now the **sole call site** for `SFContentBlockerManager.reloadContentBlocker(withIdentifier:)` in the main app — also grep-enforced and independently re-verified. It bounds every reload call with a timeout (default 10s): `SFContentBlockerManager`'s completion handler has no documented upper bound, and an extension that's never been enabled in Safari Settings can leave the callback hanging forever (this caused a multi-hour Sprint 0 debugging incident — see the bundle-ID-nesting issue below). The fix races the real callback against an *unstructured* `Task` timer, not a `TaskGroup` child (which would implicitly await the stuck callback anyway), guarded by a single-resume lock. **Known gap, accepted as-is:** no test currently forces the timeout branch to actually fire — the two existing tests both hit the fast-callback path. Closing this would need an injectable reload seam not in the current design; not a blocker for Sprint 1 or Sprint 2, tracked as future follow-up.
 
 ### Shared container contract
 
-Directory structure inside the App Group container, as actually implemented and exercised by `FilterStore`/`FilterPipeline`/`UpdateCoordinator` (Sprint 2 — this supersedes the pre-implementation contract sketch from Commit 4):
+Directory structure inside the App Group container, as actually implemented and exercised by `FilterStore`/`FilterPipeline`/`UpdateCoordinator` (Sprint 3A — this supersedes the pre-implementation contract sketch from Commit 4):
 
 ```
 group.com.ADBLX.shared/
 ├── Filters/       Raw/normalized filter source data (still unused — reserved for a future
-│                  normalize stage, not part of Sprint 1 or Sprint 2)
+│                  normalize stage, not part of any sprint yet)
 ├── Compiled/
-│   └── Ads.json           Partitioned, compiled JSON ready for ADBLXAdsBlocker to read
-│                           (filename convention: Compiled/<FilterGroup rawValue, capitalized>.json —
-│                           only Ads.json exists this sprint, one partition per FilterPipeline.install() call)
+│   ├── Ads.json           One partitioned, compiled JSON file per FilterGroup — filename
+│   ├── Privacy.json        convention: Compiled/<FilterGroup rawValue, capitalized>.json.
+│   ├── Annoyances.json      Only ADBLXAdsBlocker currently reads its file at runtime (see
+│   └── Regional.json        "Content Blocker request lifecycle" above); the other 3 groups'
+│                            files are written by FilterPipeline once their manifest entries
+│                            exist, but their extensions are still unmigrated bundle-only readers.
+│                            As of Sprint 3A, each file is the COMPOSITION of every FilterSource
+│                            in that group (e.g. Compiled/Ads.json may contain EasyList +
+│                            Peter Lowe's list merged into one JSON array), not one filter's
+│                            output — one write per FilterPipeline.install(_:reloadStrategy:) call
 ├── Metadata/
-│   ├── installed_filters.json   [InstalledFilter] — accumulated by id as of Sprint 2
-│   │                             (was single-entry overwrite in Sprint 1)
+│   ├── installed_filters.json   [InstalledFilter] — accumulated by id; one entry per source
+│   │                             filter (not per group), so a 2-source group composition still
+│   │                             produces 2 entries. Sprint 3A gotcha: InstalledFilter.ruleCount
+│   │                             is the group's aggregate compiled count, written identically
+│   │                             into every source's entry — CompositionService/ComposedRules
+│   │                             never tracked per-source counts, only a group-level total
 │   ├── manifest.json             CachedManifest (FilterManifest + ETag) — Sprint 2, via ManifestStore
 │   └── statistics.json          RuleStatistics — counts/durations/sizes only, never rule content
 └── Previous/      Transient rollback snapshot root (Compiled/, Metadata/ copies) — Sprint 2.
                     Only exists during an UpdateCoordinator batch; created by
                     snapshotForRollback(), consumed and deleted by a successful restore(_:).
-                    Left on disk (not deleted) if restore(_:) itself fails.
+                    Left on disk (not deleted) if restore(_:) itself fails. Sprint 3A: the
+                    snapshot covers the WHOLE multi-group batch, so a failure partway through
+                    (e.g. group 3 of 4 fails to compile) restores every group's files, not just
+                    the failing one's.
 ```
 
 All directories are created on demand by `FilterStore` (idempotent, no separate provisioning step). `Compiled/*.json` is written exclusively through `AtomicRuleWriter` (write-to-temp in the same directory → `fsync(F_FULLFSYNC)` → `rename(2)`), so `ADBLXAdsBlocker` never observes a partially-written file — on any failure mid-write, the previously-committed file is left completely untouched and the temp file is cleaned up. `Metadata/*.json` files go through `FilterStore.writeMetadata`, a simpler non-atomic write (small files, low update frequency) — deliberately **not** used for `Compiled/` output, which always needs the atomic guarantee.
@@ -207,7 +242,7 @@ Current development uses an Apple Personal Team (free, non-paid). Therefore:
 - **Runtime verification of the other 5 extensions** — Sprint 0/1 verified `ADBLXAdsBlocker` end-to-end (embedded, installed, App Group round-trip, `reloadContentBlocker()`, and now the full `FilterPipeline` write path); the other 3 Content Blockers, `ADBLXPacketTunnel`, and `ADBLXSafariWebExtension` are embedded and build, but have no runtime behavior exercised yet.
 - **`Packages/ADBLXShared` source code** — the directory exists but is empty; linking it into any target is gated on ADR-0003.
 - **Real rule compilation** — `RuleCompiler`'s only implementation, `PassthroughRuleCompiler`, treats source as already-valid Safari JSON and passes it through with count-only statistics. A SafariConverterLib-backed real compiler is gated on ADR-0001 (GPL-3.0 licensing decision, not yet written); the protocol boundary means that swap only ever touches `ADBLX/Filtering/Compilation/`.
-- **Multi-filter / non-Ads groups in the pipeline** — `PassthroughAdsPartitioner` only ever produces an `Ads` partition; `Privacy`/`Annoyances`/`Regional` extensions are untouched by `FilterPipeline` and still use the Sprint 0 bundle-only path described above. `UpdatePlanner` reflects this: any manifest entry outside `.ads` surfaces as `.unsupportedGroup`, and a second `.ads` entry needing install in the same plan surfaces as `.groupConflict` rather than silently overwriting the first (only one compiled `.ads` output per install call is supported).
+- **Runtime consumption of the 3 non-Ads compiled outputs** — as of Sprint 3A, `FilterPipeline`/`UpdatePlanner`/`UpdateCoordinator` fully support all four `FilterGroup`s (`Compiled/Privacy.json`/`Annoyances.json`/`Regional.json` are written like `Ads.json`), but `ADBLXPrivacyBlocker`/`ADBLXAnnoyancesBlocker`/`ADBLXRegionalBlocker` still only read their bundled `[]` placeholder — replicating `ADBLXAdsBlocker`'s App Group + fallback read path (see "Content Blocker request lifecycle" above) to the other three extensions is unstarted.
 - **`ReloadCoordinator` timeout branch test coverage** — see the App Groups section above; accepted gap, tracked for a future sprint.
 - **No real manifest-hosting endpoint** — Sprint 2's `ManifestClient`/`FilterDownloadClient` are complete and tested, but only against a mocked `HTTPSession`; there is no actual CDN/server serving `manifest.json` yet.
 - **No caller of `UpdateCoordinator.run()`** — nothing in the app invokes it yet (no "Check for Updates" button, no launch-time check, no `BGAppRefreshTask`). See the blocking risk noted in the App Groups section above: wiring the first caller requires gating `ContentBlockerBootstrap`'s unconditional reinstall, or a real update gets silently reverted on next launch.
@@ -223,7 +258,9 @@ Current development uses an Apple Personal Team (free, non-paid). Therefore:
 - [`docs/superpowers/specs/2026-07-14-sprint0-commit3-extension-targets-design.md`](../superpowers/specs/2026-07-14-sprint0-commit3-extension-targets-design.md) — extension target design, including the Xcode 26.6 template investigation
 - [`docs/superpowers/specs/2026-07-17-sprint1-rule-pipeline-design.md`](../superpowers/specs/2026-07-17-sprint1-rule-pipeline-design.md) — Sprint 1 rule pipeline design (FilterPipeline/DI, AtomicFilesystem seam, sole-owner boundaries)
 - [`docs/superpowers/plans/2026-07-17-sprint1-rule-pipeline.md`](../superpowers/plans/2026-07-17-sprint1-rule-pipeline.md) — Sprint 1 implementation plan, all 13 tasks with exact code and verification commands
-- [`docs/superpowers/specs/2026-07-18-sprint2-update-pipeline-design.md`](../superpowers/specs/2026-07-18-sprint2-update-pipeline-design.md) — Sprint 2 update pipeline design (data flow, FilterStore rollback architecture, UpdatePlanner `.ads`-only scope)
+- [`docs/superpowers/specs/2026-07-18-sprint2-update-pipeline-design.md`](../superpowers/specs/2026-07-18-sprint2-update-pipeline-design.md) — Sprint 2 update pipeline design (data flow, FilterStore rollback architecture, UpdatePlanner `.ads`-only scope, since superseded by Sprint 3A)
 - [`docs/superpowers/plans/2026-07-18-sprint2-update-pipeline.md`](../superpowers/plans/2026-07-18-sprint2-update-pipeline.md) — Sprint 2 implementation plan, all 10 tasks with exact code and verification commands
+- [`docs/superpowers/specs/2026-07-19-sprint3a-group-composition-design.md`](../superpowers/specs/2026-07-19-sprint3a-group-composition-design.md) — Sprint 3A group composition design (why compilation moved from one-filter to one-`FilterGroup`-composed-from-N-filters; `CompositionService`/`GroupComposition`/`GroupExtensionIdentifiers` architecture)
+- [`docs/superpowers/plans/2026-07-19-sprint3a-group-composition.md`](../superpowers/plans/2026-07-19-sprint3a-group-composition.md) — Sprint 3A implementation plan, all 12 tasks with exact code and verification commands
 - [`docs/Architecture/Logging.md`](Logging.md) — the logging policy every `Filtering/` file's doc comments cite (counts/durations/sizes/versions/checksums only)
 - Corresponding implementation plans in [`docs/superpowers/plans/`](../superpowers/plans/) for exact commands and verification steps used
