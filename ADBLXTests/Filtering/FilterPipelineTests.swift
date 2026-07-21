@@ -47,31 +47,44 @@ struct FilterPipelineTests {
         #expect(FileManager.default.fileExists(atPath: metadataDir.appendingPathComponent("statistics.json").path))
     }
 
-    @Test("throws when the source fails validation")
+    @Test("throws when a source fails validation")
     func throwsOnInvalidSource() async {
         let pipeline = makePipeline()
+        let composition = GroupComposition(
+            group: .ads,
+            sources: [FilterSource(filterID: "bad", version: "v1", checksumSHA256: "a", data: Data())]
+        )
         await #expect(throws: FilterValidator.ValidationError.self) {
-            _ = try await pipeline.install(filterID: "bad", source: Data())
+            _ = try await pipeline.install(composition)
         }
     }
 
     @Test("reloadStrategy .deferred skips the reload call and returns empty reloadResults")
     func deferredReloadSkipsReloadCall() async throws {
         let pipeline = makePipeline()
-        let source = Data("[{\"trigger\":{\"url-filter\":\".*\"},\"action\":{\"type\":\"block\"}}]".utf8)
+        let source = FilterSource(
+            filterID: "deferred-test", version: "v1", checksumSHA256: "a",
+            data: Data("[{\"trigger\":{\"url-filter\":\".*\"},\"action\":{\"type\":\"block\"}}]".utf8)
+        )
+        let composition = GroupComposition(group: .ads, sources: [source])
 
-        let result = try await pipeline.install(filterID: "deferred-test", source: source, reloadStrategy: .deferred)
+        let result = try await pipeline.install(composition, reloadStrategy: .deferred)
 
         #expect(result.reloadResults.isEmpty)
     }
 
-    @Test("installing a second filter after a first accumulates both in installed_filters.json")
-    func installingSecondFilterAccumulatesMetadata() async throws {
+    @Test("installing a second composition after a first accumulates both filters in installed_filters.json")
+    func installingSecondCompositionAccumulatesMetadata() async throws {
         let pipeline = makePipeline()
-        let source = Data("[{\"trigger\":{\"url-filter\":\".*\"},\"action\":{\"type\":\"block\"}}]".utf8)
+        let source = { (id: String) in
+            FilterSource(
+                filterID: id, version: "v1", checksumSHA256: "a",
+                data: Data("[{\"trigger\":{\"url-filter\":\".*\"},\"action\":{\"type\":\"block\"}}]".utf8)
+            )
+        }
 
-        _ = try await pipeline.install(filterID: "filter-a", source: source, reloadStrategy: .deferred)
-        _ = try await pipeline.install(filterID: "filter-b", source: source, reloadStrategy: .deferred)
+        _ = try await pipeline.install(GroupComposition(group: .ads, sources: [source("filter-a")]), reloadStrategy: .deferred)
+        _ = try await pipeline.install(GroupComposition(group: .ads, sources: [source("filter-b")]), reloadStrategy: .deferred)
 
         let store = FilterStore(appGroupIdentifier: AppGroup.identifier)
         let metadataDir = try await store.directoryURL(.metadata)
@@ -84,10 +97,14 @@ struct FilterPipelineTests {
     @Test("re-installing the same filterID replaces its entry instead of duplicating it")
     func reinstallingSameFilterIDReplacesEntry() async throws {
         let pipeline = makePipeline()
-        let source = Data("[{\"trigger\":{\"url-filter\":\".*\"},\"action\":{\"type\":\"block\"}}]".utf8)
+        let source = FilterSource(
+            filterID: "filter-a", version: "v1", checksumSHA256: "a",
+            data: Data("[{\"trigger\":{\"url-filter\":\".*\"},\"action\":{\"type\":\"block\"}}]".utf8)
+        )
+        let composition = GroupComposition(group: .ads, sources: [source])
 
-        _ = try await pipeline.install(filterID: "filter-a", source: source, reloadStrategy: .deferred)
-        _ = try await pipeline.install(filterID: "filter-a", source: source, reloadStrategy: .deferred)
+        _ = try await pipeline.install(composition, reloadStrategy: .deferred)
+        _ = try await pipeline.install(composition, reloadStrategy: .deferred)
 
         let store = FilterStore(appGroupIdentifier: AppGroup.identifier)
         let metadataDir = try await store.directoryURL(.metadata)
@@ -97,12 +114,16 @@ struct FilterPipelineTests {
         #expect(filters.filter { $0.id == "filter-a" }.count == 1)
     }
 
-    @Test("install(version:) records the passed version, not the bundled-snapshot default")
+    @Test("install(composition:) records each source's passed version, not a bundled-snapshot default")
     func installRecordsPassedVersion() async throws {
         let pipeline = makePipeline()
-        let source = Data("[{\"trigger\":{\"url-filter\":\".*\"},\"action\":{\"type\":\"block\"}}]".utf8)
+        let source = FilterSource(
+            filterID: "filter-versioned", version: "2026-07-18", checksumSHA256: "a",
+            data: Data("[{\"trigger\":{\"url-filter\":\".*\"},\"action\":{\"type\":\"block\"}}]".utf8)
+        )
+        let composition = GroupComposition(group: .ads, sources: [source])
 
-        _ = try await pipeline.install(filterID: "filter-versioned", source: source, version: "2026-07-18", reloadStrategy: .deferred)
+        _ = try await pipeline.install(composition, reloadStrategy: .deferred)
 
         let store = FilterStore(appGroupIdentifier: AppGroup.identifier)
         let metadataDir = try await store.directoryURL(.metadata)
@@ -141,19 +162,5 @@ struct FilterPipelineTests {
         let metadataData = try Data(contentsOf: metadataDir.appendingPathComponent("installed_filters.json"))
         let filters = try JSONDecoder().decode([InstalledFilter].self, from: metadataData)
         #expect(Set(filters.map(\.id)).isSuperset(of: ["easylist", "peter-lowe"]))
-    }
-
-    @Test("install(composition:) reload .deferred returns empty reloadResults")
-    func installCompositionDeferredReloadSkipsReloadCall() async throws {
-        let pipeline = makePipeline()
-        let source = FilterSource(
-            filterID: "deferred-test", version: "v1", checksumSHA256: "a",
-            data: Data("[{\"trigger\":{\"url-filter\":\".*\"},\"action\":{\"type\":\"block\"}}]".utf8)
-        )
-        let composition = GroupComposition(group: .ads, sources: [source])
-
-        let result = try await pipeline.install(composition, reloadStrategy: .deferred)
-
-        #expect(result.reloadResults.isEmpty)
     }
 }

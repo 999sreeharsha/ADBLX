@@ -90,29 +90,6 @@ actor FilterPipeline {
         )
     }
 
-    /// TRANSITIONAL — Sprint 1/2's single-filter entry point. Kept only so
-    /// `UpdateCoordinator` keeps compiling until it migrates onto
-    /// `install(_:reloadStrategy:)` directly (Sprint 3A Task 10). Delegates to the new
-    /// method with a one-source, `.ads` `GroupComposition` — deleted in Task 11 once
-    /// `UpdateCoordinator` no longer calls it.
-    func install(
-        filterID: String,
-        source: Data,
-        version: String = "bundled-snapshot",
-        reloadStrategy: ReloadStrategy = .immediate
-    ) async throws -> PipelineResult {
-        let composition = GroupComposition(
-            group: .ads,
-            sources: [FilterSource(
-                filterID: filterID,
-                version: version,
-                checksumSHA256: Checksum.sha256Hex(of: source),
-                data: source
-            )]
-        )
-        return try await install(composition, reloadStrategy: reloadStrategy)
-    }
-
     /// Sprint 1: always (re)installs from the bundled snapshot on every call — "IfNeeded"
     /// becomes meaningful once Part 10 adds version comparison against a fetched manifest.
     /// Reinstalling identical content on every launch is harmless (same bytes, same reload).
