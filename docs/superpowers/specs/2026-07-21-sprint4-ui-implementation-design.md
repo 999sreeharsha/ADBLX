@@ -39,8 +39,20 @@ First Launch → Onboarding → Home
 ```
 
 **P0 vs P1 inside the frozen IA:**
-- P0 (functional this sprint's *later* backend-wiring sprint): Home, Safari Protection, Advanced Filter Lists, Premium (StoreKit), Settings, About, Onboarding, Update Progress.
-- P1 (screen exists, navigable, copy and premium messaging in place; explicitly **no** `NEPacketTunnelProvider`, no VPN configuration, no backend): DNS Protection.
+
+```
+P0 — Home, Safari Protection, Advanced Filter Lists, Premium, Settings, About, Onboarding, Update Progress
+  • Screen implemented in Sprint 4
+  • View, ViewModel, Service protocol, and mock completed
+  • Navigation complete
+  • Ready for real backend wiring in a later sprint
+
+P1 — DNS Protection
+  • Screen implemented
+  • Navigation complete
+  • Copy and premium messaging complete
+  • No backend implementation (no NEPacketTunnelProvider, no VPN configuration)
+```
 
 Freezing the full IA now (including the P1 placeholder) avoids a second navigation change when DNS blocking backend work starts — consistent with how Sprint 0 stubbed the Packet Tunnel and Safari Extension targets before either was implemented.
 
@@ -93,8 +105,9 @@ One commit per item, matching the granularity used in Sprints 1–3A (small, sin
 ```
 Commit 1   Adopt Stitch Design System (DesignSystem module: colors, typography,
            spacing, corner radius, shadows, animations — read from the Stitch theme)
-Commit 2   Application Shell & Navigation (TabView/NavigationStack per frozen IA,
-           routes to placeholder screens)
+Commit 2   Application Shell (TabView/NavigationStack per frozen IA, routing to
+           placeholder screens, AppCompositionRoot extended with a mock
+           dependency graph so subsequent screens request dependencies from it)
 Commit 3+  Shared Component Library — grown organically: a component is built in
            the first commit that needs it (e.g. PrimaryButton, Card, StatusCard,
            SettingsRow, PremiumBadge, ProgressRing, ComingSoonState), not
@@ -112,6 +125,8 @@ Commit N+8 Onboarding
 ```
 
 Exact component commits interleave with screen commits as new shared components are first needed — the sequence above fixes ordering of screens and infrastructure, not a rigid count.
+
+Each commit must build successfully, pass all existing tests, introduce no Swift compiler warnings, and leave the application in a runnable state.
 
 ## 8. Testing
 
