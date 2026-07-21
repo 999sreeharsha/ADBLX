@@ -24,6 +24,12 @@ struct SafariProtectionView: View {
                         }
                     }
 
+                    NavigationLink("Advanced Filter Lists") {
+                        AdvancedFilterListsView(viewModel: viewModel)
+                    }
+                    .font(DesignTypography.bodyLarge)
+                    .foregroundStyle(DesignColors.primary)
+
                     Card {
                         ForEach(Array(status.categories.enumerated()), id: \.element.id) { index, category in
                             ToggleRow(

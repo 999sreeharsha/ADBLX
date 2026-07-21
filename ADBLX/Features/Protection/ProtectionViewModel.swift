@@ -26,4 +26,13 @@ final class ProtectionViewModel {
         self.status = status
         await service.setCategory(id, enabled: newValue)
     }
+
+    func toggleFilterList(_ id: String) async {
+        guard var status else { return }
+        guard let index = status.filterLists.firstIndex(where: { $0.id == id }) else { return }
+        let newValue = !status.filterLists[index].isEnabled
+        status.filterLists[index].isEnabled = newValue
+        self.status = status
+        await service.setFilterList(id, enabled: newValue)
+    }
 }
