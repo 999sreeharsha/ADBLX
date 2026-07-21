@@ -130,7 +130,7 @@ Each commit must build successfully, pass all existing tests, introduce no Swift
 
 ## 8. Testing
 
-- ViewModels: unit-tested against mock services (state transitions, loading/error/success), following the existing XCTest conventions used for `FilterPipeline`/`UpdateCoordinator` tests.
+- ViewModels: unit-tested against mock services (state transitions, loading/error/success), following the existing Swift Testing conventions (`@Suite`/`@Test`/`#expect`) used for `FilterPipeline`/`UpdateCoordinator` tests.
 - Views: manual simulator validation per the Definition of Done (§6) — Dynamic Type, Dark Mode, VoiceOver, navigation — since SwiftUI view logic isn't meaningfully unit-testable here.
 - No snapshot/UI testing infrastructure is introduced this sprint (out of scope; revisit if visual regressions become a problem post-freeze).
 
