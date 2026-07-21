@@ -31,9 +31,13 @@ enum AppCompositionRoot {
     /// and Views do not change when that happens (Sprint 4 spec §5).
     struct UIDependencies {
         let homeService: HomeService
+        let protectionService: ProtectionService
     }
 
     static func makeMockUIDependencies() -> UIDependencies {
-        UIDependencies(homeService: MockHomeService())
+        UIDependencies(
+            homeService: MockHomeService(),
+            protectionService: MockProtectionService()
+        )
     }
 }

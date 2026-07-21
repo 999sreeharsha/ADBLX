@@ -21,6 +21,10 @@ struct RootTabView: View {
         switch tab {
         case .home:
             HomeView(viewModel: HomeViewModel(service: dependencies.homeService))
+        case .protection:
+            NavigationStack {
+                SafariProtectionView(viewModel: ProtectionViewModel(service: dependencies.protectionService))
+            }
         default:
             VStack(spacing: DesignSpacing.stackGap) {
                 Text(tab.title)
