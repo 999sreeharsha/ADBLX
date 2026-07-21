@@ -14,7 +14,8 @@
       "Read(//Users/sreeharshag/Downloads/ADBLX-Scaffold/Filtering/Validation/**)",
       "Bash(rtk wc *)",
       "Bash(rtk grep *)",
-      "Bash(sort -t: -k1 -n)"
+      "Bash(sort -t: -k1 -n)",
+      "Bash(rtk find *)"
     ]
   },
   "hooks": {
