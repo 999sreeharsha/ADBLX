@@ -5,27 +5,27 @@ import SwiftUI
 
 @Suite("DesignColors")
 struct DesignColorsTests {
-    @Test("primary matches the Stitch theme's Privacy Purple")
+    @Test("primary matches the Serene Shield Unified theme's dark-mode blue")
     func primaryMatchesTheme() {
-        #expect(DesignColors.primary == Color(hex: "#3f3bbd"))
+        #expect(DesignColors.primary == Color(hex: "#b4c5ff"))
     }
 
-    @Test("secondary matches the Stitch theme's Safety Blue")
+    @Test("secondary matches the Serene Shield Unified theme's protection green")
     func secondaryMatchesTheme() {
-        #expect(DesignColors.secondary == Color(hex: "#0058bc"))
+        #expect(DesignColors.secondary == Color(hex: "#53e16f"))
     }
 
-    @Test("background matches the Stitch theme's surface color")
+    @Test("background matches the Serene Shield Unified theme's dark surface color")
     func backgroundMatchesTheme() {
-        #expect(DesignColors.background == Color(hex: "#fcf8fb"))
+        #expect(DesignColors.background == Color(hex: "#111317"))
     }
 }
 
 @Suite("DesignTypography")
 struct DesignTypographyTests {
-    @Test("headlineLarge uses a 34pt bold weight, matching the Stitch theme")
+    @Test("headlineLarge uses a 32pt bold weight, matching the Stitch theme")
     func headlineLargeSize() {
-        #expect(DesignTypography.headlineLargeSize == 34)
+        #expect(DesignTypography.headlineLargeSize == 32)
         #expect(DesignTypography.headlineLargeWeight == .bold)
     }
 
@@ -44,32 +44,32 @@ struct DesignTypographyTests {
 
 @Suite("DesignSpacing")
 struct DesignSpacingTests {
-    @Test("base unit is 8pt, matching the Stitch theme's baseline grid")
+    @Test("base unit is 4pt, matching the Stitch theme's baseline grid")
     func baseUnit() {
-        #expect(DesignSpacing.base == 8)
+        #expect(DesignSpacing.base == 4)
     }
 
-    @Test("container padding is 20pt")
+    @Test("container padding is 16pt")
     func containerPadding() {
-        #expect(DesignSpacing.containerPadding == 20)
+        #expect(DesignSpacing.containerPadding == 16)
     }
 
-    @Test("stack gap is 16pt and section gap is 32pt")
+    @Test("stack gap is 16pt and section gap is 24pt")
     func stackAndSectionGaps() {
         #expect(DesignSpacing.stackGap == 16)
-        #expect(DesignSpacing.sectionGap == 32)
+        #expect(DesignSpacing.sectionGap == 24)
     }
 }
 
 @Suite("DesignShape")
 struct DesignShapeTests {
-    @Test("card corner radius is 24pt (rounded-xl)")
+    @Test("card corner radius is 24pt")
     func cardRadius() {
         #expect(DesignShape.cardCornerRadius == 24)
     }
 
-    @Test("button corner radius is 16pt (rounded-lg)")
+    @Test("button corner radius is 12pt (Rounded Twelve)")
     func buttonRadius() {
-        #expect(DesignShape.buttonCornerRadius == 16)
+        #expect(DesignShape.buttonCornerRadius == 12)
     }
 }
