@@ -5,6 +5,7 @@ import MetricKit
 struct ADBLXApp: App {
     private let metricsSubscriber = MetricsSubscriber()
     private let filterPipeline = AppCompositionRoot.makeFilterPipeline()
+    private let uiDependencies = AppCompositionRoot.makeMockUIDependencies()
 
     init() {
         MXMetricManager.shared.add(metricsSubscriber)
@@ -12,7 +13,7 @@ struct ADBLXApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            RootTabView(dependencies: uiDependencies)
                 .task {
                     let pipeline = filterPipeline
                     Task.detached(priority: .utility) {
