@@ -24,6 +24,12 @@ Baseline: xcodegen generate + xcodebuild test succeeded (all suites) before any 
 - [x] Task 7: FilterPipeline gains install(_ composition:reloadStrategy:) (commits e820286, 3e51464 — review found an Important, plan-mandated issue: InstalledFilter.ruleCount is the group's aggregate compiled count written into every source's entry, not a per-source count, since composition never tracked per-source counts. Human decision: carry forward for Sprint 3A, documented on the field itself and in docs/gotchas.md rather than expanding scope back into Task 3's CompositionService. Full suite green, 81 tests.)
 - [x] Task 8: installBundledSnapshotIfNeeded already migrated — confirm and lock in (no diff — controller verified directly: installsBundledSnapshotEndToEnd passes, installBundledSnapshotIfNeeded calls install(composition) with no residual adapter reference, git status clean)
 
+## Session 7: Task 9
+- [x] Task 9: UpdatePlanner emits one .install(group:entries:) per group (commit aeebea9 — UpdateCoordinator's call site patched as a temporary bridge per the task's own Step 4, replaced properly in Task 10. Full suite green, 80 tests / 19 suites.)
+
+## Session 8: Task 10
+- [x] Task 10: UpdateCoordinator installs one GroupComposition per group (commit df775f8, review clean — removes Task 9's temporary bridge; UpdateCoordinator.init now takes extensionIdentifiers: GroupExtensionIdentifiers instead of adsExtensionIdentifier: String, run() downloads/verifies per group then composes+installs one GroupComposition per group. UpdateCoordinatorTests suite: 6/6 green.)
+
 ## Minor findings log (from task reviews, roll up for final review)
 - Task 3: `JSONArrayCompositionService.compose` discards the underlying `JSONSerialization` error via `try?`, collapsing malformed-JSON and valid-non-array failures into one diagnostic-free case (CompositionService.swift:40). Matches brief verbatim; not a defect against this task.
 - Task 3: doc comment says "every `FilterSource` in a `GroupComposition`" but the signature takes a bare `[FilterSource]` — harmless forward-reference, imprecise phrasing (CompositionService.swift:20).

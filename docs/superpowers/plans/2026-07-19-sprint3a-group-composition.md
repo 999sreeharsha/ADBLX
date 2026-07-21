@@ -1484,7 +1484,7 @@ git commit -m "refactor: UpdatePlanner emits one .install(group:entries:) per gr
 - Consumes: `UpdateAction.install(group:entries:)` (Task 9), `GroupComposition`, `FilterSource` (Task 1), `FilterPipeline.install(_:reloadStrategy:)` (Task 7), `GroupExtensionIdentifiers` (Task 5).
 - Produces: `UpdateCoordinator.init(..., extensionIdentifiers: GroupExtensionIdentifiers)` replaces `init(..., adsExtensionIdentifier: String)`. `UpdateRunResult` cases are unchanged.
 
-- [ ] **Step 1: Update makeCoordinator and one test to use the new init signature first**
+- [x] **Step 1: Update makeCoordinator and one test to use the new init signature first**
 
 In `ADBLXTests/Filtering/Updates/UpdateCoordinatorTests.swift`, change `makeCoordinator`:
 
@@ -1513,12 +1513,12 @@ In `ADBLXTests/Filtering/Updates/UpdateCoordinatorTests.swift`, change `makeCoor
 
 (Only the last constructor argument changes — `adsExtensionIdentifier: adsExtensionIdentifier` becomes `extensionIdentifiers: groupExtensionIdentifiers`. The `adsExtensionIdentifier` suite-level constant stays, since `manifestEntry`/assertions elsewhere still reference it by name for the single-group scenarios.)
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `cd /Users/sreeharshag/Work/ADBLX && xcodegen generate && xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -destination "id=$(Scripts/find-simulator-udid.sh)" -only-testing:ADBLXTests/UpdateCoordinatorTests test`
 Expected: FAIL — `UpdateCoordinator.init` has no parameter `extensionIdentifiers` (still expects `adsExtensionIdentifier`).
 
-- [ ] **Step 3: Rewrite UpdateCoordinator.swift**
+- [x] **Step 3: Rewrite UpdateCoordinator.swift**
 
 ```swift
 // ADBLX/Filtering/Updates/UpdateCoordinator.swift
@@ -1659,12 +1659,12 @@ actor UpdateCoordinator {
 }
 ```
 
-- [ ] **Step 4: Run the UpdateCoordinatorTests suite to verify it passes**
+- [x] **Step 4: Run the UpdateCoordinatorTests suite to verify it passes**
 
 Run: same command as Step 2.
 Expected: PASS — every existing single-group test continues to pass unchanged in behavior (one group, one entry, same reload/rollback semantics as Sprint 2), now routed through the grouped code path.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add ADBLX/Filtering/Updates/UpdateCoordinator.swift ADBLXTests/Filtering/Updates/UpdateCoordinatorTests.swift
