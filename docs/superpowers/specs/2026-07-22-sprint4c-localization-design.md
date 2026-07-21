@@ -34,6 +34,11 @@ This sprint is infrastructure and migration only. Explicitly excluded:
 These belong to a later internationalization sprint, once real demand for a
 second language exists.
 
+**Note:** Although locale-aware formatting infrastructure is out of scope,
+touched code must adopt `FormatStyle` APIs where applicable so future
+localization work does not require revisiting the same call sites. See
+"Value formatting" under Commit 2.
+
 ## Key naming convention (frozen)
 
 ```
@@ -112,6 +117,37 @@ dependency-driven: shared components first, since screens depend on them.
 **Scope per task:** visible `Text`, `Button`, `Label`, navigation titles, and
 empty-state copy in that file. Accessibility labels/hints and
 `Alert`/`confirmationDialog` strings are explicitly deferred to Commit 3.
+
+**Value formatting:** Any user-visible numeric, date, time, currency,
+measurement, or byte-count value introduced or modified during migration must
+use Swift's `FormatStyle` APIs (`Text(_:format:)`, `.formatted(_:)`, or
+equivalent) rather than raw string interpolation — even though English/`en_US`
+is the only shipped locale today. Localization answers "what text should be
+displayed?"; formatting answers "how should values be rendered?" — orthogonal
+concerns, and adopting the correct formatting API costs nothing extra while a
+call site is already being touched.
+
+```swift
+// Preferred
+Text(number, format: .number)
+Text(date, format: .dateTime.month().day().year())
+Text(price, format: .currency(code: currencyCode))
+Text(duration, format: .time(pattern: .minuteSecond))
+Text(fileSize, format: .byteCount(style: .file))
+
+// Discouraged
+Text("\(number)")
+Text("\(date)")
+Text("$\(price)")
+```
+
+Confirmed by codebase audit: only one call site currently interpolates a
+value into UI text — `OnboardingView.swift:93`, `Text("\(number)")` (a plain
+step-indicator integer). It migrates to `Text(number, format: .number)` as
+part of the Onboarding task. No dates, currencies, measurements, or
+pluralized counts currently exist in the UI, so this rule does not expand
+Commit 2's scope — it only forecloses a new debt trail in files already being
+edited.
 
 **Per-task acceptance criteria:**
 - All in-scope strings in that file replaced with catalog keys.
