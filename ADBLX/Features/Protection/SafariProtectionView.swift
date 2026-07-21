@@ -30,6 +30,12 @@ struct SafariProtectionView: View {
                     .font(DesignTypography.bodyLarge)
                     .foregroundStyle(DesignColors.primary)
 
+                    NavigationLink("DNS Protection") {
+                        DNSProtectionView()
+                    }
+                    .font(DesignTypography.bodyLarge)
+                    .foregroundStyle(DesignColors.primary)
+
                     Card {
                         ForEach(Array(status.categories.enumerated()), id: \.element.id) { index, category in
                             ToggleRow(
