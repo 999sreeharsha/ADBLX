@@ -3,6 +3,7 @@ import SwiftUI
 
 struct SafariProtectionView: View {
     @State var viewModel: ProtectionViewModel
+    @State private var isShowingUpdateProgress = false
 
     var body: some View {
         ScrollView {
@@ -53,12 +54,19 @@ struct SafariProtectionView: View {
                             }
                         }
                     }
+
+                    PrimaryButton(title: "Check for Updates") {
+                        isShowingUpdateProgress = true
+                    }
                 }
             }
             .padding(DesignSpacing.containerPadding)
         }
         .background(DesignColors.background)
         .task { await viewModel.load() }
+        .sheet(isPresented: $isShowingUpdateProgress) {
+            UpdateProgressSheet(model: UpdateProgressModel())
+        }
     }
 }
 

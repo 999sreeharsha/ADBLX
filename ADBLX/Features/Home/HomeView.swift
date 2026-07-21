@@ -3,6 +3,7 @@ import SwiftUI
 
 struct HomeView: View {
     @State var viewModel: HomeViewModel
+    @State private var isShowingUpdateProgress = false
 
     var body: some View {
         ScrollView {
@@ -12,7 +13,7 @@ struct HomeView: View {
                 if let status = viewModel.status {
                     statusCard(for: status)
                     PrimaryButton(title: "Reload Safari Blockers") {
-                        Task { await viewModel.load() }
+                        isShowingUpdateProgress = true
                     }
                     activityFeed(for: status.recentActivity)
                 }
@@ -22,6 +23,9 @@ struct HomeView: View {
         .background(DesignColors.background)
         .task { await viewModel.load() }
         .accessibilityElement(children: .contain)
+        .sheet(isPresented: $isShowingUpdateProgress) {
+            UpdateProgressSheet(model: UpdateProgressModel())
+        }
     }
 
     private var header: some View {
