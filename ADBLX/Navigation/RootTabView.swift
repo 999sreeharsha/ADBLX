@@ -25,6 +25,10 @@ struct RootTabView: View {
             NavigationStack {
                 SafariProtectionView(viewModel: ProtectionViewModel(service: dependencies.protectionService))
             }
+        case .premium:
+            NavigationStack {
+                PremiumView(viewModel: PremiumViewModel(service: dependencies.subscriptionService))
+            }
         default:
             VStack(spacing: DesignSpacing.stackGap) {
                 Text(tab.title)
