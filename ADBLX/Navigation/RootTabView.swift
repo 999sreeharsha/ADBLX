@@ -29,14 +29,10 @@ struct RootTabView: View {
             NavigationStack {
                 PremiumView(viewModel: PremiumViewModel(service: dependencies.subscriptionService))
             }
-        default:
-            VStack(spacing: DesignSpacing.stackGap) {
-                Text(tab.title)
-                    .font(DesignTypography.headlineMedium)
-                    .foregroundStyle(DesignColors.onBackground)
+        case .settings:
+            NavigationStack {
+                SettingsView(viewModel: SettingsViewModel(service: dependencies.settingsService))
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(DesignColors.background)
         }
     }
 }

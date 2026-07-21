@@ -1,0 +1,40 @@
+// ADBLX/Features/Settings/SettingsService.swift
+import Foundation
+
+struct AllowlistEntry: Equatable, Identifiable {
+    let id: String
+    let domain: String
+}
+
+struct SettingsSnapshot: Equatable {
+    let iCloudSyncEnabled: Bool
+    var allowlist: [AllowlistEntry]
+}
+
+/// What Settings needs from the backend (FR-08's per-site allowlist). A later
+/// sprint's real implementation persists to the shared App Group container.
+protocol SettingsService: Sendable {
+    func fetchSnapshot() async -> SettingsSnapshot
+    func addAllowlistEntry(domain: String) async
+    func removeAllowlistEntry(id: String) async
+}
+
+actor MockSettingsService: SettingsService {
+    private var snapshot = SettingsSnapshot(
+        iCloudSyncEnabled: false,
+        allowlist: [
+            AllowlistEntry(id: "1", domain: "news.example.com"),
+            AllowlistEntry(id: "2", domain: "shop.example.com"),
+        ]
+    )
+
+    func fetchSnapshot() async -> SettingsSnapshot { snapshot }
+
+    func addAllowlistEntry(domain: String) async {
+        snapshot.allowlist.append(AllowlistEntry(id: UUID().uuidString, domain: domain))
+    }
+
+    func removeAllowlistEntry(id: String) async {
+        snapshot.allowlist.removeAll { $0.id == id }
+    }
+}

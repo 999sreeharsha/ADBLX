@@ -33,13 +33,15 @@ enum AppCompositionRoot {
         let homeService: HomeService
         let protectionService: ProtectionService
         let subscriptionService: SubscriptionService
+        let settingsService: SettingsService
     }
 
     static func makeMockUIDependencies() -> UIDependencies {
         UIDependencies(
             homeService: MockHomeService(),
             protectionService: MockProtectionService(),
-            subscriptionService: MockSubscriptionService()
+            subscriptionService: MockSubscriptionService(),
+            settingsService: MockSettingsService()
         )
     }
 }

@@ -1,0 +1,79 @@
+// ADBLX/Features/Settings/SettingsView.swift
+import SwiftUI
+
+struct SettingsView: View {
+    @State var viewModel: SettingsViewModel
+    @State private var newDomain = ""
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: DesignSpacing.sectionGap) {
+                Text("Settings")
+                    .font(DesignTypography.headlineLarge)
+                    .foregroundStyle(DesignColors.onBackground)
+
+                if let snapshot = viewModel.snapshot {
+                    Card {
+                        HStack {
+                            Text("iCloud Sync")
+                                .font(DesignTypography.bodyLarge)
+                                .foregroundStyle(DesignColors.onSurface)
+                            Spacer()
+                            PremiumBadge()
+                        }
+                        Text(snapshot.iCloudSyncEnabled ? "On" : "Off")
+                            .font(DesignTypography.bodySmall)
+                            .foregroundStyle(DesignColors.onSurfaceVariant)
+                    }
+
+                    Card {
+                        Text("Allowlist")
+                            .font(DesignTypography.headlineMedium)
+                            .foregroundStyle(DesignColors.onBackground)
+                        ForEach(snapshot.allowlist) { entry in
+                            HStack {
+                                Text(entry.domain)
+                                    .font(DesignTypography.bodyLarge)
+                                    .foregroundStyle(DesignColors.onSurface)
+                                Spacer()
+                                Button {
+                                    Task { await viewModel.removeAllowlistEntry(id: entry.id) }
+                                } label: {
+                                    Image(systemName: "minus.circle.fill")
+                                        .foregroundStyle(DesignColors.error)
+                                }
+                            }
+                        }
+                        HStack {
+                            TextField("Add a domain", text: $newDomain)
+                                .font(DesignTypography.bodyLarge)
+                            Button("Add") {
+                                Task {
+                                    await viewModel.addAllowlistEntry(domain: newDomain)
+                                    newDomain = ""
+                                }
+                            }
+                            .disabled(newDomain.isEmpty)
+                        }
+                    }
+
+                    NavigationLink {
+                        AboutView()
+                    } label: {
+                        Card {
+                            SettingsRow(title: "About", systemImage: "info.circle.fill")
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(DesignSpacing.containerPadding)
+        }
+        .background(DesignColors.background)
+        .task { await viewModel.load() }
+    }
+}
+
+#Preview {
+    SettingsView(viewModel: SettingsViewModel(service: MockSettingsService()))
+}
