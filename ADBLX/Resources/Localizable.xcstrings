@@ -245,6 +245,51 @@
     },
     "home.section.recentActivity" : {
       "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Recent Activity" } } }
+    },
+    "protection.safari.title" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Safari Protection" } } }
+    },
+    "protection.safari.subtitle" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Highly optimized content blocking for a faster, cleaner browsing experience on iOS." } } }
+    },
+    "protection.safari.badge.active" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "ACTIVE PROTECTION" } } }
+    },
+    "protection.safari.stat.threatsBlocked" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "%@ Threats Blocked" } } }
+    },
+    "protection.safari.stat.period" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Last 24 hours on Safari" } } }
+    },
+    "protection.section.configuration" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Configuration" } } }
+    },
+    "protection.row.advancedFilterLists" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Advanced Filter Lists" } } }
+    },
+    "protection.row.advancedFilterLists.detail" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "4 Enabled" } } }
+    },
+    "protection.row.dnsProtection" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "DNS Protection" } } }
+    },
+    "protection.row.dnsProtection.detail" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Cloudflare" } } }
+    },
+    "protection.row.speedOptimization" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Speed Optimization" } } }
+    },
+    "premium.badge.upsellLabel" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "ADBLX PREMIUM" } } }
+    },
+    "premium.upsell.title" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Unlock AI Blocking" } } }
+    },
+    "premium.upsell.body" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Zero-day threat detection and custom domain firewalling." } } }
+    },
+    "premium.action.upgrade" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Upgrade" } } }
     }
   },
   "version" : "1.0"

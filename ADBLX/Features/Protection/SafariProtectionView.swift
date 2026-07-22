@@ -28,10 +28,10 @@ struct SafariProtectionView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: DesignSpacing.base) {
-            Text("Safari Protection")
+            Text("protection.safari.title")
                 .font(DesignTypography.headlineLarge)
                 .foregroundStyle(DesignColors.onSurface)
-            Text("Highly optimized content blocking for a faster, cleaner browsing experience on iOS.")
+            Text("protection.safari.subtitle")
                 .font(DesignTypography.bodySmall)
                 .foregroundStyle(DesignColors.onSurfaceVariant)
         }
@@ -44,14 +44,14 @@ struct SafariProtectionView: View {
                 Circle()
                     .fill(DesignColors.secondary)
                     .frame(width: 8, height: 8)
-                Text("ACTIVE PROTECTION")
+                Text("protection.safari.badge.active")
                     .font(DesignTypography.labelCaps)
                     .foregroundStyle(DesignColors.secondary)
             }
-            Text("4,281 Threats Blocked")
+            Text(String(format: String(localized: "protection.safari.stat.threatsBlocked"), 4281.formatted()))
                 .font(DesignTypography.headlineMedium)
                 .foregroundStyle(.white)
-            Text("Last 24 hours on Safari")
+            Text("protection.safari.stat.period")
                 .font(DesignTypography.bodySmall)
                 .foregroundStyle(.white.opacity(0.6))
         }
@@ -125,7 +125,7 @@ struct SafariProtectionView: View {
 
     private var configurationList: some View {
         VStack(alignment: .leading, spacing: DesignSpacing.gutter) {
-            Text("Configuration")
+            Text("protection.section.configuration")
                 .font(DesignTypography.labelCaps)
                 .foregroundStyle(DesignColors.onSurfaceVariant)
 
@@ -133,32 +133,32 @@ struct SafariProtectionView: View {
                 NavigationLink {
                     AdvancedFilterListsView(viewModel: viewModel)
                 } label: {
-                    configurationRow(icon: "line.3.horizontal.decrease.circle.fill", iconColor: DesignColors.primary, title: "Advanced Filter Lists", detail: "4 Enabled")
+                    configurationRow(icon: "line.3.horizontal.decrease.circle.fill", iconColor: DesignColors.primary, titleKey: "protection.row.advancedFilterLists", detailKey: "protection.row.advancedFilterLists.detail")
                 }
                 Divider().overlay(DesignColors.outlineVariant.opacity(0.2))
                 NavigationLink {
                     DNSProtectionView()
                 } label: {
-                    configurationRow(icon: "lock.shield.fill", iconColor: DesignColors.tertiary, title: "DNS Protection", detail: "Cloudflare")
+                    configurationRow(icon: "lock.shield.fill", iconColor: DesignColors.tertiary, titleKey: "protection.row.dnsProtection", detailKey: "protection.row.dnsProtection.detail")
                 }
                 Divider().overlay(DesignColors.outlineVariant.opacity(0.2))
-                configurationRow(icon: "bolt.fill", iconColor: DesignColors.primary, title: "Speed Optimization", detail: nil)
+                configurationRow(icon: "bolt.fill", iconColor: DesignColors.primary, titleKey: "protection.row.speedOptimization", detailKey: nil)
             }
             .background(DesignColors.surfaceContainer)
             .clipShape(RoundedRectangle(cornerRadius: DesignShape.defaultCornerRadius * 2))
         }
     }
 
-    private func configurationRow(icon: String, iconColor: Color, title: String, detail: String?) -> some View {
+    private func configurationRow(icon: String, iconColor: Color, titleKey: LocalizedStringKey, detailKey: LocalizedStringKey?) -> some View {
         HStack {
             Image(systemName: icon)
                 .foregroundStyle(iconColor)
-            Text(title)
+            Text(titleKey)
                 .font(DesignTypography.bodyLarge)
                 .foregroundStyle(DesignColors.onSurface)
             Spacer()
-            if let detail {
-                Text(detail)
+            if let detailKey {
+                Text(detailKey)
                     .font(DesignTypography.bodySmall)
                     .foregroundStyle(DesignColors.onSurfaceVariant)
             }
@@ -173,22 +173,22 @@ struct SafariProtectionView: View {
     private var premiumUpsell: some View {
         HStack(spacing: DesignSpacing.containerPadding) {
             VStack(alignment: .leading, spacing: DesignSpacing.base) {
-                Text("ADBLX PREMIUM")
+                Text("premium.badge.upsellLabel")
                     .font(DesignTypography.labelCaps)
                     .foregroundStyle(.white.opacity(0.8))
                     .padding(.horizontal, DesignSpacing.gutter)
                     .padding(.vertical, DesignSpacing.base / 2)
                     .background(.white.opacity(0.2))
                     .clipShape(Capsule())
-                Text("Unlock AI Blocking")
+                Text("premium.upsell.title")
                     .font(DesignTypography.headlineMedium)
                     .foregroundStyle(.white)
-                Text("Zero-day threat detection and custom domain firewalling.")
+                Text("premium.upsell.body")
                     .font(DesignTypography.bodySmall)
                     .foregroundStyle(.white.opacity(0.8))
             }
             Spacer()
-            NavigationLink("Upgrade") {
+            NavigationLink("premium.action.upgrade") {
                 PremiumView(viewModel: PremiumViewModel(service: MockSubscriptionService()))
             }
             .font(DesignTypography.bodyLarge)
