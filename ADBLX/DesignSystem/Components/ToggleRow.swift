@@ -4,17 +4,17 @@ import SwiftUI
 /// A titled, subtitled row ending in a Toggle. Stitch theme: switches use full
 /// pill-shaping and the Privacy Purple "on" tint with a spring-animated transition.
 struct ToggleRow: View {
-    let title: String
-    let subtitle: String
+    let titleKey: LocalizedStringKey
+    let subtitleKey: LocalizedStringKey
     @Binding var isOn: Bool
 
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: DesignSpacing.base / 2) {
-                Text(title)
+                Text(titleKey)
                     .font(DesignTypography.bodyLarge)
                     .foregroundStyle(DesignColors.onSurface)
-                Text(subtitle)
+                Text(subtitleKey)
                     .font(DesignTypography.bodySmall)
                     .foregroundStyle(DesignColors.onSurfaceVariant)
             }
@@ -25,12 +25,16 @@ struct ToggleRow: View {
                 .animation(.spring, value: isOn)
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(title)
+        // Deferred to Commit 3 (accessibility audit): accessibilityLabel(title)
+        // used to read `title: String` directly; now `titleKey` is a
+        // LocalizedStringKey with no String value to hand to
+        // accessibilityLabel(_:). Commit 3 resolves this alongside the
+        // accessibilityValue below — do not fix ad hoc here.
         .accessibilityValue(isOn ? "On" : "Off")
     }
 }
 
 #Preview {
-    ToggleRow(title: "Ads", subtitle: "Blocks display and video ads", isOn: .constant(true))
+    ToggleRow(titleKey: "togglerow.preview.title", subtitleKey: "togglerow.preview.subtitle", isOn: .constant(true))
         .padding()
 }

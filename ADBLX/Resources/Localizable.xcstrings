@@ -70,6 +70,26 @@
           }
         }
       }
+    },
+    "togglerow.preview.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ads"
+          }
+        }
+      }
+    },
+    "togglerow.preview.subtitle" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Blocks display and video ads"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"
