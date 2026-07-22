@@ -50,6 +50,16 @@
           }
         }
       }
+    },
+    "primarybutton.preview.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reload Safari Blockers"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

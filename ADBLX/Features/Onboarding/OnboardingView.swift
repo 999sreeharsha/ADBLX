@@ -61,7 +61,7 @@ struct OnboardingView: View {
                 }
 
                 VStack(spacing: DesignSpacing.stackGap) {
-                    PrimaryButton(title: "Get Started", action: onFinish)
+                    PrimaryButton(titleKey: "Get Started", action: onFinish)
                     Button("Skip for now", action: onFinish)
                         .font(DesignTypography.bodyLarge)
                         .foregroundStyle(DesignColors.onSurfaceVariant)

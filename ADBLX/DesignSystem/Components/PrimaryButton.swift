@@ -4,12 +4,12 @@ import SwiftUI
 /// The solid Privacy-Purple action button used throughout the app (Stitch
 /// theme: "Primary buttons use a solid Privacy Purple fill with white text").
 struct PrimaryButton: View {
-    let title: String
+    let titleKey: LocalizedStringKey
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            Text(title)
+            Text(titleKey)
                 .font(DesignTypography.bodyLarge)
                 .foregroundStyle(DesignColors.onPrimary)
                 .frame(maxWidth: .infinity)
@@ -21,6 +21,6 @@ struct PrimaryButton: View {
 }
 
 #Preview {
-    PrimaryButton(title: "Reload Safari Blockers") {}
+    PrimaryButton(titleKey: "primarybutton.preview.title") {}
         .padding()
 }
