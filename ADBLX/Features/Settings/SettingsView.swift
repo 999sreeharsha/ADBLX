@@ -8,26 +8,26 @@ struct SettingsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: DesignSpacing.sectionGap) {
-                Text("Settings")
+                Text("settings.title")
                     .font(DesignTypography.headlineLarge)
                     .foregroundStyle(DesignColors.onBackground)
 
                 if let snapshot = viewModel.snapshot {
                     Card {
                         HStack {
-                            Text("iCloud Sync")
+                            Text("settings.row.iCloudSync")
                                 .font(DesignTypography.bodyLarge)
                                 .foregroundStyle(DesignColors.onSurface)
                             Spacer()
                             PremiumBadge()
                         }
-                        Text(snapshot.iCloudSyncEnabled ? "On" : "Off")
+                        Text(snapshot.iCloudSyncEnabled ? "settings.status.on" : "settings.status.off")
                             .font(DesignTypography.bodySmall)
                             .foregroundStyle(DesignColors.onSurfaceVariant)
                     }
 
                     Card {
-                        Text("Allowlist")
+                        Text("settings.section.allowlist")
                             .font(DesignTypography.headlineMedium)
                             .foregroundStyle(DesignColors.onBackground)
                         ForEach(snapshot.allowlist) { entry in
@@ -45,9 +45,9 @@ struct SettingsView: View {
                             }
                         }
                         HStack {
-                            TextField("Add a domain", text: $newDomain)
+                            TextField("settings.placeholder.addDomain", text: $newDomain)
                                 .font(DesignTypography.bodyLarge)
-                            Button("Add") {
+                            Button("settings.action.add") {
                                 Task {
                                     await viewModel.addAllowlistEntry(domain: newDomain)
                                     newDomain = ""

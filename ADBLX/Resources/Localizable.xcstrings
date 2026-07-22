@@ -386,6 +386,27 @@
     },
     "premium.legal.subscriptionTerms" : {
       "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "By subscribing, you agree to our Terms of Use and Privacy Policy. Subscriptions automatically renew unless canceled 24 hours before the end of the current period." } } }
+    },
+    "settings.title" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Settings" } } }
+    },
+    "settings.row.iCloudSync" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "iCloud Sync" } } }
+    },
+    "settings.status.on" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "On" } } }
+    },
+    "settings.status.off" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Off" } } }
+    },
+    "settings.section.allowlist" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Allowlist" } } }
+    },
+    "settings.placeholder.addDomain" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Add a domain" } } }
+    },
+    "settings.action.add" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Add" } } }
     }
   },
   "version" : "1.0"
