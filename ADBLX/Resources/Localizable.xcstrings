@@ -1,7 +1,26 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-
+    "card.preview.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Safari Protection"
+          }
+        }
+      }
+    },
+    "card.preview.status" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enabled"
+          }
+        }
+      }
+    }
   },
   "version" : "1.0"
 }

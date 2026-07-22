@@ -20,8 +20,8 @@ struct Card<Content: View>: View {
 
 #Preview {
     Card {
-        Text("Safari Protection")
-        Text("Enabled")
+        Text("card.preview.title")
+        Text("card.preview.status")
     }
     .padding()
 }
