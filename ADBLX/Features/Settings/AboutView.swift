@@ -9,26 +9,26 @@ struct AboutView: View {
                     Image(systemName: "shield.checkered")
                         .font(.system(size: 48))
                         .foregroundStyle(DesignColors.primary)
-                    Text("ADBLX")
+                    Text("about.title.app")
                         .font(DesignTypography.headlineLarge)
                         .foregroundStyle(DesignColors.onBackground)
-                    Text("Version 1.0")
+                    Text("about.version.label")
                         .font(DesignTypography.bodySmall)
                         .foregroundStyle(DesignColors.onSurfaceVariant)
                 }
                 .frame(maxWidth: .infinity)
 
                 Card {
-                    Text("Zero data collection. Nothing about your browsing ever leaves your device.")
+                    Text("about.privacy.statement")
                         .font(DesignTypography.bodyLarge)
                         .foregroundStyle(DesignColors.onSurface)
                 }
 
                 Card {
-                    Link("Privacy Policy", destination: URL(string: "https://adblx.app/privacy")!)
+                    Link("about.link.privacyPolicy", destination: URL(string: "https://adblx.app/privacy")!)
                         .font(DesignTypography.bodyLarge)
                     Divider()
-                    Link("Terms of Service", destination: URL(string: "https://adblx.app/terms")!)
+                    Link("about.link.termsOfService", destination: URL(string: "https://adblx.app/terms")!)
                         .font(DesignTypography.bodyLarge)
                 }
             }

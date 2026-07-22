@@ -407,6 +407,21 @@
     },
     "settings.action.add" : {
       "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Add" } } }
+    },
+    "about.title.app" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "ADBLX" } } }
+    },
+    "about.version.label" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Version 1.0" } } }
+    },
+    "about.privacy.statement" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Zero data collection. Nothing about your browsing ever leaves your device." } } }
+    },
+    "about.link.privacyPolicy" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Privacy Policy" } } }
+    },
+    "about.link.termsOfService" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Terms of Service" } } }
     }
   },
   "version" : "1.0"
