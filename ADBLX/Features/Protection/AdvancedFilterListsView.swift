@@ -14,7 +14,7 @@ struct AdvancedFilterListsView: View {
                     ForEach(FilterCategoryID.allCasesForDisplay, id: \.self) { category in
                         let listsInCategory = lists.filter { $0.category == category }
                         if !listsInCategory.isEmpty {
-                            categorySection(title: category.displayName, lists: listsInCategory)
+                            categorySection(titleKey: category.displayNameKey, lists: listsInCategory)
                         }
                     }
                 }
@@ -29,18 +29,18 @@ struct AdvancedFilterListsView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: DesignSpacing.base) {
-            Text("Filter Lists")
+            Text("protection.filterLists.title")
                 .font(DesignTypography.headlineLarge)
                 .foregroundStyle(DesignColors.onSurface)
-            Text("Customize your blocking experience by enabling specialized community-maintained lists.")
+            Text("protection.filterLists.subtitle")
                 .font(DesignTypography.bodySmall)
                 .foregroundStyle(DesignColors.onSurfaceVariant)
         }
     }
 
-    private func categorySection(title: String, lists: [FilterListEntry]) -> some View {
+    private func categorySection(titleKey: LocalizedStringKey, lists: [FilterListEntry]) -> some View {
         VStack(alignment: .leading, spacing: DesignSpacing.gutter) {
-            Text(title)
+            Text(titleKey)
                 .font(DesignTypography.labelCaps)
                 .foregroundStyle(DesignColors.onSurfaceVariant)
                 .textCase(.uppercase)
@@ -86,6 +86,7 @@ struct AdvancedFilterListsView: View {
         }
         .padding(DesignSpacing.containerPadding)
         .accessibilityElement(children: .combine)
+        // Deferred to Commit 3 (accessibility audit) — do not migrate these two lines here.
         .accessibilityLabel(list.isPremium ? "\(list.name), premium" : list.name)
         .accessibilityValue(list.isEnabled ? "On" : "Off")
     }
@@ -102,7 +103,7 @@ struct AdvancedFilterListsView: View {
                 if isApplying {
                     ProgressView().tint(.white)
                 } else {
-                    Text("Apply Changes")
+                    Text("protection.action.applyChanges")
                         .font(DesignTypography.bodyLarge)
                         .fontWeight(.semibold)
                     Image(systemName: "arrow.triangle.2.circlepath")
@@ -123,12 +124,12 @@ struct AdvancedFilterListsView: View {
 private extension FilterCategoryID {
     static let allCasesForDisplay: [FilterCategoryID] = [.ads, .privacy, .annoyances, .regional]
 
-    var displayName: String {
+    var displayNameKey: LocalizedStringKey {
         switch self {
-        case .ads: return "Ads"
-        case .privacy: return "Privacy"
-        case .annoyances: return "Annoyances"
-        case .regional: return "Regional"
+        case .ads: return "protection.category.ads"
+        case .privacy: return "protection.category.privacy"
+        case .annoyances: return "protection.category.annoyances"
+        case .regional: return "protection.category.regional"
         }
     }
 }

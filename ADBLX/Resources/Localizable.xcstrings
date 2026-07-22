@@ -290,6 +290,27 @@
     },
     "premium.action.upgrade" : {
       "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Upgrade" } } }
+    },
+    "protection.filterLists.title" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Filter Lists" } } }
+    },
+    "protection.filterLists.subtitle" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Customize your blocking experience by enabling specialized community-maintained lists." } } }
+    },
+    "protection.category.ads" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Ads" } } }
+    },
+    "protection.category.privacy" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Privacy" } } }
+    },
+    "protection.category.annoyances" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Annoyances" } } }
+    },
+    "protection.category.regional" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Regional" } } }
+    },
+    "protection.action.applyChanges" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Apply Changes" } } }
     }
   },
   "version" : "1.0"
