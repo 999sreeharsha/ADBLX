@@ -41,11 +41,11 @@ struct PremiumView: View {
                     .font(.system(size: 36))
                     .foregroundStyle(DesignColors.tertiary)
             }
-            Text("Unlock Ultimate Privacy")
+            Text("premium.hero.title")
                 .font(DesignTypography.headlineLarge)
                 .foregroundStyle(DesignColors.tertiary)
                 .multilineTextAlignment(.center)
-            Text("Experience a faster, cleaner, and safer web without limits.")
+            Text("premium.hero.subtitle")
                 .font(DesignTypography.bodyLarge)
                 .foregroundStyle(DesignColors.onSurfaceVariant)
                 .multilineTextAlignment(.center)
@@ -57,7 +57,7 @@ struct PremiumView: View {
 
     private func pricingSection(plans: [SubscriptionPlan]) -> some View {
         VStack(alignment: .leading, spacing: DesignSpacing.gutter) {
-            Text("Select a Plan")
+            Text("premium.section.selectPlan")
                 .font(DesignTypography.labelCaps)
                 .foregroundStyle(DesignColors.outline)
                 .textCase(.uppercase)
@@ -94,7 +94,7 @@ struct PremiumView: View {
                         Text(plan.priceDescription)
                             .font(DesignTypography.headlineMedium)
                             .foregroundStyle(isBestValue ? DesignColors.tertiary : DesignColors.onSurfaceVariant)
-                        Text(isBestValue ? "per year" : "one-time")
+                        Text(isBestValue ? "premium.plan.periodYearly" : "premium.plan.periodOneTime")
                             .font(DesignTypography.labelCaps)
                             .foregroundStyle(DesignColors.onSurfaceVariant)
                     }
@@ -109,7 +109,7 @@ struct PremiumView: View {
                 )
 
                 if isBestValue {
-                    Text("Best Value")
+                    Text("premium.badge.bestValue")
                         .font(DesignTypography.labelCaps)
                         .foregroundStyle(.white)
                         .padding(.horizontal, DesignSpacing.gutter)
@@ -126,18 +126,18 @@ struct PremiumView: View {
 
     private var featuresSection: some View {
         VStack(alignment: .leading, spacing: DesignSpacing.gutter) {
-            Text("Premium Power")
+            Text("premium.section.power")
                 .font(DesignTypography.labelCaps)
                 .foregroundStyle(DesignColors.outline)
                 .textCase(.uppercase)
 
-            featureCard(icon: "network", iconColor: DesignColors.primary, title: "DNS Protection", description: "System-wide ad blocking via encrypted DNS queries. Blocks trackers in apps beyond the browser.")
-            featureCard(icon: "arrow.triangle.2.circlepath", iconColor: DesignColors.tertiary, title: "Background Updates", description: "Blocklists stay fresh automatically. You never have to manually check for new tracker signatures.")
-            featureCard(icon: "play.tv.fill", iconColor: DesignColors.secondary, title: "YouTube Safari Enhancements", description: "Native-like experience in Safari with no video ads, background play, and PiP support.")
+            featureCard(icon: "network", iconColor: DesignColors.primary, titleKey: "premium.feature.dns.title", descriptionKey: "premium.feature.dns.description")
+            featureCard(icon: "arrow.triangle.2.circlepath", iconColor: DesignColors.tertiary, titleKey: "premium.feature.backgroundUpdates.title", descriptionKey: "premium.feature.backgroundUpdates.description")
+            featureCard(icon: "play.tv.fill", iconColor: DesignColors.secondary, titleKey: "premium.feature.youtube.title", descriptionKey: "premium.feature.youtube.description")
         }
     }
 
-    private func featureCard(icon: String, iconColor: Color, title: String, description: String) -> some View {
+    private func featureCard(icon: String, iconColor: Color, titleKey: LocalizedStringKey, descriptionKey: LocalizedStringKey) -> some View {
         HStack(alignment: .top, spacing: DesignSpacing.containerPadding) {
             Image(systemName: icon)
                 .foregroundStyle(iconColor)
@@ -145,11 +145,11 @@ struct PremiumView: View {
                 .background(iconColor.opacity(0.1))
                 .clipShape(RoundedRectangle(cornerRadius: DesignShape.smallCornerRadius * 2))
             VStack(alignment: .leading, spacing: DesignSpacing.base / 2) {
-                Text(title)
+                Text(titleKey)
                     .font(DesignTypography.bodyLarge)
                     .fontWeight(.semibold)
                     .foregroundStyle(DesignColors.primary)
-                Text(description)
+                Text(descriptionKey)
                     .font(DesignTypography.bodySmall)
                     .foregroundStyle(DesignColors.onSurfaceVariant)
             }
@@ -166,17 +166,17 @@ struct PremiumView: View {
 
     private var comparisonSection: some View {
         VStack(alignment: .leading, spacing: DesignSpacing.gutter) {
-            Text("Comparison")
+            Text("premium.section.comparison")
                 .font(DesignTypography.labelCaps)
                 .foregroundStyle(DesignColors.outline)
                 .textCase(.uppercase)
 
             VStack(spacing: 0) {
                 comparisonHeaderRow
-                comparisonRow(feature: "Safari Blocking", freeIncluded: true, premiumIncluded: true)
-                comparisonRow(feature: "DNS Protection", freeIncluded: false, premiumIncluded: true)
-                comparisonRow(feature: "Auto Updates", freeIncluded: false, premiumIncluded: true)
-                comparisonRow(feature: "Premium Themes", freeIncluded: false, premiumIncluded: true)
+                comparisonRow(featureKey: "premium.comparison.safariBlocking", freeIncluded: true, premiumIncluded: true)
+                comparisonRow(featureKey: "premium.comparison.dnsProtection", freeIncluded: false, premiumIncluded: true)
+                comparisonRow(featureKey: "premium.comparison.autoUpdates", freeIncluded: false, premiumIncluded: true)
+                comparisonRow(featureKey: "premium.comparison.premiumThemes", freeIncluded: false, premiumIncluded: true)
             }
             .background(.ultraThinMaterial)
             .clipShape(RoundedRectangle(cornerRadius: DesignShape.defaultCornerRadius * 2))
@@ -189,15 +189,15 @@ struct PremiumView: View {
 
     private var comparisonHeaderRow: some View {
         HStack {
-            Text("Feature")
+            Text("premium.comparison.feature")
                 .font(DesignTypography.labelCaps)
                 .foregroundStyle(DesignColors.outline)
             Spacer()
-            Text("Free")
+            Text("premium.comparison.free")
                 .font(DesignTypography.labelCaps)
                 .foregroundStyle(DesignColors.outline)
                 .frame(width: 60)
-            Text("Premium")
+            Text("premium.comparison.premium")
                 .font(DesignTypography.labelCaps)
                 .foregroundStyle(DesignColors.tertiary)
                 .frame(width: 60)
@@ -206,9 +206,9 @@ struct PremiumView: View {
         .background(DesignColors.surfaceContainerHigh.opacity(0.3))
     }
 
-    private func comparisonRow(feature: String, freeIncluded: Bool, premiumIncluded: Bool) -> some View {
+    private func comparisonRow(featureKey: LocalizedStringKey, freeIncluded: Bool, premiumIncluded: Bool) -> some View {
         HStack {
-            Text(feature)
+            Text(featureKey)
                 .font(DesignTypography.bodySmall)
                 .foregroundStyle(DesignColors.primary)
             Spacer()
@@ -236,7 +236,7 @@ struct PremiumView: View {
                     Task { await viewModel.purchase(planID: plan.id) }
                 }
             } label: {
-                Text("Upgrade to Premium")
+                Text("premium.action.upgradeToPremium")
                     .font(DesignTypography.bodyLarge)
                     .fontWeight(.bold)
                     .foregroundStyle(.white)
@@ -247,9 +247,9 @@ struct PremiumView: View {
             }
 
             HStack(spacing: DesignSpacing.stackGap) {
-                Button("Restore") {}
+                Button("premium.action.restore") {}
                     .frame(maxWidth: .infinity)
-                Button("Manage") {}
+                Button("premium.action.manage") {}
                     .frame(maxWidth: .infinity)
             }
             .font(DesignTypography.bodyLarge)
@@ -261,7 +261,7 @@ struct PremiumView: View {
                     .strokeBorder(DesignColors.outline.opacity(0.3), lineWidth: 1)
             )
 
-            Text("By subscribing, you agree to our Terms of Use and Privacy Policy. Subscriptions automatically renew unless canceled 24 hours before the end of the current period.")
+            Text("premium.legal.subscriptionTerms")
                 .font(.system(size: 11))
                 .foregroundStyle(DesignColors.outline)
                 .multilineTextAlignment(.center)

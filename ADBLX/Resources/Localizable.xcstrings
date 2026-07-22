@@ -311,6 +311,81 @@
     },
     "protection.action.applyChanges" : {
       "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Apply Changes" } } }
+    },
+    "premium.hero.title" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Unlock Ultimate Privacy" } } }
+    },
+    "premium.hero.subtitle" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Experience a faster, cleaner, and safer web without limits." } } }
+    },
+    "premium.section.selectPlan" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Select a Plan" } } }
+    },
+    "premium.badge.bestValue" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Best Value" } } }
+    },
+    "premium.plan.periodYearly" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "per year" } } }
+    },
+    "premium.plan.periodOneTime" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "one-time" } } }
+    },
+    "premium.section.power" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Premium Power" } } }
+    },
+    "premium.feature.dns.title" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "DNS Protection" } } }
+    },
+    "premium.feature.dns.description" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "System-wide ad blocking via encrypted DNS queries. Blocks trackers in apps beyond the browser." } } }
+    },
+    "premium.feature.backgroundUpdates.title" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Background Updates" } } }
+    },
+    "premium.feature.backgroundUpdates.description" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Blocklists stay fresh automatically. You never have to manually check for new tracker signatures." } } }
+    },
+    "premium.feature.youtube.title" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "YouTube Safari Enhancements" } } }
+    },
+    "premium.feature.youtube.description" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Native-like experience in Safari with no video ads, background play, and PiP support." } } }
+    },
+    "premium.section.comparison" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Comparison" } } }
+    },
+    "premium.comparison.feature" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Feature" } } }
+    },
+    "premium.comparison.free" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Free" } } }
+    },
+    "premium.comparison.premium" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Premium" } } }
+    },
+    "premium.comparison.safariBlocking" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Safari Blocking" } } }
+    },
+    "premium.comparison.dnsProtection" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "DNS Protection" } } }
+    },
+    "premium.comparison.autoUpdates" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Auto Updates" } } }
+    },
+    "premium.comparison.premiumThemes" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Premium Themes" } } }
+    },
+    "premium.action.upgradeToPremium" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Upgrade to Premium" } } }
+    },
+    "premium.action.restore" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Restore" } } }
+    },
+    "premium.action.manage" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Manage" } } }
+    },
+    "premium.legal.subscriptionTerms" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "By subscribing, you agree to our Terms of Use and Privacy Policy. Subscriptions automatically renew unless canceled 24 hours before the end of the current period." } } }
     }
   },
   "version" : "1.0"
