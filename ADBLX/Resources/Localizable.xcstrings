@@ -422,6 +422,24 @@
     },
     "about.link.termsOfService" : {
       "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Terms of Service" } } }
+    },
+    "updateprogress.status.ready" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Ready to update" } } }
+    },
+    "updateprogress.status.checking" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Checking for updates…" } } }
+    },
+    "updateprogress.status.downloading" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Downloading filter updates…" } } }
+    },
+    "updateprogress.status.installing" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Installing filters…" } } }
+    },
+    "updateprogress.status.complete" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Filters updated" } } }
+    },
+    "updateprogress.button.done" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Done" } } }
     }
   },
   "version" : "1.0"

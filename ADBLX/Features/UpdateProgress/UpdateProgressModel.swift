@@ -21,11 +21,11 @@ final class UpdateProgressModel {
 
     var progressDescription: String {
         switch phase {
-        case .idle: return "Ready to update"
-        case .checking: return "Checking for updates…"
-        case .downloading: return "Downloading filter updates…"
-        case .installing: return "Installing filters…"
-        case .complete: return "Filters updated"
+        case .idle: return String(localized: "updateprogress.status.ready")
+        case .checking: return String(localized: "updateprogress.status.checking")
+        case .downloading: return String(localized: "updateprogress.status.downloading")
+        case .installing: return String(localized: "updateprogress.status.installing")
+        case .complete: return String(localized: "updateprogress.status.complete")
         case .failed(let message): return message
         }
     }

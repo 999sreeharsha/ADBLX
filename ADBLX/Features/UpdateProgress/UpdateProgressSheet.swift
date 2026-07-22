@@ -27,7 +27,7 @@ struct UpdateProgressSheet: View {
                 .multilineTextAlignment(.center)
 
             if model.phase == .complete {
-                PrimaryButton(titleKey: "Done") { dismiss() }
+                PrimaryButton(titleKey: "updateprogress.button.done") { dismiss() }
             }
         }
         .padding(DesignSpacing.containerPadding)
