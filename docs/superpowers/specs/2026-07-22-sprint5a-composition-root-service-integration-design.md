@@ -96,6 +96,14 @@ struct AppManifestEndpointProvider: ManifestEndpointProvider {
 No view or view-model changes. `UpdateCoordinator` is constructed but never
 invoked — no network activity at launch.
 
+`FilterStore` is constructed exactly once, in `ADBLXApp`, and that single
+instance is threaded through every factory that needs it —
+`makeFilterPipeline`, `makeUpdateCoordinator`, and (from Commit 2 onward)
+`RealHomeService`. No factory method constructs its own `FilterStore`; this
+is the same "one instance per backend type" principle already applied to
+`FilterPipeline` and `UpdateCoordinator`, and duplicate `FilterStore`
+construction should be treated as a design violation in code review.
+
 **Acceptance criteria:**
 - `AppCompositionRoot` is the sole place any backend type is constructed.
 - Exactly one `FilterPipeline` and one `UpdateCoordinator` instance exist,
@@ -146,7 +154,10 @@ support:
   `safariProtectionStatus`.
 - DNS tile: becomes a view-owned static localized "Not configured" placeholder
   with no backing `HomeStatus` field — DNS state has no real source until the
-  Packet Tunnel subsystem exists in a later sprint.
+  Packet Tunnel subsystem exists in a later sprint. This is intentional,
+  temporary technical debt, not a permanent UI implementation: ownership
+  transfers back to the backend (a real `DNSStatus` model feeding `HomeStatus`)
+  once that subsystem lands.
 
 `RealHomeService` reads `installed_filters.json` via `FilterStore.read(_:in:)`,
 already actor-isolated/async — no synchronous main-thread I/O.
