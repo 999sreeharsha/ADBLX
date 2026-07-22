@@ -4,6 +4,21 @@ import Foundation
 /// FilterPipeline itself never constructs its own dependencies — everything is injected —
 /// so swapping PassthroughRuleCompiler for a SafariConverterLib-backed implementation (post
 /// ADR-0001) only ever changes this file.
+/// Where UpdateCoordinator fetches manifest.json from. A separate abstraction from
+/// UpdateCoordinator itself so the update-orchestration logic stays stable while the
+/// manifest source (today: a placeholder; eventually: environment-specific CDN URLs
+/// for debug/staging/release) can change without touching the coordinator.
+protocol ManifestEndpointProvider: Sendable {
+    var manifestURL: URL { get }
+}
+
+struct AppManifestEndpointProvider: ManifestEndpointProvider {
+    // TODO: replace with the real CDN manifest endpoint once available. Not a
+    // Sprint 5 blocker — UpdateCoordinator.run() against this placeholder simply
+    // fails, and the UI surfaces that as a real, honest error (Sprint 5B Commit 5).
+    let manifestURL = URL(string: "https://example.invalid/manifest.json")!
+}
+
 enum AppCompositionRoot {
     static let extensionIdentifiers = GroupExtensionIdentifiers(
         ads: "com.ADBLX.ADBLX.AdsBlocker",
@@ -29,6 +44,27 @@ enum AppCompositionRoot {
             store: store,
             writer: AtomicRuleWriter(),
             reloader: ReloadCoordinator()
+        )
+    }
+
+    /// The one place an HTTPSession-conforming transport is constructed. ManifestClient
+    /// and FilterDownloadClient both receive this same instance rather than each reaching
+    /// for URLSession.shared independently.
+    static func makeHTTPSession() -> HTTPSession {
+        URLSession.shared
+    }
+
+    static func makeUpdateCoordinator(pipeline: FilterPipeline, store: FilterStore) -> UpdateCoordinator {
+        let session = makeHTTPSession()
+        let endpointProvider: ManifestEndpointProvider = AppManifestEndpointProvider()
+        return UpdateCoordinator(
+            manifestClient: ManifestClient(session: session, endpoint: endpointProvider.manifestURL),
+            manifestStore: ManifestStore(filterStore: store),
+            downloadClient: FilterDownloadClient(session: session),
+            pipeline: pipeline,
+            store: store,
+            reloader: ReloadCoordinator(),
+            extensionIdentifiers: extensionIdentifiers
         )
     }
 
