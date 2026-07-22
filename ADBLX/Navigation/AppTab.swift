@@ -12,10 +12,10 @@ enum AppTab: CaseIterable {
 
     var title: String {
         switch self {
-        case .home: return "Home"
-        case .protection: return "Protection"
-        case .premium: return "Premium"
-        case .settings: return "Settings"
+        case .home: return String(localized: "navigation.tab.home")
+        case .protection: return String(localized: "navigation.tab.protection")
+        case .premium: return String(localized: "navigation.tab.premium")
+        case .settings: return String(localized: "navigation.tab.settings")
         }
     }
 
