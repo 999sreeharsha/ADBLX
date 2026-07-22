@@ -118,15 +118,53 @@ struct HomeView: View {
                 .textCase(.uppercase)
 
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: DesignSpacing.gutter) {
-                statTile(icon: "safari", labelKey: "home.stat.safari.label", value: String(localized: "home.stat.safari.value"), detail: String(format: String(localized: "home.stat.safari.detail"), status.blockedPercentage.formatted(.number.precision(.fractionLength(1)))), detailColor: DesignColors.secondary, iconColor: DesignColors.primary)
-                statTile(icon: "network", labelKey: "home.stat.dns.label", value: status.dnsProviderName, detail: String(localized: "home.stat.dns.detail"), detailColor: DesignColors.onSurfaceVariant, iconColor: DesignColors.tertiary)
-                statTile(icon: "arrow.triangle.2.circlepath", labelKey: "home.stat.lastUpdate.label", value: status.lastUpdateDescription, detail: nil, detailColor: DesignColors.onSurfaceVariant, iconColor: .orange)
-                statTile(icon: "list.bullet.rectangle", labelKey: "home.stat.rules.label", value: status.ruleCount.formatted(), detail: nil, detailColor: DesignColors.onSurfaceVariant, iconColor: DesignColors.secondary)
+                statTile(
+                    icon: "safari",
+                    labelKey: "home.stat.safari.label",
+                    value: String(localized: "home.stat.safari.value"),
+                    detail: String(
+                        format: String(localized: "home.stat.safari.detail"),
+                        status.blockedPercentage.formatted(.number.precision(.fractionLength(1)))
+                    ),
+                    detailColor: DesignColors.secondary,
+                    iconColor: DesignColors.primary
+                )
+                statTile(
+                    icon: "network",
+                    labelKey: "home.stat.dns.label",
+                    value: status.dnsProviderName,
+                    detail: String(localized: "home.stat.dns.detail"),
+                    detailColor: DesignColors.onSurfaceVariant,
+                    iconColor: DesignColors.tertiary
+                )
+                statTile(
+                    icon: "arrow.triangle.2.circlepath",
+                    labelKey: "home.stat.lastUpdate.label",
+                    value: status.lastUpdateDescription,
+                    detail: nil,
+                    detailColor: DesignColors.onSurfaceVariant,
+                    iconColor: .orange
+                )
+                statTile(
+                    icon: "list.bullet.rectangle",
+                    labelKey: "home.stat.rules.label",
+                    value: status.ruleCount.formatted(),
+                    detail: nil,
+                    detailColor: DesignColors.onSurfaceVariant,
+                    iconColor: DesignColors.secondary
+                )
             }
         }
     }
 
-    private func statTile(icon: String, labelKey: LocalizedStringKey, value: String, detail: String?, detailColor: Color, iconColor: Color) -> some View {
+    private func statTile(
+        icon: String,
+        labelKey: LocalizedStringKey,
+        value: String,
+        detail: String?,
+        detailColor: Color,
+        iconColor: Color
+    ) -> some View {
         VStack(alignment: .leading, spacing: DesignSpacing.base) {
             HStack(spacing: DesignSpacing.base) {
                 Image(systemName: icon)

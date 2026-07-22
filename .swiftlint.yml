@@ -1,7 +1,15 @@
+included:
+  - ADBLX
+
 excluded:
   - Pods
   - DerivedData
   - .build
+  - ADBLXTests
+  - ADBLXUITests
+  - Extensions
+  - "**/Preview Content"
+  - "**/*.generated.swift"
 
 opt_in_rules:
   - empty_count
@@ -19,3 +27,10 @@ identifier_name:
     warning: 2
   excluded:
     - id
+
+custom_rules:
+  no_hardcoded_ui_string:
+    included: ".*\\.swift"
+    regex: '(Text|Label|Button)\(\s*"[A-Z][^"]*"'
+    message: "User-visible strings must use a Localizable.xcstrings key (e.g. \"home.title\"), not a hardcoded literal. See docs/coding-standards.md."
+    severity: error

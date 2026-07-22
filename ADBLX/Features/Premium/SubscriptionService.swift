@@ -27,9 +27,18 @@ struct MockSubscriptionService: SubscriptionService {
         SubscriptionStatus(
             isPremium: false,
             plans: [
-                SubscriptionPlan(id: "monthly", name: "Monthly", priceDescription: "$2.99", billingPeriodDescription: "per month", isCurrentPlan: false),
-                SubscriptionPlan(id: "annual", name: "Annual", priceDescription: "$19.99", billingPeriodDescription: "per year", isCurrentPlan: false),
-                SubscriptionPlan(id: "lifetime", name: "Lifetime", priceDescription: "$49.99", billingPeriodDescription: "one-time", isCurrentPlan: false),
+                SubscriptionPlan(
+                    id: "monthly", name: "Monthly", priceDescription: "$2.99",
+                    billingPeriodDescription: "per month", isCurrentPlan: false
+                ),
+                SubscriptionPlan(
+                    id: "annual", name: "Annual", priceDescription: "$19.99",
+                    billingPeriodDescription: "per year", isCurrentPlan: false
+                ),
+                SubscriptionPlan(
+                    id: "lifetime", name: "Lifetime", priceDescription: "$49.99",
+                    billingPeriodDescription: "one-time", isCurrentPlan: false
+                ),
             ]
         )
     }

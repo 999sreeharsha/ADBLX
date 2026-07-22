@@ -9,7 +9,7 @@ struct ToggleRowTests {
     func bindingRoundTrips() {
         var value = false
         let binding = Binding(get: { value }, set: { value = $0 })
-        _ = ToggleRow(title: "Ads", subtitle: "Blocks display and video ads", isOn: binding)
+        _ = ToggleRow(titleKey: "Ads", subtitleKey: "Blocks display and video ads", isOn: binding)
 
         binding.wrappedValue.toggle()
 

@@ -1,5 +1,6 @@
 // ADBLXTests/DesignSystem/ComingSoonStateTests.swift
 import Testing
+import SwiftUI
 @testable import ADBLX
 
 @Suite("ComingSoonState")

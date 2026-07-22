@@ -105,7 +105,10 @@ struct PremiumView: View {
                 .clipShape(RoundedRectangle(cornerRadius: DesignShape.defaultCornerRadius * 2))
                 .overlay(
                     RoundedRectangle(cornerRadius: DesignShape.defaultCornerRadius * 2)
-                        .strokeBorder(isBestValue ? DesignColors.tertiary.opacity(0.5) : DesignColors.outlineVariant.opacity(0.3), lineWidth: isBestValue ? 2 : 1)
+                        .strokeBorder(
+                            isBestValue ? DesignColors.tertiary.opacity(0.5) : DesignColors.outlineVariant.opacity(0.3),
+                            lineWidth: isBestValue ? 2 : 1
+                        )
                 )
 
                 if isBestValue {
@@ -115,7 +118,10 @@ struct PremiumView: View {
                         .padding(.horizontal, DesignSpacing.gutter)
                         .padding(.vertical, DesignSpacing.base / 2)
                         .background(DesignColors.tertiary)
-                        .clipShape(UnevenRoundedRectangle(bottomLeadingRadius: DesignShape.smallCornerRadius, topTrailingRadius: DesignShape.defaultCornerRadius * 2))
+                        .clipShape(UnevenRoundedRectangle(
+                            bottomLeadingRadius: DesignShape.smallCornerRadius,
+                            topTrailingRadius: DesignShape.defaultCornerRadius * 2
+                        ))
                 }
             }
         }
@@ -131,9 +137,19 @@ struct PremiumView: View {
                 .foregroundStyle(DesignColors.outline)
                 .textCase(.uppercase)
 
-            featureCard(icon: "network", iconColor: DesignColors.primary, titleKey: "premium.feature.dns.title", descriptionKey: "premium.feature.dns.description")
-            featureCard(icon: "arrow.triangle.2.circlepath", iconColor: DesignColors.tertiary, titleKey: "premium.feature.backgroundUpdates.title", descriptionKey: "premium.feature.backgroundUpdates.description")
-            featureCard(icon: "play.tv.fill", iconColor: DesignColors.secondary, titleKey: "premium.feature.youtube.title", descriptionKey: "premium.feature.youtube.description")
+            featureCard(
+                icon: "network", iconColor: DesignColors.primary,
+                titleKey: "premium.feature.dns.title", descriptionKey: "premium.feature.dns.description"
+            )
+            featureCard(
+                icon: "arrow.triangle.2.circlepath", iconColor: DesignColors.tertiary,
+                titleKey: "premium.feature.backgroundUpdates.title",
+                descriptionKey: "premium.feature.backgroundUpdates.description"
+            )
+            featureCard(
+                icon: "play.tv.fill", iconColor: DesignColors.secondary,
+                titleKey: "premium.feature.youtube.title", descriptionKey: "premium.feature.youtube.description"
+            )
         }
     }
 

@@ -51,16 +51,39 @@ actor MockProtectionService: ProtectionService {
     private var status = ProtectionStatus(
         isSafariExtensionEnabled: true,
         categories: [
-            ProtectionCategory(id: .ads, name: "Ads", description: "Blocks display and video ads", isEnabled: true, ruleCount: 62_000),
-            ProtectionCategory(id: .privacy, name: "Privacy", description: "Blocks trackers and analytics scripts", isEnabled: true, ruleCount: 48_500),
-            ProtectionCategory(id: .annoyances, name: "Annoyances", description: "Hides cookie banners and popups", isEnabled: false, ruleCount: 21_000),
-            ProtectionCategory(id: .regional, name: "Regional", description: "Extra rules for regional ad networks", isEnabled: false, ruleCount: 10_542),
+            ProtectionCategory(
+                id: .ads, name: "Ads", description: "Blocks display and video ads", isEnabled: true, ruleCount: 62_000
+            ),
+            ProtectionCategory(
+                id: .privacy, name: "Privacy", description: "Blocks trackers and analytics scripts",
+                isEnabled: true, ruleCount: 48_500
+            ),
+            ProtectionCategory(
+                id: .annoyances, name: "Annoyances", description: "Hides cookie banners and popups",
+                isEnabled: false, ruleCount: 21_000
+            ),
+            ProtectionCategory(
+                id: .regional, name: "Regional", description: "Extra rules for regional ad networks",
+                isEnabled: false, ruleCount: 10_542
+            ),
         ],
         filterLists: [
-            FilterListEntry(id: "easylist", name: "EasyList", category: .ads, version: "2026-07-15", isEnabled: true, isPremium: false),
-            FilterListEntry(id: "easyprivacy", name: "EasyPrivacy", category: .privacy, version: "2026-07-15", isEnabled: true, isPremium: false),
-            FilterListEntry(id: "fanboy-annoyances", name: "Fanboy's Annoyances", category: .annoyances, version: "2026-07-10", isEnabled: false, isPremium: true),
-            FilterListEntry(id: "regional-in", name: "Regional: India", category: .regional, version: "2026-07-01", isEnabled: false, isPremium: true),
+            FilterListEntry(
+                id: "easylist", name: "EasyList", category: .ads, version: "2026-07-15",
+                isEnabled: true, isPremium: false
+            ),
+            FilterListEntry(
+                id: "easyprivacy", name: "EasyPrivacy", category: .privacy, version: "2026-07-15",
+                isEnabled: true, isPremium: false
+            ),
+            FilterListEntry(
+                id: "fanboy-annoyances", name: "Fanboy's Annoyances", category: .annoyances, version: "2026-07-10",
+                isEnabled: false, isPremium: true
+            ),
+            FilterListEntry(
+                id: "regional-in", name: "Regional: India", category: .regional, version: "2026-07-01",
+                isEnabled: false, isPremium: true
+            ),
         ]
     )
 

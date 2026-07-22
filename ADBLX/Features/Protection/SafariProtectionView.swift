@@ -133,13 +133,23 @@ struct SafariProtectionView: View {
                 NavigationLink {
                     AdvancedFilterListsView(viewModel: viewModel)
                 } label: {
-                    configurationRow(icon: "line.3.horizontal.decrease.circle.fill", iconColor: DesignColors.primary, titleKey: "protection.row.advancedFilterLists", detailKey: "protection.row.advancedFilterLists.detail")
+                    configurationRow(
+                        icon: "line.3.horizontal.decrease.circle.fill",
+                        iconColor: DesignColors.primary,
+                        titleKey: "protection.row.advancedFilterLists",
+                        detailKey: "protection.row.advancedFilterLists.detail"
+                    )
                 }
                 Divider().overlay(DesignColors.outlineVariant.opacity(0.2))
                 NavigationLink {
                     DNSProtectionView()
                 } label: {
-                    configurationRow(icon: "lock.shield.fill", iconColor: DesignColors.tertiary, titleKey: "protection.row.dnsProtection", detailKey: "protection.row.dnsProtection.detail")
+                    configurationRow(
+                        icon: "lock.shield.fill",
+                        iconColor: DesignColors.tertiary,
+                        titleKey: "protection.row.dnsProtection",
+                        detailKey: "protection.row.dnsProtection.detail"
+                    )
                 }
                 Divider().overlay(DesignColors.outlineVariant.opacity(0.2))
                 configurationRow(icon: "bolt.fill", iconColor: DesignColors.primary, titleKey: "protection.row.speedOptimization", detailKey: nil)
@@ -201,7 +211,10 @@ struct SafariProtectionView: View {
         }
         .padding(DesignSpacing.sectionGap)
         .background(
-            LinearGradient(colors: [DesignColors.primaryContainer, DesignColors.tertiaryContainer], startPoint: .topLeading, endPoint: .bottomTrailing)
+            LinearGradient(
+                colors: [DesignColors.primaryContainer, DesignColors.tertiaryContainer],
+                startPoint: .topLeading, endPoint: .bottomTrailing
+            )
         )
         .clipShape(RoundedRectangle(cornerRadius: 32))
     }

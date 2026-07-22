@@ -22,11 +22,20 @@ struct OnboardingView: View {
                 .frame(maxWidth: .infinity)
 
                 Card {
-                    featureRow(icon: "lock.shield.fill", titleKey: "onboarding.feature.privacy.title", bodyKey: "onboarding.feature.privacy.body")
+                    featureRow(
+                        icon: "lock.shield.fill",
+                        titleKey: "onboarding.feature.privacy.title", bodyKey: "onboarding.feature.privacy.body"
+                    )
                     Divider()
-                    featureRow(icon: "bolt.fill", titleKey: "onboarding.feature.speed.title", bodyKey: "onboarding.feature.speed.body")
+                    featureRow(
+                        icon: "bolt.fill",
+                        titleKey: "onboarding.feature.speed.title", bodyKey: "onboarding.feature.speed.body"
+                    )
                     Divider()
-                    featureRow(icon: "checkmark.seal.fill", titleKey: "onboarding.feature.simplicity.title", bodyKey: "onboarding.feature.simplicity.body")
+                    featureRow(
+                        icon: "checkmark.seal.fill",
+                        titleKey: "onboarding.feature.simplicity.title", bodyKey: "onboarding.feature.simplicity.body"
+                    )
                 }
 
                 VStack(alignment: .leading, spacing: DesignSpacing.stackGap) {
