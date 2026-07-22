@@ -4,8 +4,8 @@ import SwiftUI
 /// Static placeholder for P1 screens with no backend yet (Sprint 4 spec §3/§9).
 /// No ViewModel — there is nothing to load or mutate.
 struct ComingSoonState: View {
-    let title: String
-    let message: String
+    let title: LocalizedStringKey
+    let message: LocalizedStringKey
 
     var body: some View {
         VStack(spacing: DesignSpacing.stackGap) {
@@ -19,7 +19,7 @@ struct ComingSoonState: View {
                 .font(DesignTypography.bodyLarge)
                 .foregroundStyle(DesignColors.onSurfaceVariant)
                 .multilineTextAlignment(.center)
-            Text("Coming Soon")
+            Text("comingsoon.label.badge")
                 .font(DesignTypography.labelCaps)
                 .foregroundStyle(DesignColors.onPrimaryContainer)
                 .padding(.horizontal, DesignSpacing.gutter)
@@ -35,7 +35,7 @@ struct ComingSoonState: View {
 
 #Preview {
     ComingSoonState(
-        title: "DNS Protection",
-        message: "System-wide DNS filtering is coming in a future update. Available with Premium."
+        title: "protection.dns.title",
+        message: "protection.dns.message"
     )
 }
