@@ -25,12 +25,8 @@ struct ToggleRow: View {
                 .animation(.spring, value: isOn)
         }
         .accessibilityElement(children: .combine)
-        // Deferred to Commit 3 (accessibility audit): accessibilityLabel(title)
-        // used to read `title: String` directly; now `titleKey` is a
-        // LocalizedStringKey with no String value to hand to
-        // accessibilityLabel(_:). Commit 3 resolves this alongside the
-        // accessibilityValue below — do not fix ad hoc here.
-        .accessibilityValue(isOn ? "On" : "Off")
+        .accessibilityLabel(Text(titleKey))
+        .accessibilityValue(isOn ? Text("accessibility.value.on") : Text("accessibility.value.off"))
     }
 }
 

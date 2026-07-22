@@ -440,6 +440,15 @@
     },
     "updateprogress.button.done" : {
       "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Done" } } }
+    },
+    "accessibility.value.on" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "On" } } }
+    },
+    "accessibility.value.off" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Off" } } }
+    },
+    "protection.filterList.accessibility.premiumSuffix" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "%@, premium" } } }
     }
   },
   "version" : "1.0"

@@ -86,9 +86,12 @@ struct AdvancedFilterListsView: View {
         }
         .padding(DesignSpacing.containerPadding)
         .accessibilityElement(children: .combine)
-        // Deferred to Commit 3 (accessibility audit) — do not migrate these two lines here.
-        .accessibilityLabel(list.isPremium ? "\(list.name), premium" : list.name)
-        .accessibilityValue(list.isEnabled ? "On" : "Off")
+        .accessibilityLabel(
+            list.isPremium
+                ? Text(String(format: String(localized: "protection.filterList.accessibility.premiumSuffix"), list.name))
+                : Text(list.name)
+        )
+        .accessibilityValue(list.isEnabled ? Text("accessibility.value.on") : Text("accessibility.value.off"))
     }
 
     private var applyChangesButton: some View {
