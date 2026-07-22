@@ -32,7 +32,7 @@ struct HomeView: View {
             HStack(spacing: DesignSpacing.gutter / 2) {
                 Image(systemName: "lock.shield.fill")
                     .foregroundStyle(DesignColors.primary)
-                Text("ADBLX")
+                Text("home.title.app")
                     .font(DesignTypography.headlineMedium)
                     .foregroundStyle(DesignColors.primary)
             }
@@ -60,12 +60,12 @@ struct HomeView: View {
             }
 
             VStack(spacing: DesignSpacing.base) {
-                Text(status.isProtectionEnabled ? "Active" : "Inactive")
+                Text(status.isProtectionEnabled ? "home.status.active" : "home.status.inactive")
                     .font(DesignTypography.headlineLarge)
                     .foregroundStyle(DesignColors.onSurface)
                 Text(status.isProtectionEnabled
-                     ? "System-wide protection is enabled"
-                     : "Protection is off")
+                     ? "home.status.enabledDetail"
+                     : "home.status.disabledDetail")
                     .font(DesignTypography.bodySmall)
                     .foregroundStyle(DesignColors.onSurfaceVariant)
             }
@@ -76,7 +76,7 @@ struct HomeView: View {
                     Circle()
                         .fill(DesignColors.secondary)
                         .frame(width: 8, height: 8)
-                    Text("SECURE")
+                    Text("home.badge.secure")
                         .font(DesignTypography.labelCaps)
                         .foregroundStyle(DesignColors.secondary)
                 }
@@ -112,26 +112,26 @@ struct HomeView: View {
 
     private func monitoringGrid(for status: HomeStatus) -> some View {
         VStack(alignment: .leading, spacing: DesignSpacing.gutter) {
-            Text("System Monitoring")
+            Text("home.section.monitoring")
                 .font(DesignTypography.labelMono)
                 .foregroundStyle(DesignColors.outlineVariant)
                 .textCase(.uppercase)
 
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: DesignSpacing.gutter) {
-                statTile(icon: "safari", label: "Safari", value: "Enabled", detail: "\(String(format: "%.1f", status.blockedPercentage))% Blocked", detailColor: DesignColors.secondary, iconColor: DesignColors.primary)
-                statTile(icon: "network", label: "DNS", value: status.dnsProviderName, detail: "Encrypted", detailColor: DesignColors.onSurfaceVariant, iconColor: DesignColors.tertiary)
-                statTile(icon: "arrow.triangle.2.circlepath", label: "Last Update", value: status.lastUpdateDescription, detail: nil, detailColor: DesignColors.onSurfaceVariant, iconColor: .orange)
-                statTile(icon: "list.bullet.rectangle", label: "Rules", value: status.ruleCount.formatted(), detail: nil, detailColor: DesignColors.onSurfaceVariant, iconColor: DesignColors.secondary)
+                statTile(icon: "safari", labelKey: "home.stat.safari.label", value: String(localized: "home.stat.safari.value"), detail: String(format: String(localized: "home.stat.safari.detail"), status.blockedPercentage.formatted(.number.precision(.fractionLength(1)))), detailColor: DesignColors.secondary, iconColor: DesignColors.primary)
+                statTile(icon: "network", labelKey: "home.stat.dns.label", value: status.dnsProviderName, detail: String(localized: "home.stat.dns.detail"), detailColor: DesignColors.onSurfaceVariant, iconColor: DesignColors.tertiary)
+                statTile(icon: "arrow.triangle.2.circlepath", labelKey: "home.stat.lastUpdate.label", value: status.lastUpdateDescription, detail: nil, detailColor: DesignColors.onSurfaceVariant, iconColor: .orange)
+                statTile(icon: "list.bullet.rectangle", labelKey: "home.stat.rules.label", value: status.ruleCount.formatted(), detail: nil, detailColor: DesignColors.onSurfaceVariant, iconColor: DesignColors.secondary)
             }
         }
     }
 
-    private func statTile(icon: String, label: String, value: String, detail: String?, detailColor: Color, iconColor: Color) -> some View {
+    private func statTile(icon: String, labelKey: LocalizedStringKey, value: String, detail: String?, detailColor: Color, iconColor: Color) -> some View {
         VStack(alignment: .leading, spacing: DesignSpacing.base) {
             HStack(spacing: DesignSpacing.base) {
                 Image(systemName: icon)
                     .foregroundStyle(iconColor)
-                Text(label)
+                Text(labelKey)
                     .font(DesignTypography.labelCaps)
                     .foregroundStyle(DesignColors.outlineVariant)
             }
@@ -157,7 +157,7 @@ struct HomeView: View {
 
     private var quickControls: some View {
         VStack(alignment: .leading, spacing: DesignSpacing.gutter) {
-            Text("Quick Control")
+            Text("home.section.quickControl")
                 .font(DesignTypography.labelMono)
                 .foregroundStyle(DesignColors.outlineVariant)
                 .textCase(.uppercase)
@@ -166,7 +166,7 @@ struct HomeView: View {
                 isShowingUpdateProgress = true
             } label: {
                 HStack {
-                    Label("Update Filters", systemImage: "arrow.triangle.2.circlepath")
+                    Label("home.action.updateFilters", systemImage: "arrow.triangle.2.circlepath")
                         .font(DesignTypography.bodyLarge)
                         .fontWeight(.semibold)
                     Spacer()
@@ -183,7 +183,7 @@ struct HomeView: View {
                 Task { await viewModel.load() }
             } label: {
                 HStack {
-                    Label("Reload Safari Blockers", systemImage: "arrow.clockwise")
+                    Label("home.action.reloadSafari", systemImage: "arrow.clockwise")
                         .font(DesignTypography.bodyLarge)
                     Spacer()
                     Image(systemName: "arrow.up.forward.square")
@@ -203,7 +203,7 @@ struct HomeView: View {
 
     private func activityFeed(for entries: [HomeActivityEntry]) -> some View {
         VStack(alignment: .leading, spacing: DesignSpacing.gutter) {
-            Text("Recent Activity")
+            Text("home.section.recentActivity")
                 .font(DesignTypography.labelMono)
                 .foregroundStyle(DesignColors.outlineVariant)
                 .textCase(.uppercase)

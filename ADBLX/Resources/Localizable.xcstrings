@@ -191,6 +191,60 @@
     },
     "onboarding.button.skip" : {
       "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Skip for now" } } }
+    },
+    "home.title.app" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "ADBLX" } } }
+    },
+    "home.status.active" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Active" } } }
+    },
+    "home.status.inactive" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Inactive" } } }
+    },
+    "home.status.enabledDetail" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "System-wide protection is enabled" } } }
+    },
+    "home.status.disabledDetail" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Protection is off" } } }
+    },
+    "home.badge.secure" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "SECURE" } } }
+    },
+    "home.section.monitoring" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "System Monitoring" } } }
+    },
+    "home.stat.safari.label" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Safari" } } }
+    },
+    "home.stat.safari.value" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Enabled" } } }
+    },
+    "home.stat.safari.detail" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "%@%% Blocked" } } }
+    },
+    "home.stat.dns.label" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "DNS" } } }
+    },
+    "home.stat.dns.detail" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Encrypted" } } }
+    },
+    "home.stat.lastUpdate.label" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Last Update" } } }
+    },
+    "home.stat.rules.label" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Rules" } } }
+    },
+    "home.section.quickControl" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Quick Control" } } }
+    },
+    "home.action.updateFilters" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Update Filters" } } }
+    },
+    "home.action.reloadSafari" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Reload Safari Blockers" } } }
+    },
+    "home.section.recentActivity" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Recent Activity" } } }
     }
   },
   "version" : "1.0"
