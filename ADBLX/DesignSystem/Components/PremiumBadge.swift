@@ -2,10 +2,10 @@
 import SwiftUI
 
 struct PremiumBadge: View {
-    var text: String = "Premium"
+    var textKey: LocalizedStringKey = "premium.badge.label"
 
     var body: some View {
-        Text(text)
+        Text(textKey)
             .font(DesignTypography.labelCaps)
             .foregroundStyle(DesignColors.onTertiary)
             .padding(.horizontal, DesignSpacing.gutter)

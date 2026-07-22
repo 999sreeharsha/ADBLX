@@ -90,6 +90,16 @@
           }
         }
       }
+    },
+    "premium.badge.label" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Premium"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"
