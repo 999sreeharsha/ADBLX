@@ -11,10 +11,10 @@ struct OnboardingView: View {
                     Image(systemName: "shield.checkered")
                         .font(.system(size: 56))
                         .foregroundStyle(DesignColors.primary)
-                    Text("ADBLX")
+                    Text("onboarding.title.app")
                         .font(DesignTypography.headlineLarge)
                         .foregroundStyle(DesignColors.onBackground)
-                    Text("Browse the web in total peace.")
+                    Text("onboarding.subtitle.tagline")
                         .font(DesignTypography.headlineMedium)
                         .foregroundStyle(DesignColors.onSurfaceVariant)
                         .multilineTextAlignment(.center)
@@ -22,26 +22,26 @@ struct OnboardingView: View {
                 .frame(maxWidth: .infinity)
 
                 Card {
-                    featureRow(icon: "lock.shield.fill", title: "Privacy First", body: "Blocks trackers before they ever load — nothing about your browsing leaves your device.")
+                    featureRow(icon: "lock.shield.fill", titleKey: "onboarding.feature.privacy.title", bodyKey: "onboarding.feature.privacy.body")
                     Divider()
-                    featureRow(icon: "bolt.fill", title: "Pure Speed", body: "Pages load faster with ads and trackers stripped out before rendering.")
+                    featureRow(icon: "bolt.fill", titleKey: "onboarding.feature.speed.title", bodyKey: "onboarding.feature.speed.body")
                     Divider()
-                    featureRow(icon: "checkmark.seal.fill", title: "Simplicity", body: "One toggle. No configuration required.")
+                    featureRow(icon: "checkmark.seal.fill", titleKey: "onboarding.feature.simplicity.title", bodyKey: "onboarding.feature.simplicity.body")
                 }
 
                 VStack(alignment: .leading, spacing: DesignSpacing.stackGap) {
-                    Text("Activation")
+                    Text("onboarding.section.activation")
                         .font(DesignTypography.headlineMedium)
                         .foregroundStyle(DesignColors.onBackground)
-                    Text("To start blocking, please enable ADBLX in your Safari settings.")
+                    Text("onboarding.instruction.enable")
                         .font(DesignTypography.bodyLarge)
                         .foregroundStyle(DesignColors.onSurfaceVariant)
                     Card {
-                        stepRow(number: 1, text: "Open Settings and tap Safari.")
+                        stepRow(number: 1, textKey: "onboarding.step.openSettings")
                         Divider()
-                        stepRow(number: 2, text: "Tap Extensions or Content Blockers.")
+                        stepRow(number: 2, textKey: "onboarding.step.tapExtensions")
                         Divider()
-                        stepRow(number: 3, text: "Turn on all ADBLX switches.")
+                        stepRow(number: 3, textKey: "onboarding.step.turnOn")
                     }
                 }
 
@@ -50,10 +50,10 @@ struct OnboardingView: View {
                         Image(systemName: "bell.badge.fill")
                             .foregroundStyle(DesignColors.secondary)
                         VStack(alignment: .leading, spacing: DesignSpacing.base / 2) {
-                            Text("Stay Secure")
+                            Text("onboarding.section.staySecure.title")
                                 .font(DesignTypography.bodyLarge)
                                 .foregroundStyle(DesignColors.onSurface)
-                            Text("We'll let you know when filter updates are ready, with a weekly security report.")
+                            Text("onboarding.section.staySecure.body")
                                 .font(DesignTypography.bodySmall)
                                 .foregroundStyle(DesignColors.onSurfaceVariant)
                         }
@@ -61,8 +61,8 @@ struct OnboardingView: View {
                 }
 
                 VStack(spacing: DesignSpacing.stackGap) {
-                    PrimaryButton(titleKey: "Get Started", action: onFinish)
-                    Button("Skip for now", action: onFinish)
+                    PrimaryButton(titleKey: "onboarding.button.getStarted", action: onFinish)
+                    Button("onboarding.button.skip", action: onFinish)
                         .font(DesignTypography.bodyLarge)
                         .foregroundStyle(DesignColors.onSurfaceVariant)
                 }
@@ -72,15 +72,15 @@ struct OnboardingView: View {
         .background(DesignColors.background)
     }
 
-    private func featureRow(icon: String, title: String, body: String) -> some View {
+    private func featureRow(icon: String, titleKey: LocalizedStringKey, bodyKey: LocalizedStringKey) -> some View {
         HStack(alignment: .top, spacing: DesignSpacing.gutter) {
             Image(systemName: icon)
                 .foregroundStyle(DesignColors.primary)
             VStack(alignment: .leading, spacing: DesignSpacing.base / 2) {
-                Text(title)
+                Text(titleKey)
                     .font(DesignTypography.bodyLarge)
                     .foregroundStyle(DesignColors.onSurface)
-                Text(body)
+                Text(bodyKey)
                     .font(DesignTypography.bodySmall)
                     .foregroundStyle(DesignColors.onSurfaceVariant)
             }
@@ -88,15 +88,15 @@ struct OnboardingView: View {
         .accessibilityElement(children: .combine)
     }
 
-    private func stepRow(number: Int, text: String) -> some View {
+    private func stepRow(number: Int, textKey: LocalizedStringKey) -> some View {
         HStack(alignment: .top, spacing: DesignSpacing.gutter) {
-            Text("\(number)")
+            Text(number, format: .number)
                 .font(DesignTypography.labelMono)
                 .foregroundStyle(DesignColors.onPrimary)
                 .frame(width: 24, height: 24)
                 .background(DesignColors.primary)
                 .clipShape(Circle())
-            Text(text)
+            Text(textKey)
                 .font(DesignTypography.bodyLarge)
                 .foregroundStyle(DesignColors.onSurface)
         }

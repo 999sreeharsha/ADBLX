@@ -140,6 +140,57 @@
           }
         }
       }
+    },
+    "onboarding.title.app" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "ADBLX" } } }
+    },
+    "onboarding.subtitle.tagline" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Browse the web in total peace." } } }
+    },
+    "onboarding.feature.privacy.title" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Privacy First" } } }
+    },
+    "onboarding.feature.privacy.body" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Blocks trackers before they ever load — nothing about your browsing leaves your device." } } }
+    },
+    "onboarding.feature.speed.title" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Pure Speed" } } }
+    },
+    "onboarding.feature.speed.body" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Pages load faster with ads and trackers stripped out before rendering." } } }
+    },
+    "onboarding.feature.simplicity.title" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Simplicity" } } }
+    },
+    "onboarding.feature.simplicity.body" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "One toggle. No configuration required." } } }
+    },
+    "onboarding.section.activation" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Activation" } } }
+    },
+    "onboarding.instruction.enable" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "To start blocking, please enable ADBLX in your Safari settings." } } }
+    },
+    "onboarding.step.openSettings" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Open Settings and tap Safari." } } }
+    },
+    "onboarding.step.tapExtensions" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Tap Extensions or Content Blockers." } } }
+    },
+    "onboarding.step.turnOn" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Turn on all ADBLX switches." } } }
+    },
+    "onboarding.section.staySecure.title" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Stay Secure" } } }
+    },
+    "onboarding.section.staySecure.body" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "We'll let you know when filter updates are ready, with a weekly security report." } } }
+    },
+    "onboarding.button.getStarted" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Get Started" } } }
+    },
+    "onboarding.button.skip" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Skip for now" } } }
     }
   },
   "version" : "1.0"
