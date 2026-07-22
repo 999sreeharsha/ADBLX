@@ -12,13 +12,21 @@ enum AppCompositionRoot {
         regional: "com.ADBLX.ADBLX.RegionalBlocker"
     )
 
-    static func makeFilterPipeline() -> FilterPipeline {
+    /// The single `FilterStore` instance shared by `FilterPipeline`, `UpdateCoordinator`,
+    /// and every real UI service that reads App Group metadata. Callers must not construct
+    /// their own `FilterStore` — always route through this factory so there is exactly one
+    /// instance app-wide (Sprint 5A design doc).
+    static func makeFilterStore() -> FilterStore {
+        FilterStore(appGroupIdentifier: AppGroup.identifier)
+    }
+
+    static func makeFilterPipeline(store: FilterStore) -> FilterPipeline {
         FilterPipeline(
             validator: FilterValidator(),
             compiler: PassthroughRuleCompiler(),
             compositionService: JSONArrayCompositionService(),
             partitioner: GroupPartitioner(extensionIdentifiers: extensionIdentifiers),
-            store: FilterStore(appGroupIdentifier: AppGroup.identifier),
+            store: store,
             writer: AtomicRuleWriter(),
             reloader: ReloadCoordinator()
         )

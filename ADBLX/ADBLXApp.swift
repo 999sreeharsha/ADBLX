@@ -4,13 +4,18 @@ import MetricKit
 @main
 struct ADBLXApp: App {
     private let metricsSubscriber = MetricsSubscriber()
-    private let filterPipeline = AppCompositionRoot.makeFilterPipeline()
-    private let uiDependencies = AppCompositionRoot.makeMockUIDependencies()
+    private let filterStore: FilterStore
+    private let filterPipeline: FilterPipeline
+    private let uiDependencies: AppCompositionRoot.UIDependencies
     @State private var onboardingStore = OnboardingCompletionStore()
     @State private var hasCompletedOnboarding: Bool
 
     init() {
         MXMetricManager.shared.add(metricsSubscriber)
+        let store = AppCompositionRoot.makeFilterStore()
+        filterStore = store
+        filterPipeline = AppCompositionRoot.makeFilterPipeline(store: store)
+        uiDependencies = AppCompositionRoot.makeMockUIDependencies()
         _hasCompletedOnboarding = State(initialValue: OnboardingCompletionStore().hasCompletedOnboarding)
     }
 
