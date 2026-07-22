@@ -60,6 +60,16 @@
           }
         }
       }
+    },
+    "settings.row.about" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "About"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

@@ -61,7 +61,7 @@ struct SettingsView: View {
                         AboutView()
                     } label: {
                         Card {
-                            SettingsRow(title: "About", systemImage: "info.circle.fill")
+                            SettingsRow(titleKey: "settings.row.about", systemImage: "info.circle.fill")
                         }
                     }
                     .buttonStyle(.plain)

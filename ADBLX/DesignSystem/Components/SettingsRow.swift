@@ -3,7 +3,7 @@ import SwiftUI
 
 /// A navigation-style settings list row: icon, title, disclosure chevron.
 struct SettingsRow: View {
-    let title: String
+    let titleKey: LocalizedStringKey
     let systemImage: String
 
     var body: some View {
@@ -11,7 +11,7 @@ struct SettingsRow: View {
             Image(systemName: systemImage)
                 .foregroundStyle(DesignColors.primary)
                 .frame(width: 24)
-            Text(title)
+            Text(titleKey)
                 .font(DesignTypography.bodyLarge)
                 .foregroundStyle(DesignColors.onSurface)
             Spacer()
@@ -24,6 +24,6 @@ struct SettingsRow: View {
 }
 
 #Preview {
-    SettingsRow(title: "About", systemImage: "info.circle.fill")
+    SettingsRow(titleKey: "settings.row.about", systemImage: "info.circle.fill")
         .padding()
 }
