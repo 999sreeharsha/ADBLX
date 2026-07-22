@@ -12,14 +12,26 @@ strings.
 
 ## Why now
 
-Sprint 4A and 4B left 9 files with hardcoded user-visible string literals
-(`Home`, `SafariProtectionView`, `AdvancedFilterListsView`, `Premium`,
-`Settings`, `AboutView`, `Onboarding`, `DesignSystem/Card`,
-`DesignSystem/ComingSoonState`) — roughly 46 `Text(...)` call sites, more once
-buttons, labels, and alerts are counted. This is the last point before Sprint 5
-(backend integration) where the surface area is still small enough to migrate
-in one sprint. Deferring it lets the hardcoded-string pattern spread to
-however many screens Sprint 5 and beyond add.
+Sprint 4A and 4B left hardcoded user-visible string literals across the UI
+layer. An initial audit found 9 files; a follow-up grep pass (during
+implementation planning) found the real surface is larger — two screens
+(`DNSProtectionView`, `UpdateProgressSheet`) and three shared DesignSystem
+components (`SettingsRow`, `ToggleRow`, `PremiumBadge`) were missed because
+they pass string literals as component *parameters* rather than directly into
+`Text("...")`. The full file list (see Commit 2 task order) is:
+
+Shared: `Card`, `ComingSoonState`, `PrimaryButton`, `SettingsRow`,
+`ToggleRow`, `PremiumBadge`
+Navigation: `AppTab`, `RootTabView`
+Screens: `Onboarding`, `Home`, `Safari Protection`, `DNS Protection`,
+`Advanced Filter Lists`, `Premium`, `Settings`, `About`, `UpdateProgress`
+(`UpdateProgressModel` + `UpdateProgressSheet`)
+
+This is roughly 46+ `Text(...)` call sites, more once buttons, labels, and
+alerts are counted. This is the last point before Sprint 5 (backend
+integration) where the surface area is still small enough to migrate in one
+sprint. Deferring it lets the hardcoded-string pattern spread to however many
+screens Sprint 5 and beyond add.
 
 ## Out of scope
 
@@ -30,6 +42,13 @@ This sprint is infrastructure and migration only. Explicitly excluded:
 - Locale-aware formatting (`DateFormatter`, `NumberFormatter`, currency, etc.)
 - RTL layout verification
 - Pluralization rules (`stringsdict`-style plural variants)
+- Service-layer mock/seed data (`ProtectionService`, `HomeService`,
+  `SubscriptionService` — e.g. filter category names, subscription plan
+  names, activity feed text). These are placeholder values Sprint 5
+  (Backend Integration) replaces with live data; localizing throwaway mock
+  strings now means re-doing the work once real data is wired in. Only
+  strings owned by the view layer itself (labels, buttons, static copy) are
+  in scope.
 
 These belong to a later internationalization sprint, once real demand for a
 second language exists.
@@ -95,15 +114,18 @@ knowingly breaks the build.
 Per-screen tasks, each following the TDD rhythm used in Sprint 4A/4B. Order is
 dependency-driven: shared components first, since screens depend on them.
 
-1. Shared DesignSystem (`Card`, `ComingSoonState`, `PrimaryButton`)
-2. Shared Navigation chrome (if any string-bearing nav exists)
+1. Shared DesignSystem (`Card`, `ComingSoonState`, `PrimaryButton`,
+   `SettingsRow`, `ToggleRow`, `PremiumBadge`)
+2. Shared Navigation (`AppTab`, `RootTabView`)
 3. Onboarding
 4. Home
 5. Safari Protection
-6. Advanced Filter Lists
-7. Premium
-8. Settings
-9. About
+6. DNS Protection
+7. Advanced Filter Lists
+8. Premium
+9. Settings
+10. About
+11. UpdateProgress (`UpdateProgressModel` + `UpdateProgressSheet`)
 
 **API convention:**
 - Shared components take `LocalizedStringKey`-typed parameters, e.g.
