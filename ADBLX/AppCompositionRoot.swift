@@ -1,9 +1,5 @@
 import Foundation
 
-/// The single place that constructs a FilterPipeline with its real, concrete dependencies.
-/// FilterPipeline itself never constructs its own dependencies — everything is injected —
-/// so swapping PassthroughRuleCompiler for a SafariConverterLib-backed implementation (post
-/// ADR-0001) only ever changes this file.
 /// Where UpdateCoordinator fetches manifest.json from. A separate abstraction from
 /// UpdateCoordinator itself so the update-orchestration logic stays stable while the
 /// manifest source (today: a placeholder; eventually: environment-specific CDN URLs
@@ -19,6 +15,10 @@ struct AppManifestEndpointProvider: ManifestEndpointProvider {
     let manifestURL = URL(string: "https://example.invalid/manifest.json")!
 }
 
+/// The single place that constructs a FilterPipeline with its real, concrete dependencies.
+/// FilterPipeline itself never constructs its own dependencies — everything is injected —
+/// so swapping PassthroughRuleCompiler for a SafariConverterLib-backed implementation (post
+/// ADR-0001) only ever changes this file.
 enum AppCompositionRoot {
     static let extensionIdentifiers = GroupExtensionIdentifiers(
         ads: "com.ADBLX.ADBLX.AdsBlocker",
