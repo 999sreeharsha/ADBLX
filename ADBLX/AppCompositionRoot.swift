@@ -71,7 +71,7 @@ enum AppCompositionRoot {
     /// Holds every UI-facing service the app's screens depend on. Screens never
     /// construct services themselves — they receive them from here (or, in tests,
     /// construct their own mocks directly). Real implementations replace the
-    /// mocks returned by makeMockUIDependencies() in a later sprint; ViewModels
+    /// mocks returned by makeUIDependencies(configuration:) in a later sprint; ViewModels
     /// and Views do not change when that happens (Sprint 4 spec §5).
     struct UIDependencies {
         let homeService: HomeService
@@ -80,12 +80,23 @@ enum AppCompositionRoot {
         let settingsService: SettingsService
     }
 
-    static func makeMockUIDependencies() -> UIDependencies {
-        UIDependencies(
-            homeService: MockHomeService(),
-            protectionService: MockProtectionService(),
-            subscriptionService: MockSubscriptionService(),
-            settingsService: MockSettingsService()
-        )
+    /// Selects which set of backend implementations UIDependencies is built from.
+    /// Only `.mock` exists today — this enum exists so adding `.production` later
+    /// (Sprint 5B, as each feature service gets its real implementation) doesn't
+    /// require renaming this factory method again.
+    enum UIDependenciesConfiguration {
+        case mock
+    }
+
+    static func makeUIDependencies(configuration: UIDependenciesConfiguration) -> UIDependencies {
+        switch configuration {
+        case .mock:
+            return UIDependencies(
+                homeService: MockHomeService(),
+                protectionService: MockProtectionService(),
+                subscriptionService: MockSubscriptionService(),
+                settingsService: MockSettingsService()
+            )
+        }
     }
 }

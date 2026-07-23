@@ -38,5 +38,5 @@ struct RootTabView: View {
 }
 
 #Preview {
-    RootTabView(dependencies: AppCompositionRoot.makeMockUIDependencies())
+    RootTabView(dependencies: AppCompositionRoot.makeUIDependencies(configuration: .mock))
 }
