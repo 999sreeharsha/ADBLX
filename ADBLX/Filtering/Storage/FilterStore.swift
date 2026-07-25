@@ -63,9 +63,11 @@ actor FilterStore {
         return try Data(contentsOf: fileURL)
     }
 
-    /// Non-atomic convenience write for metadata-sized files (small, low update frequency).
+    /// Atomic convenience write for metadata-sized files (small, low update frequency).
     /// Compiled rule JSON MUST go through AtomicRuleWriter instead — this method is not
     /// safe for anything a Content Blocker extension will load.
+    /// The `.atomic` option is load-bearing: `RealHomeServiceTests.concurrentWriteNeverProducesTornRead`
+    /// (Sprint 5A) depends on readers never observing a partial write — do not remove it.
     func writeMetadata(_ data: Data, filename: String) throws {
         let fileURL = try url(for: .metadata).appendingPathComponent(filename)
         try data.write(to: fileURL, options: .atomic)
