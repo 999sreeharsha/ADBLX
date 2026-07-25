@@ -122,17 +122,14 @@ struct HomeView: View {
                     icon: "safari",
                     labelKey: "home.stat.safari.label",
                     value: String(localized: "home.stat.safari.value"),
-                    detail: String(
-                        format: String(localized: "home.stat.safari.detail"),
-                        status.blockedPercentage.formatted(.number.precision(.fractionLength(1)))
-                    ),
+                    detail: String(localized: "home.stat.safari.detail"),
                     detailColor: DesignColors.secondary,
                     iconColor: DesignColors.primary
                 )
                 statTile(
                     icon: "network",
                     labelKey: "home.stat.dns.label",
-                    value: status.dnsProviderName,
+                    value: String(localized: "home.stat.dns.value"),
                     detail: String(localized: "home.stat.dns.detail"),
                     detailColor: DesignColors.onSurfaceVariant,
                     iconColor: DesignColors.tertiary

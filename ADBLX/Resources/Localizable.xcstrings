@@ -220,13 +220,16 @@
       "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Enabled" } } }
     },
     "home.stat.safari.detail" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "%@%% Blocked" } } }
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Filters Loaded" } } }
     },
     "home.stat.dns.label" : {
       "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "DNS" } } }
     },
+    "home.stat.dns.value" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Not configured" } } }
+    },
     "home.stat.dns.detail" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Encrypted" } } }
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "—" } } }
     },
     "home.stat.lastUpdate.label" : {
       "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Last Update" } } }
@@ -245,6 +248,12 @@
     },
     "home.section.recentActivity" : {
       "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Recent Activity" } } }
+    },
+    "home.lastUpdate.never" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Never" } } }
+    },
+    "home.activity.filtersSynchronized.title" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Filters Synchronized" } } }
     },
     "protection.safari.title" : {
       "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Safari Protection" } } }
