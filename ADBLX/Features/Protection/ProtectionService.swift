@@ -3,8 +3,11 @@ import Foundation
 
 /// UI-facing mirror of the backend's FilterGroup (Filtering/Models/FilterManifest.swift).
 /// Deliberately a separate type — the UI layer never imports FilterGroup directly
-/// (Sprint 4 spec §5).
-enum FilterCategoryID: Equatable {
+/// (Sprint 4 spec §5). String raw value + CaseIterable: the canonical, single source
+/// of the four-category list — FilterPreferencesStore, RealProtectionService, and
+/// AdvancedFilterListsView all iterate FilterCategoryID.allCases rather than each
+/// keeping their own hardcoded array (Sprint 5B design doc).
+enum FilterCategoryID: String, CaseIterable, Equatable, Codable {
     case ads
     case privacy
     case annoyances
