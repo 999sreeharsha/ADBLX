@@ -21,21 +21,33 @@ struct HomeActivityEntry: Equatable, Identifiable {
     }
 }
 
+/// Whether Safari content blocking is active. Only `.active` is implemented —
+/// `.needsSetup`/`.unavailable` are reserved for a future sprint once Safari
+/// extension-enablement detection exists (relates to onboarding FR-07, not
+/// built yet). Do not add cases without a real detection mechanism behind them.
+enum SafariProtectionStatus: Equatable {
+    case active
+}
+
 /// Everything the Home screen needs to render (Stitch "Home Dashboard" screen).
+///
+/// Every field here must trace to real backend state — no fabricated or
+/// heuristic values (Sprint 5A design doc). `blockedPercentage` and
+/// `dnsProviderName` were removed for exactly this reason: Safari Content
+/// Blockers give the app no block-event callback, and DNS status belongs to
+/// the not-yet-built Packet Tunnel subsystem.
 struct HomeStatus: Equatable {
     let isProtectionEnabled: Bool
-    let dnsProviderName: String
+    let safariProtectionStatus: SafariProtectionStatus
     let lastUpdateDescription: String
     let ruleCount: Int
-    let blockedPercentage: Double
     let recentActivity: [HomeActivityEntry]
 
     static let placeholder = HomeStatus(
         isProtectionEnabled: true,
-        dnsProviderName: "NextDNS",
+        safariProtectionStatus: .active,
         lastUpdateDescription: "just now",
         ruleCount: 0,
-        blockedPercentage: 0,
         recentActivity: []
     )
 }
@@ -53,10 +65,9 @@ struct MockHomeService: HomeService {
     func fetchStatus() async -> HomeStatus {
         HomeStatus(
             isProtectionEnabled: true,
-            dnsProviderName: "NextDNS",
+            safariProtectionStatus: .active,
             lastUpdateDescription: "2m ago",
             ruleCount: 142_042,
-            blockedPercentage: 99.2,
             recentActivity: [
                 HomeActivityEntry(
                     kind: .trackerBlocked,

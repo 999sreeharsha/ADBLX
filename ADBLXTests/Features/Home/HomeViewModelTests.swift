@@ -8,10 +8,9 @@ struct HomeViewModelTests {
     func loadPopulatesStatus() async {
         let expected = HomeStatus(
             isProtectionEnabled: true,
-            dnsProviderName: "NextDNS",
+            safariProtectionStatus: .active,
             lastUpdateDescription: "2m ago",
             ruleCount: 142_042,
-            blockedPercentage: 99.2,
             recentActivity: []
         )
         let viewModel = HomeViewModel(service: StubHomeService(statusToReturn: expected))
