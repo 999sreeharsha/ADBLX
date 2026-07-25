@@ -20,7 +20,8 @@ struct HomeView: View {
         }
         .background(DesignColors.background)
         .safeAreaInset(edge: .top) { topBar }
-        .task { await viewModel.load() }
+        .task { await viewModel.loadWithBootstrapRetry() }
+        .refreshable { await viewModel.load() }
         .sheet(isPresented: $isShowingUpdateProgress) {
             UpdateProgressSheet(model: UpdateProgressModel())
         }
