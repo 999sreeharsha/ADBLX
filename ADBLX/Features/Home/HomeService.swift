@@ -91,3 +91,67 @@ struct MockHomeService: HomeService {
         )
     }
 }
+
+/// Real HomeService, backed by `installed_filters.json` (FilterStore/Metadata) — the
+/// same source of truth FilterPipeline writes to on every successful install. Sprint
+/// 5A Commit 2: every field here is derived from real backend state, never fabricated.
+actor RealHomeService: HomeService {
+    private let store: FilterStore
+
+    init(store: FilterStore) {
+        self.store = store
+    }
+
+    func fetchStatus() async -> HomeStatus {
+        let filters = (try? await loadInstalledFilters()) ?? []
+
+        guard !filters.isEmpty else {
+            return HomeStatus(
+                isProtectionEnabled: false,
+                safariProtectionStatus: .active,
+                lastUpdateDescription: String(localized: "home.lastUpdate.never"),
+                ruleCount: 0,
+                recentActivity: []
+            )
+        }
+
+        let latestByGroup = Dictionary(grouping: filters, by: \.group)
+            .compactMapValues { entries in entries.max(by: { $0.lastUpdated < $1.lastUpdated }) }
+
+        let ruleCount = latestByGroup.values.reduce(0) { $0 + $1.ruleCount }
+        let mostRecent = latestByGroup.values.map(\.lastUpdated).max() ?? Date()
+
+        let recentActivity = latestByGroup.values
+            .sorted { $0.lastUpdated > $1.lastUpdated }
+            .map { filter in
+                HomeActivityEntry(
+                    kind: .filtersSynchronized,
+                    title: String(localized: "home.activity.filtersSynchronized.title"),
+                    subtitle: groupDisplayName(filter.group),
+                    timestamp: filter.lastUpdated.formatted(date: .omitted, time: .shortened)
+                )
+            }
+
+        return HomeStatus(
+            isProtectionEnabled: true,
+            safariProtectionStatus: .active,
+            lastUpdateDescription: mostRecent.formatted(.relative(presentation: .named)),
+            ruleCount: ruleCount,
+            recentActivity: recentActivity
+        )
+    }
+
+    private func loadInstalledFilters() async throws -> [InstalledFilter] {
+        let data = try await store.read("installed_filters.json", in: .metadata)
+        return try JSONDecoder().decode([InstalledFilter].self, from: data)
+    }
+
+    private func groupDisplayName(_ group: FilterGroup) -> String {
+        switch group {
+        case .ads: return String(localized: "protection.category.ads")
+        case .privacy: return String(localized: "protection.category.privacy")
+        case .annoyances: return String(localized: "protection.category.annoyances")
+        case .regional: return String(localized: "protection.category.regional")
+        }
+    }
+}
