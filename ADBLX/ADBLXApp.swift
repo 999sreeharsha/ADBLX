@@ -18,7 +18,7 @@ struct ADBLXApp: App {
         filterStore = store
         filterPipeline = pipeline
         updateCoordinator = AppCompositionRoot.makeUpdateCoordinator(pipeline: pipeline, store: store)
-        uiDependencies = AppCompositionRoot.makeUIDependencies(configuration: .mock)
+        uiDependencies = AppCompositionRoot.makeUIDependencies(configuration: .mock, store: store)
         _hasCompletedOnboarding = State(initialValue: OnboardingCompletionStore().hasCompletedOnboarding)
     }
 

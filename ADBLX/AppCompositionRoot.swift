@@ -81,18 +81,18 @@ enum AppCompositionRoot {
     }
 
     /// Selects which set of backend implementations UIDependencies is built from.
-    /// Only `.mock` exists today — this enum exists so adding `.production` later
-    /// (Sprint 5B, as each feature service gets its real implementation) doesn't
-    /// require renaming this factory method again.
+    /// `.mock` still exists for SwiftUI previews and any future all-mock testing
+    /// path; `homeService` itself is always RealHomeService now that it exists —
+    /// Home has no reason to stay mockable once real (Sprint 5A design doc).
     enum UIDependenciesConfiguration {
         case mock
     }
 
-    static func makeUIDependencies(configuration: UIDependenciesConfiguration) -> UIDependencies {
+    static func makeUIDependencies(configuration: UIDependenciesConfiguration, store: FilterStore) -> UIDependencies {
         switch configuration {
         case .mock:
             return UIDependencies(
-                homeService: MockHomeService(),
+                homeService: RealHomeService(store: store),
                 protectionService: MockProtectionService(),
                 subscriptionService: MockSubscriptionService(),
                 settingsService: MockSettingsService()

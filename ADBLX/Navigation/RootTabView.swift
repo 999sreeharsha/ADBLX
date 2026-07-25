@@ -38,5 +38,5 @@ struct RootTabView: View {
 }
 
 #Preview {
-    RootTabView(dependencies: AppCompositionRoot.makeUIDependencies(configuration: .mock))
+    RootTabView(dependencies: AppCompositionRoot.makeUIDependencies(configuration: .mock, store: AppCompositionRoot.makeFilterStore()))
 }
