@@ -139,10 +139,10 @@ registry data).
 `registryVersion` is a **schema compatibility guard** for the publisher, not
 content metadata — it answers "can this publisher understand this file?",
 not "what data snapshot is this?" (that question belongs to `manifestVersion`
-in the manifest, whose meaning is deliberately different). The publisher
-refuses to run and reports a clear "unsupported registryVersion" fatal error
-if the value doesn't match what it supports — no partial-compatibility
-migration logic.
+in the manifest, whose meaning is deliberately different). If the value
+doesn't match what the publisher supports, the command reports a clear
+"unsupported registryVersion" error and terminates with exit code 2 — no
+partial-compatibility migration logic.
 
 **`registryVersion` changes only when the JSON schema itself changes in a
 backward-incompatible way.** It does **not** change when filters are added,
@@ -319,13 +319,29 @@ across every generated artifact):
   `ManifestGeneration.md`).
 - **Generated Markdown table rows** follow the same ascending-`id` ordering,
   grouped by `group` in the fixed group order (Ads, Privacy, Annoyances,
-  Regional).
+  Regional) — this order is defined by the client's `FilterGroup` domain
+  model, not by `filters.json`'s array order or alphabetical order, and must
+  not be "simplified" to either of those later.
+- The publisher reads `filters.json` as authored (entries may appear in any
+  order in the file — contributors are not required to hand-sort it),
+  validates it, then sorts internally before any processing or output. Sort
+  order is the publisher's responsibility, never a constraint on how the
+  registry is authored.
 - **Validation output** is sorted by category then `id`, as above.
 - Given identical inputs (`filters.json`, metadata files, payloads,
   `publishBaseURL`), every generated artifact (`manifest.json`,
   `FilterRegistry.md`) must be byte-identical across runs, regardless of
   machine or time — no wall-clock timestamps, no filesystem iteration order,
   no non-deterministic formatting enter any output.
+- **Output locations are fixed:** generated artifacts are always written to
+  `backend/public/manifest.json` and `backend/docs/FilterRegistry.md`. No
+  CLI flag or configuration value overrides these paths in Sprint 7.
+- **Writes are atomic:** each generated file is written to a temporary file
+  and renamed into place, never written in place incrementally. This
+  guarantees no partially-written artifact is ever observable at the output
+  path, even if generation is interrupted mid-write — the same philosophy
+  already used by the iOS app's own atomic-write pattern
+  (`installed_filters.json`/`filter_preferences.json`/`allowlist.json`).
 
 ## Configuration
 
