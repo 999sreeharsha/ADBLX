@@ -318,6 +318,18 @@
     "protection.category.regional" : {
       "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Regional" } } }
     },
+    "protection.category.ads.description" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Blocks display and video ads" } } }
+    },
+    "protection.category.privacy.description" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Blocks trackers and analytics scripts" } } }
+    },
+    "protection.category.annoyances.description" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Hides cookie banners and popups" } } }
+    },
+    "protection.category.regional.description" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Extra rules for regional ad networks" } } }
+    },
     "protection.action.applyChanges" : {
       "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Apply Changes" } } }
     },
