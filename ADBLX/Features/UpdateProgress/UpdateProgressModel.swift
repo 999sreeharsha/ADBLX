@@ -11,10 +11,11 @@ enum UpdatePhase: Equatable {
     case failed(String)
 }
 
-/// Drives the shared Update Progress sheet, presentable from Home or Protection
-/// (Sprint 4 spec §7). This sprint walks a canned local sequence; a later sprint
-/// replaces start()'s body with real UpdateCoordinator callbacks — the sheet
-/// itself does not change.
+/// Drives the shared Update Progress sheet, presentable from Home or Protection.
+/// Sprint 5B: start(coordinator:) replaces the earlier canned local sequence with
+/// real UpdateCoordinator.run(onPhaseChange:) calls — the sheet itself is unchanged,
+/// only its construction call sites (HomeView/SafariProtectionView) now pass a
+/// coordinator through.
 @Observable
 final class UpdateProgressModel {
     var phase: UpdatePhase = .idle
@@ -30,13 +31,19 @@ final class UpdateProgressModel {
         }
     }
 
-    func start() async {
-        phase = .checking
-        try? await Task.sleep(for: .milliseconds(300))
-        phase = .downloading
-        try? await Task.sleep(for: .milliseconds(300))
-        phase = .installing
-        try? await Task.sleep(for: .milliseconds(300))
-        phase = .complete
+    func start(coordinator: UpdateCoordinator) async {
+        do {
+            let result = try await coordinator.run { [weak self] newPhase in
+                self?.phase = newPhase
+            }
+            switch result {
+            case .upToDate, .updated:
+                phase = .complete
+            case .rolledBack, .rollbackFailed:
+                phase = .failed(String(localized: "updateprogress.status.failed"))
+            }
+        } catch {
+            phase = .failed(String(localized: "updateprogress.status.failed"))
+        }
     }
 }

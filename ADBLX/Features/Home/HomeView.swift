@@ -3,6 +3,7 @@ import SwiftUI
 
 struct HomeView: View {
     @State var viewModel: HomeViewModel
+    let updateCoordinator: UpdateCoordinator
     @State private var isShowingUpdateProgress = false
 
     var body: some View {
@@ -23,7 +24,7 @@ struct HomeView: View {
         .task { await viewModel.loadWithBootstrapRetry() }
         .refreshable { await viewModel.load() }
         .sheet(isPresented: $isShowingUpdateProgress) {
-            UpdateProgressSheet(model: UpdateProgressModel())
+            UpdateProgressSheet(model: UpdateProgressModel(), coordinator: updateCoordinator)
         }
     }
 
@@ -306,5 +307,11 @@ struct HomeView: View {
 }
 
 #Preview {
-    HomeView(viewModel: HomeViewModel(service: MockHomeService()))
+    let store = AppCompositionRoot.makeFilterStore()
+    HomeView(
+        viewModel: HomeViewModel(service: MockHomeService()),
+        updateCoordinator: AppCompositionRoot.makeUpdateCoordinator(
+            pipeline: AppCompositionRoot.makeFilterPipeline(store: store), store: store
+        )
+    )
 }

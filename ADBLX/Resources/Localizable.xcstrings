@@ -462,6 +462,9 @@
     "updateprogress.status.complete" : {
       "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Filters updated" } } }
     },
+    "updateprogress.status.failed" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Unable to check for updates. Please try again later." } } }
+    },
     "updateprogress.button.done" : {
       "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Done" } } }
     },

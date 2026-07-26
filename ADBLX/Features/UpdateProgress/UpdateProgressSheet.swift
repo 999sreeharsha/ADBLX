@@ -3,6 +3,7 @@ import SwiftUI
 
 struct UpdateProgressSheet: View {
     @State var model: UpdateProgressModel
+    let coordinator: UpdateCoordinator
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -31,11 +32,17 @@ struct UpdateProgressSheet: View {
             }
         }
         .padding(DesignSpacing.containerPadding)
-        .task { await model.start() }
+        .task { await model.start(coordinator: coordinator) }
         .accessibilityElement(children: .combine)
     }
 }
 
 #Preview {
-    UpdateProgressSheet(model: UpdateProgressModel())
+    UpdateProgressSheet(
+        model: UpdateProgressModel(),
+        coordinator: AppCompositionRoot.makeUpdateCoordinator(
+            pipeline: AppCompositionRoot.makeFilterPipeline(store: AppCompositionRoot.makeFilterStore()),
+            store: AppCompositionRoot.makeFilterStore()
+        )
+    )
 }

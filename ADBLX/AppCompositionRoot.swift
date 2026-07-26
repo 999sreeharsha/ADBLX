@@ -84,6 +84,7 @@ enum AppCompositionRoot {
         let protectionService: ProtectionService
         let subscriptionService: SubscriptionService
         let settingsService: SettingsService
+        let updateCoordinator: UpdateCoordinator
     }
 
     /// Selects which set of backend implementations UIDependencies is built from.
@@ -94,7 +95,11 @@ enum AppCompositionRoot {
         case mock
     }
 
-    static func makeUIDependencies(configuration: UIDependenciesConfiguration, store: FilterStore) -> UIDependencies {
+    static func makeUIDependencies(
+        configuration: UIDependenciesConfiguration,
+        store: FilterStore,
+        updateCoordinator: UpdateCoordinator
+    ) -> UIDependencies {
         switch configuration {
         case .mock:
             let preferencesStore = makeFilterPreferencesStore(store: store)
@@ -102,7 +107,8 @@ enum AppCompositionRoot {
                 homeService: RealHomeService(store: store),
                 protectionService: RealProtectionService(store: store, preferencesStore: preferencesStore),
                 subscriptionService: MockSubscriptionService(),
-                settingsService: MockSettingsService()
+                settingsService: MockSettingsService(),
+                updateCoordinator: updateCoordinator
             )
         }
     }

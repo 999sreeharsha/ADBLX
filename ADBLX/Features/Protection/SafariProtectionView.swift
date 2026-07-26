@@ -3,6 +3,7 @@ import SwiftUI
 
 struct SafariProtectionView: View {
     @State var viewModel: ProtectionViewModel
+    let updateCoordinator: UpdateCoordinator
     @State private var isShowingUpdateProgress = false
 
     var body: some View {
@@ -22,7 +23,7 @@ struct SafariProtectionView: View {
         .background(DesignColors.background)
         .task { await viewModel.load() }
         .sheet(isPresented: $isShowingUpdateProgress) {
-            UpdateProgressSheet(model: UpdateProgressModel())
+            UpdateProgressSheet(model: UpdateProgressModel(), coordinator: updateCoordinator)
         }
     }
 
@@ -221,7 +222,13 @@ struct SafariProtectionView: View {
 }
 
 #Preview {
+    let store = AppCompositionRoot.makeFilterStore()
     NavigationStack {
-        SafariProtectionView(viewModel: ProtectionViewModel(service: MockProtectionService()))
+        SafariProtectionView(
+            viewModel: ProtectionViewModel(service: MockProtectionService()),
+            updateCoordinator: AppCompositionRoot.makeUpdateCoordinator(
+                pipeline: AppCompositionRoot.makeFilterPipeline(store: store), store: store
+            )
+        )
     }
 }

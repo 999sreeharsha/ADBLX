@@ -20,10 +20,13 @@ struct RootTabView: View {
     private func placeholder(for tab: AppTab) -> some View {
         switch tab {
         case .home:
-            HomeView(viewModel: HomeViewModel(service: dependencies.homeService))
+            HomeView(viewModel: HomeViewModel(service: dependencies.homeService), updateCoordinator: dependencies.updateCoordinator)
         case .protection:
             NavigationStack {
-                SafariProtectionView(viewModel: ProtectionViewModel(service: dependencies.protectionService))
+                SafariProtectionView(
+                    viewModel: ProtectionViewModel(service: dependencies.protectionService),
+                    updateCoordinator: dependencies.updateCoordinator
+                )
             }
         case .premium:
             NavigationStack {
@@ -38,5 +41,11 @@ struct RootTabView: View {
 }
 
 #Preview {
-    RootTabView(dependencies: AppCompositionRoot.makeUIDependencies(configuration: .mock, store: AppCompositionRoot.makeFilterStore()))
+    let store = AppCompositionRoot.makeFilterStore()
+    let pipeline = AppCompositionRoot.makeFilterPipeline(store: store)
+    RootTabView(dependencies: AppCompositionRoot.makeUIDependencies(
+        configuration: .mock,
+        store: store,
+        updateCoordinator: AppCompositionRoot.makeUpdateCoordinator(pipeline: pipeline, store: store)
+    ))
 }
