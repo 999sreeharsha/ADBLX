@@ -465,8 +465,23 @@
     "about.title.app" : {
       "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "ADBLX" } } }
     },
-    "about.version.label" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Version 1.0" } } }
+    "about.tagline" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Secure. Swift. Seamless." } } }
+    },
+    "about.section.connect" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Connect" } } }
+    },
+    "about.link.website" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Official Website" } } }
+    },
+    "about.section.legal" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Legal & Open Source" } } }
+    },
+    "about.row.licenses" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Open Source Licenses" } } }
+    },
+    "about.footer.copyright" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "© 2026 ADBLX. All rights reserved." } } }
     },
     "about.privacy.statement" : {
       "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Zero data collection. Nothing about your browsing ever leaves your device." } } }

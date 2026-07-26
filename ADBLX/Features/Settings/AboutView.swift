@@ -2,39 +2,108 @@
 import SwiftUI
 
 struct AboutView: View {
+    let viewModel = AboutViewModel()
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: DesignSpacing.sectionGap) {
-                VStack(spacing: DesignSpacing.stackGap) {
-                    Image(systemName: "shield.checkered")
-                        .font(.system(size: 48))
-                        .foregroundStyle(DesignColors.primary)
-                    Text("about.title.app")
-                        .font(DesignTypography.headlineLarge)
-                        .foregroundStyle(DesignColors.onBackground)
-                    Text("about.version.label")
-                        .font(DesignTypography.bodySmall)
-                        .foregroundStyle(DesignColors.onSurfaceVariant)
-                }
-                .frame(maxWidth: .infinity)
-
-                Card {
-                    Text("about.privacy.statement")
-                        .font(DesignTypography.bodyLarge)
-                        .foregroundStyle(DesignColors.onSurface)
-                }
-
-                Card {
-                    Link("about.link.privacyPolicy", destination: URL(string: "https://adblx.app/privacy")!)
-                        .font(DesignTypography.bodyLarge)
-                    Divider()
-                    Link("about.link.termsOfService", destination: URL(string: "https://adblx.app/terms")!)
-                        .font(DesignTypography.bodyLarge)
-                }
+                identitySection
+                connectSection
+                legalSection
+                footer
             }
             .padding(DesignSpacing.containerPadding)
         }
         .background(DesignColors.background)
+    }
+
+    private var identitySection: some View {
+        VStack(spacing: DesignSpacing.stackGap) {
+            ZStack {
+                RoundedRectangle(cornerRadius: DesignShape.cardCornerRadius)
+                    .fill(
+                        LinearGradient(
+                            colors: [DesignColors.primary, DesignColors.secondary],
+                            startPoint: .topLeading, endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 96, height: 96)
+                Image(systemName: "shield.checkered")
+                    .font(.system(size: 40))
+                    .foregroundStyle(.white)
+            }
+            Text("about.title.app")
+                .font(DesignTypography.headlineLarge)
+                .foregroundStyle(DesignColors.primary)
+            Text("about.tagline")
+                .font(DesignTypography.bodyLarge)
+                .foregroundStyle(DesignColors.onSurfaceVariant)
+            Text(viewModel.versionDisplay)
+                .font(DesignTypography.labelMono)
+                .foregroundStyle(DesignColors.onSurfaceVariant)
+                .padding(.horizontal, DesignSpacing.gutter)
+                .padding(.vertical, DesignSpacing.base)
+                .background(DesignColors.surfaceContainer)
+                .clipShape(Capsule())
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var connectSection: some View {
+        VStack(alignment: .leading, spacing: DesignSpacing.gutter) {
+            Text("about.section.connect")
+                .font(DesignTypography.labelCaps)
+                .foregroundStyle(DesignColors.onSurfaceVariant)
+                .textCase(.uppercase)
+
+            Card {
+                Link(destination: URL(string: "https://adblx.app")!) {
+                    HStack {
+                        Image(systemName: "globe")
+                            .foregroundStyle(DesignColors.primary)
+                            .frame(width: 24)
+                        Text("about.link.website")
+                            .font(DesignTypography.bodyLarge)
+                            .foregroundStyle(DesignColors.onSurface)
+                        Spacer()
+                        Image(systemName: "arrow.up.right")
+                            .font(.caption)
+                            .foregroundStyle(DesignColors.outline)
+                    }
+                }
+            }
+        }
+    }
+
+    private var legalSection: some View {
+        VStack(alignment: .leading, spacing: DesignSpacing.gutter) {
+            Text("about.section.legal")
+                .font(DesignTypography.labelCaps)
+                .foregroundStyle(DesignColors.onSurfaceVariant)
+                .textCase(.uppercase)
+
+            Card {
+                VStack(spacing: 0) {
+                    SettingsRow(titleKey: "about.row.licenses", systemImage: "doc.text.fill")
+                    Divider().overlay(DesignColors.outlineVariant.opacity(0.2))
+                    Link(destination: URL(string: "https://adblx.app/privacy")!) {
+                        SettingsRow(titleKey: "about.link.privacyPolicy", systemImage: "hand.raised.fill")
+                    }
+                    Divider().overlay(DesignColors.outlineVariant.opacity(0.2))
+                    Link(destination: URL(string: "https://adblx.app/terms")!) {
+                        SettingsRow(titleKey: "about.link.termsOfService", systemImage: "doc.plaintext.fill")
+                    }
+                }
+            }
+        }
+    }
+
+    private var footer: some View {
+        Text("about.footer.copyright")
+            .font(DesignTypography.bodySmall)
+            .foregroundStyle(DesignColors.onSurfaceVariant)
+            .frame(maxWidth: .infinity)
+            .padding(.top, DesignSpacing.gutter)
     }
 }
 
