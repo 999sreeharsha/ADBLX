@@ -11,10 +11,14 @@ struct AdvancedFilterListsView: View {
                 header
 
                 if let lists = viewModel.status?.filterLists {
-                    ForEach(FilterCategoryID.allCasesForDisplay, id: \.self) { category in
-                        let listsInCategory = lists.filter { $0.category == category }
-                        if !listsInCategory.isEmpty {
-                            categorySection(titleKey: category.displayNameKey, lists: listsInCategory)
+                    if lists.isEmpty {
+                        emptyState
+                    } else {
+                        ForEach(FilterCategoryID.allCases, id: \.self) { category in
+                            let listsInCategory = lists.filter { $0.category == category }
+                            if !listsInCategory.isEmpty {
+                                categorySection(titleKey: category.displayNameKey, lists: listsInCategory)
+                            }
                         }
                     }
                 }
@@ -36,6 +40,20 @@ struct AdvancedFilterListsView: View {
                 .font(DesignTypography.bodySmall)
                 .foregroundStyle(DesignColors.onSurfaceVariant)
         }
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: DesignSpacing.stackGap) {
+            Image(systemName: "tray")
+                .font(.system(size: 40))
+                .foregroundStyle(DesignColors.onSurfaceVariant)
+            Text("protection.filterLists.empty")
+                .font(DesignTypography.bodyLarge)
+                .foregroundStyle(DesignColors.onSurfaceVariant)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(DesignSpacing.sectionGap)
     }
 
     private func categorySection(titleKey: LocalizedStringKey, lists: [FilterListEntry]) -> some View {
@@ -125,8 +143,6 @@ struct AdvancedFilterListsView: View {
 }
 
 private extension FilterCategoryID {
-    static let allCasesForDisplay: [FilterCategoryID] = [.ads, .privacy, .annoyances, .regional]
-
     var displayNameKey: LocalizedStringKey {
         switch self {
         case .ads: return "protection.category.ads"

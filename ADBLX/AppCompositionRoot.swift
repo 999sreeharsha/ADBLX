@@ -54,6 +54,12 @@ enum AppCompositionRoot {
         URLSession.shared
     }
 
+    /// The single `FilterPreferencesStore` instance — same "one instance per backend
+    /// type" principle as makeFilterStore(). No factory or service constructs its own.
+    static func makeFilterPreferencesStore(store: FilterStore) -> FilterPreferencesStore {
+        FilterPreferencesStore(store: store)
+    }
+
     static func makeUpdateCoordinator(pipeline: FilterPipeline, store: FilterStore) -> UpdateCoordinator {
         let session = makeHTTPSession()
         let endpointProvider: ManifestEndpointProvider = AppManifestEndpointProvider()
@@ -91,9 +97,10 @@ enum AppCompositionRoot {
     static func makeUIDependencies(configuration: UIDependenciesConfiguration, store: FilterStore) -> UIDependencies {
         switch configuration {
         case .mock:
+            let preferencesStore = makeFilterPreferencesStore(store: store)
             return UIDependencies(
                 homeService: RealHomeService(store: store),
-                protectionService: MockProtectionService(),
+                protectionService: RealProtectionService(store: store, preferencesStore: preferencesStore),
                 subscriptionService: MockSubscriptionService(),
                 settingsService: MockSettingsService()
             )

@@ -306,6 +306,9 @@
     "protection.filterLists.subtitle" : {
       "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Customize your blocking experience by enabling specialized community-maintained lists." } } }
     },
+    "protection.filterLists.empty" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Filter lists will appear here after the first successful synchronization." } } }
+    },
     "protection.category.ads" : {
       "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Ads" } } }
     },
