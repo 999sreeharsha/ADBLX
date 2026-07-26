@@ -24,7 +24,7 @@ struct ADBLXApp: App {
             configuration: .mock, store: store, updateCoordinator: updateCoordinator
         )
         _hasCompletedOnboarding = State(initialValue: OnboardingCompletionStore().hasCompletedOnboarding)
-        _appearance = State(initialValue: AppearancePreferenceStore().current)
+        _appearance = State(initialValue: appearanceStore.current)
     }
 
     var body: some Scene {
