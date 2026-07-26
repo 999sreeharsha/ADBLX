@@ -40,7 +40,15 @@ actor UpdateCoordinator {
         self.extensionIdentifiers = extensionIdentifiers
     }
 
-    func run() async throws -> UpdateRunResult {
+    /// `onPhaseChange` is additive — defaults to a no-op so existing callers (and
+    /// UpdateCoordinatorTests) are unaffected. Called at four checkpoints matching
+    /// UpdatePhase's in-flight cases: before the manifest fetch (.checking), before
+    /// the download+verify loop (.downloading), before the per-group install loop
+    /// (.installing), and on completion (.complete/.failed via the caller's catch,
+    /// since run() throws rather than returning a .failed case itself — see
+    /// UpdateProgressModel.start(coordinator:) in Sprint 5B Commit 2).
+    func run(onPhaseChange: (UpdatePhase) -> Void = { _ in }) async throws -> UpdateRunResult {
+        onPhaseChange(.checking)
         let cached = try await manifestStore.load()
         let fetchResult = try await manifestClient.fetch(previousETag: cached?.etag)
 
@@ -48,6 +56,7 @@ actor UpdateCoordinator {
         let etag: String?
         switch fetchResult {
         case .notModified:
+            onPhaseChange(.complete)
             return .upToDate
         case .updated(let fetchedManifest, let fetchedETag):
             manifest = fetchedManifest
@@ -63,9 +72,11 @@ actor UpdateCoordinator {
 
         guard !installGroups.isEmpty else {
             try await manifestStore.save(manifest, etag: etag)
+            onPhaseChange(.complete)
             return .upToDate
         }
 
+        onPhaseChange(.downloading)
         // Download and verify every group up front, before any write — a checksum
         // failure in one group must not leave another group's files half-written.
         var downloadedByGroup: [FilterGroup: [DownloadedFilter]] = [:]
@@ -84,6 +95,7 @@ actor UpdateCoordinator {
         let affectedExtensionIDs = installGroups.map { extensionIdentifiers[$0.group] }
         var installedFilterIDs: [String] = []
 
+        onPhaseChange(.installing)
         do {
             // One group composed and installed at a time — keeps at most one group's
             // decoded sources resident in memory (Sprint 3A design doc's <200MB target).
@@ -107,6 +119,7 @@ actor UpdateCoordinator {
             }
             try await manifestStore.save(manifest, etag: etag)
             let reloadResults = await reloader.reload(extensionIdentifiers: affectedExtensionIDs)
+            onPhaseChange(.complete)
             return .updated(installedFilterIDs: installedFilterIDs, reloadResults: reloadResults)
         } catch {
             do {
