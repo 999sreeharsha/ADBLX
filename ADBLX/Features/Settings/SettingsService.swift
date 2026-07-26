@@ -1,7 +1,7 @@
 // ADBLX/Features/Settings/SettingsService.swift
 import Foundation
 
-struct AllowlistEntry: Equatable, Identifiable {
+struct AllowlistEntry: Codable, Equatable, Identifiable {
     let id: String
     let domain: String
 }
@@ -36,5 +36,30 @@ actor MockSettingsService: SettingsService {
 
     func removeAllowlistEntry(id: String) async {
         snapshot.allowlist.removeAll { $0.id == id }
+    }
+}
+
+/// Real SettingsService. iCloudSyncEnabled stays hardcoded false — no iCloud sync
+/// backend exists yet, unchanged scope for Sprint 5B (Sprint 5B design doc).
+/// Allowlist is real and persisted via AllowlistStore, but storage-only: it does
+/// not yet exempt anything from blocking.
+actor RealSettingsService: SettingsService {
+    private let allowlistStore: AllowlistStore
+
+    init(allowlistStore: AllowlistStore) {
+        self.allowlistStore = allowlistStore
+    }
+
+    func fetchSnapshot() async -> SettingsSnapshot {
+        let allowlist = await allowlistStore.load()
+        return SettingsSnapshot(iCloudSyncEnabled: false, allowlist: allowlist)
+    }
+
+    func addAllowlistEntry(domain: String) async {
+        await allowlistStore.add(domain: domain)
+    }
+
+    func removeAllowlistEntry(id: String) async {
+        await allowlistStore.remove(id: id)
     }
 }
