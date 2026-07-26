@@ -1,0 +1,38 @@
+{
+  "registryVersion": 1,
+  "filters": [
+    {
+      "id": "easylist",
+      "name": "EasyList",
+      "upstreamProject": "EasyList",
+      "upstreamDownloadURL": "https://easylist.to/easylist/easylist.txt",
+      "license": "CC BY-SA 3.0 / GPLv3",
+      "group": "ads",
+      "enabledByDefault": true,
+      "premium": false,
+      "notes": null
+    },
+    {
+      "id": "easyprivacy",
+      "name": "EasyPrivacy",
+      "upstreamProject": "EasyList",
+      "upstreamDownloadURL": "https://easylist.to/easylist/easyprivacy.txt",
+      "license": "CC BY-SA 3.0 / GPLv3",
+      "group": "privacy",
+      "enabledByDefault": true,
+      "premium": false,
+      "notes": null
+    },
+    {
+      "id": "fanboy-annoyances",
+      "name": "Fanboy Annoyances",
+      "upstreamProject": "EasyList (Fanboy)",
+      "upstreamDownloadURL": "https://easylist.to/easylist/fanboy-annoyance.txt",
+      "license": "CC BY-SA 3.0",
+      "group": "annoyances",
+      "enabledByDefault": false,
+      "premium": true,
+      "notes": "Gated per PRD §5.1 (\"Cookie-banner / annoyance filters\" is a Premium feature)."
+    }
+  ]
+}

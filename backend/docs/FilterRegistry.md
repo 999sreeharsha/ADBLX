@@ -2,6 +2,12 @@
 
 ## Purpose
 
+> **Sprint 7 note:** this file is being migrated to a generated artifact,
+> produced from `backend/registry/filters.json` by the `Publisher` tool's
+> `generate-docs` command. Once Sprint 7 Task 8 lands, this file is
+> generated — do not hand-edit it; edit `backend/registry/filters.json`
+> instead. Future candidates now live in `backend/docs/RegistryRoadmap.md`.
+
 This document freezes the v1 catalog of filter lists ADBLX distributes
 through the backend. It answers one question only:
 
