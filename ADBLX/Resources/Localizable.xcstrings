@@ -414,6 +414,15 @@
     "settings.title" : {
       "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Settings" } } }
     },
+    "settings.appearance.system" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "System" } } }
+    },
+    "settings.appearance.light" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Light" } } }
+    },
+    "settings.appearance.dark" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Dark" } } }
+    },
     "settings.row.iCloudSync" : {
       "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "iCloud Sync" } } }
     },

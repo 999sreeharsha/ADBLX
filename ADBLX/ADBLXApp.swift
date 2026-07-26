@@ -8,8 +8,10 @@ struct ADBLXApp: App {
     private let filterPipeline: FilterPipeline
     private let updateCoordinator: UpdateCoordinator
     private let uiDependencies: AppCompositionRoot.UIDependencies
+    private let appearanceStore = AppearancePreferenceStore()
     @State private var onboardingStore = OnboardingCompletionStore()
     @State private var hasCompletedOnboarding: Bool
+    @State private var appearance: AppearancePreference
 
     init() {
         MXMetricManager.shared.add(metricsSubscriber)
@@ -22,13 +24,14 @@ struct ADBLXApp: App {
             configuration: .mock, store: store, updateCoordinator: updateCoordinator
         )
         _hasCompletedOnboarding = State(initialValue: OnboardingCompletionStore().hasCompletedOnboarding)
+        _appearance = State(initialValue: AppearancePreferenceStore().current)
     }
 
     var body: some Scene {
         WindowGroup {
             Group {
                 if hasCompletedOnboarding {
-                    RootTabView(dependencies: uiDependencies)
+                    RootTabView(dependencies: uiDependencies, appearance: $appearance)
                 } else {
                     OnboardingView {
                         onboardingStore.hasCompletedOnboarding = true
@@ -36,6 +39,7 @@ struct ADBLXApp: App {
                     }
                 }
             }
+            .preferredColorScheme(appearance.colorScheme)
             .task {
                 let pipeline = filterPipeline
                 Task.detached(priority: .utility) {
