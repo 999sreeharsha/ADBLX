@@ -3,6 +3,7 @@ import SwiftUI
 
 struct RootTabView: View {
     let dependencies: AppCompositionRoot.UIDependencies
+    @Binding var appearance: AppearancePreference
 
     var body: some View {
         TabView {
@@ -34,7 +35,7 @@ struct RootTabView: View {
             }
         case .settings:
             NavigationStack {
-                SettingsView(viewModel: SettingsViewModel(service: dependencies.settingsService))
+                SettingsView(viewModel: SettingsViewModel(service: dependencies.settingsService), appearance: $appearance)
             }
         }
     }
@@ -43,9 +44,12 @@ struct RootTabView: View {
 #Preview {
     let store = AppCompositionRoot.makeFilterStore()
     let pipeline = AppCompositionRoot.makeFilterPipeline(store: store)
-    RootTabView(dependencies: AppCompositionRoot.makeUIDependencies(
-        configuration: .mock,
-        store: store,
-        updateCoordinator: AppCompositionRoot.makeUpdateCoordinator(pipeline: pipeline, store: store)
-    ))
+    RootTabView(
+        dependencies: AppCompositionRoot.makeUIDependencies(
+            configuration: .mock,
+            store: store,
+            updateCoordinator: AppCompositionRoot.makeUpdateCoordinator(pipeline: pipeline, store: store)
+        ),
+        appearance: .constant(.system)
+    )
 }

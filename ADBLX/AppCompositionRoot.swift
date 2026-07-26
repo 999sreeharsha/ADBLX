@@ -60,6 +60,10 @@ enum AppCompositionRoot {
         FilterPreferencesStore(store: store)
     }
 
+    static func makeAllowlistStore(store: FilterStore) -> AllowlistStore {
+        AllowlistStore(store: store)
+    }
+
     static func makeUpdateCoordinator(pipeline: FilterPipeline, store: FilterStore) -> UpdateCoordinator {
         let session = makeHTTPSession()
         let endpointProvider: ManifestEndpointProvider = AppManifestEndpointProvider()
@@ -103,11 +107,12 @@ enum AppCompositionRoot {
         switch configuration {
         case .mock:
             let preferencesStore = makeFilterPreferencesStore(store: store)
+            let allowlistStore = makeAllowlistStore(store: store)
             return UIDependencies(
                 homeService: RealHomeService(store: store),
                 protectionService: RealProtectionService(store: store, preferencesStore: preferencesStore),
                 subscriptionService: MockSubscriptionService(),
-                settingsService: MockSettingsService(),
+                settingsService: RealSettingsService(allowlistStore: allowlistStore),
                 updateCoordinator: updateCoordinator
             )
         }
