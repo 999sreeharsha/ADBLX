@@ -64,6 +64,10 @@ enum AppCompositionRoot {
         AllowlistStore(store: store)
     }
 
+    static func makeSubscriptionService() -> StoreKitSubscriptionService {
+        StoreKitSubscriptionService()
+    }
+
     /// The single injectable throttle interval for launch-time update evaluation.
     /// PRD foreground throttle — kept as a static constant here (not user-configurable)
     /// so tests can construct their own UpdateThrottle with a different interval directly.
@@ -120,7 +124,7 @@ enum AppCompositionRoot {
             return UIDependencies(
                 homeService: RealHomeService(store: store),
                 protectionService: RealProtectionService(store: store, preferencesStore: preferencesStore),
-                subscriptionService: MockSubscriptionService(),
+                subscriptionService: makeSubscriptionService(),
                 settingsService: RealSettingsService(allowlistStore: allowlistStore),
                 updateCoordinator: updateCoordinator
             )
