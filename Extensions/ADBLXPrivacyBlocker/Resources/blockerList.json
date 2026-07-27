@@ -1,1 +1,50 @@
-[]
+[
+  {
+    "trigger": {
+      "url-filter": "analytics1\\.example\\.com"
+    },
+    "action": {
+      "type": "block"
+    }
+  },
+  {
+    "trigger": {
+      "url-filter": "analytics2\\.example\\.com"
+    },
+    "action": {
+      "type": "block"
+    }
+  },
+  {
+    "trigger": {
+      "url-filter": "beacon\\.trackerexample\\.com"
+    },
+    "action": {
+      "type": "block"
+    }
+  },
+  {
+    "trigger": {
+      "url-filter": "pixel\\.trackerexample\\.com"
+    },
+    "action": {
+      "type": "block"
+    }
+  },
+  {
+    "trigger": {
+      "url-filter": "telemetry\\.example\\.net"
+    },
+    "action": {
+      "type": "block"
+    }
+  },
+  {
+    "trigger": {
+      "url-filter": "fingerprint\\.example\\.net"
+    },
+    "action": {
+      "type": "block"
+    }
+  }
+]
