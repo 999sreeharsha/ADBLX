@@ -127,17 +127,42 @@ actor FilterPipeline {
 
         var existingFilters = (try? await loadInstalledFilters()) ?? []
         existingFilters.removeAll { removingFilterIDs.contains($0.id) }
+
+        // ruleCount/lastUpdated are group-level, not per-source (docs/gotchas.md), so every
+        // surviving entry in `composition.group` — whether it arrived via
+        // `upsertingFilterEntries` or was already installed and untouched by this call — must
+        // reflect the SAME freshly-compiled counts. Build the upsert map first so an entry
+        // that's both "already existing" and "being upserted" gets refreshed exactly once,
+        // using the upserted entry's other fields (installedVersion/checksumSHA256) where
+        // present.
+        var upsertsByID: [String: InstalledFilter] = [:]
         for entry in upsertingFilterEntries {
-            let resolved = InstalledFilter(
+            upsertsByID[entry.id] = entry
+        }
+
+        for index in existingFilters.indices {
+            let existing = existingFilters[index]
+            guard existing.group == composition.group else { continue }
+            let source = upsertsByID.removeValue(forKey: existing.id) ?? existing
+            existingFilters[index] = InstalledFilter(
+                id: source.id,
+                group: source.group,
+                installedVersion: source.installedVersion,
+                checksumSHA256: source.checksumSHA256,
+                lastUpdated: compiled.statistics.lastUpdated,
+                ruleCount: compiled.ruleCount
+            )
+        }
+        // Any upserted entries that weren't already present (new sources being installed).
+        for entry in upsertsByID.values {
+            existingFilters.append(InstalledFilter(
                 id: entry.id,
                 group: entry.group,
                 installedVersion: entry.installedVersion,
                 checksumSHA256: entry.checksumSHA256,
                 lastUpdated: compiled.statistics.lastUpdated,
                 ruleCount: compiled.ruleCount
-            )
-            existingFilters.removeAll { $0.id == resolved.id }
-            existingFilters.append(resolved)
+            ))
         }
         let installedFiltersData = try JSONEncoder().encode(existingFilters)
         try await store.writeMetadata(installedFiltersData, filename: "installed_filters.json")

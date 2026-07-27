@@ -222,9 +222,11 @@ struct FilterPipelineTests {
             filterID: "multi-b", version: "v1", checksumSHA256: "b",
             data: Data("[{\"trigger\":{\"url-filter\":\"b\\\\.com\"},\"action\":{\"type\":\"block\"}}]".utf8)
         )
-        _ = try await pipeline.install(GroupComposition(group: .ads, sources: [sourceA, sourceB]), reloadStrategy: .deferred)
+        let installResult = try await pipeline.install(GroupComposition(group: .ads, sources: [sourceA, sourceB]), reloadStrategy: .deferred)
+        #expect(installResult.compiledRuleCount == 2)
 
-        _ = try await pipeline.remove(filterID: "multi-b", group: .ads, reloadStrategy: .deferred)
+        let removeResult = try await pipeline.remove(filterID: "multi-b", group: .ads, reloadStrategy: .deferred)
+        #expect(removeResult.compiledRuleCount == 1)
 
         let compiledDir = try await store.directoryURL(.compiled)
         let compiledData = try Data(contentsOf: compiledDir.appendingPathComponent("Ads.json"))
@@ -234,6 +236,13 @@ struct FilterPipelineTests {
         let installedData = try await store.read("installed_filters.json", in: .metadata)
         let installed = try JSONDecoder().decode([InstalledFilter].self, from: installedData)
         #expect(installed.map(\.id).sorted() == ["multi-a"])
+
+        // Regression: the remaining source's ruleCount/lastUpdated must reflect the fresh,
+        // post-removal, group-level compiled count (1) — NOT the stale count from when it was
+        // installed alongside multi-b (2). `remove()` calls `installGroup` with
+        // `upsertingFilterEntries: []`, so this only passes if `installGroup` refreshes
+        // remaining same-group entries even when they aren't in the upsert list.
+        #expect(installed.first(where: { $0.id == "multi-a" })?.ruleCount == 1)
 
         try await resetAdsGroup(store: store)
     }
