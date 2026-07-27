@@ -105,4 +105,24 @@ struct FilterStoreTests {
             _ = try await store.readFilterPayload(filterID: "does-not-exist-\(UUID().uuidString)")
         }
     }
+
+    @Test("snapshotForRollback then restore reproduces prior Filters/ contents too")
+    func snapshotThenRestoreReproducesPriorFiltersState() async throws {
+        let store = FilterStore(appGroupIdentifier: AppGroup.identifier)
+
+        let filtersDir = try await store.directoryURL(.filters)
+        let filterFile = filtersDir.appendingPathComponent("easylist.json")
+        try Data("[\"old-payload\"]".utf8).write(to: filterFile, options: .atomic)
+
+        let snapshot = try await store.snapshotForRollback()
+
+        // Simulate a .remove deleting the payload before a later failure.
+        try? FileManager.default.removeItem(at: filterFile)
+
+        try await store.restore(snapshot)
+
+        #expect(try Data(contentsOf: filterFile) == Data("[\"old-payload\"]".utf8))
+
+        try? FileManager.default.removeItem(at: filterFile)
+    }
 }

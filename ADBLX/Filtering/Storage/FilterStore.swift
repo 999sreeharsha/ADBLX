@@ -93,7 +93,7 @@ actor FilterStore {
         try url(for: directory)
     }
 
-    /// Copies the current `Compiled/` and `Metadata/` directories into a `Previous/`
+    /// Copies the current `Compiled/`, `Metadata/`, and `Filters/` directories into a `Previous/`
     /// root, replacing any leftover snapshot from an earlier run. Call before any write
     /// in an update batch begins; pair with `restore(_:)` on failure.
     func snapshotForRollback() throws -> RollbackSnapshot {
@@ -105,19 +105,26 @@ actor FilterStore {
 
         let compiledSnapshot = previousRoot.appendingPathComponent("Compiled", isDirectory: true)
         let metadataSnapshot = previousRoot.appendingPathComponent("Metadata", isDirectory: true)
+        let filtersSnapshot = previousRoot.appendingPathComponent("Filters", isDirectory: true)
 
         try copyDirectoryContents(from: try url(for: .compiled), to: compiledSnapshot)
         try copyDirectoryContents(from: try url(for: .metadata), to: metadataSnapshot)
+        try copyDirectoryContents(from: try url(for: .filters), to: filtersSnapshot)
 
-        return RollbackSnapshot(compiledSnapshotDir: compiledSnapshot, metadataSnapshotDir: metadataSnapshot)
+        return RollbackSnapshot(
+            compiledSnapshotDir: compiledSnapshot,
+            metadataSnapshotDir: metadataSnapshot,
+            filtersSnapshotDir: filtersSnapshot
+        )
     }
 
-    /// Replaces the entire current contents of `Compiled/` and `Metadata/` with the
+    /// Replaces the entire current contents of `Compiled/`, `Metadata/`, and `Filters/` with the
     /// snapshot's contents (files present only in the current state and absent from the
     /// snapshot are removed), then discards the `Previous/` root.
     func restore(_ snapshot: RollbackSnapshot) throws {
         try replaceDirectoryContents(at: try url(for: .compiled), with: snapshot.compiledSnapshotDir)
         try replaceDirectoryContents(at: try url(for: .metadata), with: snapshot.metadataSnapshotDir)
+        try replaceDirectoryContents(at: try url(for: .filters), with: snapshot.filtersSnapshotDir)
 
         let previousRoot = try previousRootURL()
         try? fileManager.removeItem(at: previousRoot)
@@ -155,11 +162,12 @@ actor FilterStore {
     }
 }
 
-/// Opaque to callers outside this file — a copy of `Compiled/` and `Metadata/` taken by
+/// Opaque to callers outside this file — a copy of `Compiled/`, `Metadata/`, and `Filters/` taken by
 /// `snapshotForRollback()`, consumed by `restore(_:)`.
 struct RollbackSnapshot {
     fileprivate let compiledSnapshotDir: URL
     fileprivate let metadataSnapshotDir: URL
+    fileprivate let filtersSnapshotDir: URL
 }
 
 enum FilterStoreError: Error {
