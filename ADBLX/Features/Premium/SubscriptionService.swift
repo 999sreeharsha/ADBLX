@@ -22,15 +22,18 @@ protocol SubscriptionService: Sendable {
     func purchase(_ planID: String) async throws -> Bool
 }
 
-struct MockSubscriptionService: SubscriptionService {
+/// Narrow, background-safe entitlement check — distinct from `SubscriptionService`
+/// so `UpdateCoordinator`/`UpdatePlanner` (no UI, may run off-main-actor at launch)
+/// never need to depend on UI-shaped types like `SubscriptionStatus`/`SubscriptionPlan`.
+protocol EntitlementService: Sendable {
+    func isPremiumEntitled() async -> Bool
+}
+
+struct MockSubscriptionService: SubscriptionService, EntitlementService {
     func fetchStatus() async -> SubscriptionStatus {
         SubscriptionStatus(
             isPremium: false,
             plans: [
-                SubscriptionPlan(
-                    id: "monthly", name: "Monthly", priceDescription: "$2.99",
-                    billingPeriodDescription: "per month", isCurrentPlan: false
-                ),
                 SubscriptionPlan(
                     id: "annual", name: "Annual", priceDescription: "$19.99",
                     billingPeriodDescription: "per year", isCurrentPlan: false
@@ -44,4 +47,6 @@ struct MockSubscriptionService: SubscriptionService {
     }
 
     func purchase(_ planID: String) async throws -> Bool { true }
+
+    func isPremiumEntitled() async -> Bool { false }
 }
