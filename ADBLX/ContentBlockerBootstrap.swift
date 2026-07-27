@@ -13,8 +13,25 @@ enum ContentBlockerBootstrap {
 
     /// `nonisolated`: called from a detached, off-main-actor Task at launch — see the plan's
     /// Global Constraints note on SWIFT_DEFAULT_ACTOR_ISOLATION.
+    ///
+    /// Gated solely by `ManifestStore.load() == nil` (Sprint 8.0 Commit 1) — once the first
+    /// production update commits a cached manifest, this never writes again. No additional
+    /// bootstrap flag is introduced.
     @discardableResult
-    nonisolated static func ensureInitialRulesInstalled(pipeline: FilterPipeline) async -> Bool {
+    nonisolated static func ensureInitialRulesInstalled(
+        pipeline: FilterPipeline,
+        manifestStore: ManifestStore
+    ) async -> Bool {
+        do {
+            if try await manifestStore.load() != nil {
+                logger.info("Cached manifest present — skipping bundled snapshot bootstrap")
+                return false
+            }
+        } catch {
+            logger.error("ManifestStore.load() failed during bootstrap gate check: \(error, privacy: .public)")
+            return false
+        }
+
         do {
             let result = try await pipeline.installBundledSnapshotIfNeeded()
             logger.info("Filter pipeline installed \(result.installedRuleCount) rule(s) for \(result.group.rawValue, privacy: .public)")

@@ -42,8 +42,14 @@ struct ADBLXApp: App {
             .preferredColorScheme(appearance.colorScheme)
             .task {
                 let pipeline = filterPipeline
+                let coordinator = updateCoordinator
+                let store = filterStore
                 Task.detached(priority: .utility) {
-                    await ContentBlockerBootstrap.ensureInitialRulesInstalled(pipeline: pipeline)
+                    let manifestStore = ManifestStore(filterStore: store)
+                    await ContentBlockerBootstrap.ensureInitialRulesInstalled(
+                        pipeline: pipeline, manifestStore: manifestStore
+                    )
+                    _ = try? await coordinator.run()
                 }
             }
         }
