@@ -89,6 +89,13 @@ actor FilterStore {
         return try Data(contentsOf: fileURL)
     }
 
+    /// Deletes a previously-persisted filter payload. Used by `FilterPipeline.remove` to
+    /// clean up `Filters/<filterID>.json` once the group has been recomposed without it.
+    func removeFilterPayload(filterID: String) throws {
+        let fileURL = try url(for: .filters).appendingPathComponent("\(filterID).json")
+        try fileManager.removeItem(at: fileURL)
+    }
+
     func directoryURL(_ directory: Directory) throws -> URL {
         try url(for: directory)
     }

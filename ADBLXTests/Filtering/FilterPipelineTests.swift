@@ -180,4 +180,108 @@ struct FilterPipelineTests {
         let filtersDir = try await store.directoryURL(.filters)
         try? FileManager.default.removeItem(at: filtersDir.appendingPathComponent("persist-test.json"))
     }
+
+    /// Resets `.ads`-group `installed_filters.json` entries and their `Filters/*.json`
+    /// payloads to empty. Several tests in this `.serialized` suite install into `.ads`
+    /// and only clean up their own `Filters/<id>.json` payload afterward, never their
+    /// `installed_filters.json` entry (a pre-existing gap — other tests in this file work
+    /// around it with `Set`/`isSuperset` assertions instead of exact-match ones). `remove()`
+    /// is the first pipeline operation that reads back *every* `.ads` group member's raw
+    /// payload from `Filters/` to recompose, so a stale metadata entry whose payload file
+    /// is already gone breaks it immediately. Tests exercising `remove()` need a genuinely
+    /// clean `.ads` group, not just a clean slate for their own filterIDs.
+    private func resetAdsGroup(store: FilterStore) async throws {
+        let metadataDir = try await store.directoryURL(.metadata)
+        let filtersDir = try await store.directoryURL(.filters)
+        let metadataFile = metadataDir.appendingPathComponent("installed_filters.json")
+        var filters: [InstalledFilter] = []
+        if let data = try? Data(contentsOf: metadataFile),
+           let decoded = try? JSONDecoder().decode([InstalledFilter].self, from: data) {
+            filters = decoded
+        }
+        for filter in filters where filter.group == .ads {
+            try? FileManager.default.removeItem(at: filtersDir.appendingPathComponent("\(filter.id).json"))
+        }
+        filters.removeAll { $0.group == .ads }
+        if let updated = try? JSONEncoder().encode(filters) {
+            try? updated.write(to: metadataFile, options: .atomic)
+        }
+    }
+
+    @Test("remove drops one source and recomposes the group from the remaining ones")
+    func removeRecomposesGroupFromRemainingSources() async throws {
+        let pipeline = makePipeline()
+        let store = FilterStore(appGroupIdentifier: AppGroup.identifier)
+        try await resetAdsGroup(store: store)
+
+        let sourceA = FilterSource(
+            filterID: "multi-a", version: "v1", checksumSHA256: "a",
+            data: Data("[{\"trigger\":{\"url-filter\":\"a\\\\.com\"},\"action\":{\"type\":\"block\"}}]".utf8)
+        )
+        let sourceB = FilterSource(
+            filterID: "multi-b", version: "v1", checksumSHA256: "b",
+            data: Data("[{\"trigger\":{\"url-filter\":\"b\\\\.com\"},\"action\":{\"type\":\"block\"}}]".utf8)
+        )
+        _ = try await pipeline.install(GroupComposition(group: .ads, sources: [sourceA, sourceB]), reloadStrategy: .deferred)
+
+        _ = try await pipeline.remove(filterID: "multi-b", group: .ads, reloadStrategy: .deferred)
+
+        let compiledDir = try await store.directoryURL(.compiled)
+        let compiledData = try Data(contentsOf: compiledDir.appendingPathComponent("Ads.json"))
+        let compiledRules = try JSONSerialization.jsonObject(with: compiledData) as? [[String: Any]]
+        #expect(compiledRules?.count == 1)
+
+        let installedData = try await store.read("installed_filters.json", in: .metadata)
+        let installed = try JSONDecoder().decode([InstalledFilter].self, from: installedData)
+        #expect(installed.map(\.id).sorted() == ["multi-a"])
+
+        try await resetAdsGroup(store: store)
+    }
+
+    @Test("remove of the last source in a group writes a valid empty rule array")
+    func removeLastSourceProducesEmptyRules() async throws {
+        let pipeline = makePipeline()
+        let store = FilterStore(appGroupIdentifier: AppGroup.identifier)
+        try await resetAdsGroup(store: store)
+
+        let source = FilterSource(
+            filterID: "solo", version: "v1", checksumSHA256: "a",
+            data: Data("[{\"trigger\":{\"url-filter\":\".*\"},\"action\":{\"type\":\"block\"}}]".utf8)
+        )
+        _ = try await pipeline.install(GroupComposition(group: .ads, sources: [source]), reloadStrategy: .deferred)
+
+        _ = try await pipeline.remove(filterID: "solo", group: .ads, reloadStrategy: .deferred)
+
+        let compiledDir = try await store.directoryURL(.compiled)
+        let compiledData = try Data(contentsOf: compiledDir.appendingPathComponent("Ads.json"))
+        let compiledRules = try JSONSerialization.jsonObject(with: compiledData) as? [Any]
+        #expect(compiledRules?.isEmpty == true)
+
+        let installedData = try await store.read("installed_filters.json", in: .metadata)
+        let installed = try JSONDecoder().decode([InstalledFilter].self, from: installedData)
+        #expect(installed.isEmpty)
+
+        try await resetAdsGroup(store: store)
+    }
+
+    @Test("remove then reinstall the same filter reproduces identical compiled output")
+    func removeThenReinstallSameFilterIsDeterministic() async throws {
+        let pipeline = makePipeline()
+        let store = FilterStore(appGroupIdentifier: AppGroup.identifier)
+        try await resetAdsGroup(store: store)
+        let payload = Data("[{\"trigger\":{\"url-filter\":\"deterministic\\\\.com\"},\"action\":{\"type\":\"block\"}}]".utf8)
+        let source = FilterSource(filterID: "det-test", version: "v1", checksumSHA256: "a", data: payload)
+
+        _ = try await pipeline.install(GroupComposition(group: .ads, sources: [source]), reloadStrategy: .deferred)
+        let compiledDir = try await store.directoryURL(.compiled)
+        let firstCompiled = try Data(contentsOf: compiledDir.appendingPathComponent("Ads.json"))
+
+        _ = try await pipeline.remove(filterID: "det-test", group: .ads, reloadStrategy: .deferred)
+        _ = try await pipeline.install(GroupComposition(group: .ads, sources: [source]), reloadStrategy: .deferred)
+        let secondCompiled = try Data(contentsOf: compiledDir.appendingPathComponent("Ads.json"))
+
+        #expect(firstCompiled == secondCompiled)
+
+        try await resetAdsGroup(store: store)
+    }
 }
