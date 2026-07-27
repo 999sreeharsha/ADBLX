@@ -18,6 +18,12 @@ enum FilterDownloadClientError: Error, Equatable {
 actor FilterDownloadClient {
     private let session: HTTPSession
 
+    /// Dedicated subdirectory under the system temp directory — no other component
+    /// writes here. Transactional scratch space only; never a source of truth (Sprint
+    /// 8.0 Commit 4's storage-class boundary — see the design spec's glossary).
+    nonisolated static let workspaceDirectory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("com.ADBLX.ADBLX.Downloads", isDirectory: true)
+
     init(session: HTTPSession) {
         self.session = session
     }
@@ -31,7 +37,10 @@ actor FilterDownloadClient {
             throw FilterDownloadClientError.unexpectedStatusCode(httpResponse.statusCode)
         }
 
-        let tempURL = FileManager.default.temporaryDirectory
+        try FileManager.default.createDirectory(
+            at: Self.workspaceDirectory, withIntermediateDirectories: true
+        )
+        let tempURL = Self.workspaceDirectory
             .appendingPathComponent("\(entry.id)-\(UUID().uuidString).tmp")
         try data.write(to: tempURL, options: .atomic)
 
@@ -41,5 +50,18 @@ actor FilterDownloadClient {
             expectedChecksum: entry.checksumSHA256,
             version: entry.version
         )
+    }
+
+    /// Empties the entire workspace directory, regardless of its contents — self-healing
+    /// against a prior crash that skipped cleanup, per Sprint 8.0 Commit 4. Called once
+    /// per transaction, after commit or rollback has completely settled, never per-file.
+    nonisolated func cleanupWorkspace() throws {
+        guard FileManager.default.fileExists(atPath: Self.workspaceDirectory.path) else { return }
+        let contents = try FileManager.default.contentsOfDirectory(
+            at: Self.workspaceDirectory, includingPropertiesForKeys: nil
+        )
+        for url in contents {
+            try FileManager.default.removeItem(at: url)
+        }
     }
 }
