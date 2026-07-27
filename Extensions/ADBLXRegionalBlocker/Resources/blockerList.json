@@ -1,1 +1,42 @@
-[]
+[
+  {
+    "trigger": {
+      "url-filter": "regional-ads-fr\\.example\\.fr"
+    },
+    "action": {
+      "type": "block"
+    }
+  },
+  {
+    "trigger": {
+      "url-filter": "regional-ads-de\\.example\\.de"
+    },
+    "action": {
+      "type": "block"
+    }
+  },
+  {
+    "trigger": {
+      "url-filter": "regional-ads-jp\\.example\\.jp"
+    },
+    "action": {
+      "type": "block"
+    }
+  },
+  {
+    "trigger": {
+      "url-filter": "regional-ads-es\\.example\\.es"
+    },
+    "action": {
+      "type": "block"
+    }
+  },
+  {
+    "trigger": {
+      "url-filter": "regional-ads-it\\.example\\.it"
+    },
+    "action": {
+      "type": "block"
+    }
+  }
+]
