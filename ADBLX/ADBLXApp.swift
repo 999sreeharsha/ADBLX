@@ -49,7 +49,19 @@ struct ADBLXApp: App {
                     await ContentBlockerBootstrap.ensureInitialRulesInstalled(
                         pipeline: pipeline, manifestStore: manifestStore
                     )
-                    _ = try? await coordinator.run()
+                    let throttle = AppCompositionRoot.makeUpdateThrottle(store: store)
+                    guard await throttle.shouldRun(now: Date()) else { return }
+                    do {
+                        let result = try await coordinator.run()
+                        switch result {
+                        case .upToDate, .updated:
+                            try await throttle.recordSuccess(at: Date())
+                        case .rolledBack, .rollbackFailed:
+                            break
+                        }
+                    } catch {
+                        // Failed launches remain retryable on the next launch.
+                    }
                 }
             }
         }

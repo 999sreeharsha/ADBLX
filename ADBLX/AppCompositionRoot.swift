@@ -64,6 +64,15 @@ enum AppCompositionRoot {
         AllowlistStore(store: store)
     }
 
+    /// The single injectable throttle interval for launch-time update evaluation.
+    /// PRD foreground throttle — kept as a static constant here (not user-configurable)
+    /// so tests can construct their own UpdateThrottle with a different interval directly.
+    static let updateThrottleInterval: TimeInterval = 6 * 60 * 60
+
+    static func makeUpdateThrottle(store: FilterStore) -> UpdateThrottle {
+        UpdateThrottle(store: store, interval: updateThrottleInterval)
+    }
+
     static func makeUpdateCoordinator(pipeline: FilterPipeline, store: FilterStore) -> UpdateCoordinator {
         let session = makeHTTPSession()
         let endpointProvider: ManifestEndpointProvider = AppManifestEndpointProvider()

@@ -21,6 +21,7 @@ actor UpdateCoordinator {
     private let store: FilterStore
     private let reloader: ReloadCoordinator
     private let extensionIdentifiers: GroupExtensionIdentifiers
+    private var inFlightTask: Task<UpdateRunResult, Error>?
 
     init(
         manifestClient: ManifestClient,
@@ -47,7 +48,22 @@ actor UpdateCoordinator {
     /// (.installing), and on completion (.complete/.failed via the caller's catch,
     /// since run() throws rather than returning a .failed case itself — see
     /// UpdateProgressModel.start(coordinator:) in Sprint 5B Commit 2).
-    func run(onPhaseChange: (UpdatePhase) -> Void = { _ in }) async throws -> UpdateRunResult {
+    ///
+    /// Concurrent callers while a transaction is already running await the same
+    /// in-flight Task rather than starting a second transaction — actor isolation
+    /// alone only serializes execution, it does not prevent two full transactions
+    /// from each running to completion (Sprint 8.0 Commit 2).
+    func run(onPhaseChange: @escaping (UpdatePhase) -> Void = { _ in }) async throws -> UpdateRunResult {
+        if let inFlightTask {
+            return try await inFlightTask.value
+        }
+        let task = Task { try await runTransaction(onPhaseChange: onPhaseChange) }
+        inFlightTask = task
+        defer { inFlightTask = nil }
+        return try await task.value
+    }
+
+    private func runTransaction(onPhaseChange: (UpdatePhase) -> Void) async throws -> UpdateRunResult {
         onPhaseChange(.checking)
         let cached = try await manifestStore.load()
         let fetchResult = try await manifestClient.fetch(previousETag: cached?.etag)

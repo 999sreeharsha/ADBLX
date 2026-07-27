@@ -502,4 +502,47 @@ struct UpdateCoordinatorTests {
         try? FileManager.default.removeItem(at: compiledDir.appendingPathComponent("Privacy.json"))
         try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("installed_filters.json"))
     }
+
+    @Test("concurrent run() calls collapse into one transaction — only one install occurs")
+    func concurrentRunCallsCollapseIntoOneTransaction() async throws {
+        let store = FilterStore(appGroupIdentifier: AppGroup.identifier)
+        let metadataDir = try await store.directoryURL(.metadata)
+        try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("manifest.json"))
+        try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("installed_filters.json"))
+
+        let manifest = FilterManifest(manifestVersion: "1", entries: [manifestEntry(checksum: Checksum.sha256Hex(of: filterSourceJSON()))])
+        let manifestData = try JSONEncoder().encode(manifest)
+        let manifestResponse = HTTPURLResponse(
+            url: manifestEndpoint, statusCode: 200, httpVersion: nil, headerFields: ["ETag": "\"v1\""]
+        )!
+        let filterResponse = HTTPURLResponse(url: filterSourceURL, statusCode: 200, httpVersion: nil, headerFields: nil)!
+
+        let pipeline = FilterPipeline(
+            validator: FilterValidator(), compiler: PassthroughRuleCompiler(),
+            compositionService: JSONArrayCompositionService(),
+            partitioner: GroupPartitioner(extensionIdentifiers: groupExtensionIdentifiers),
+            store: store, writer: AtomicRuleWriter(), reloader: ReloadCoordinator()
+        )
+        let coordinator = makeCoordinator(
+            manifestResponse: (manifestData, manifestResponse),
+            filterResponse: (filterSourceJSON(), filterResponse),
+            pipeline: pipeline, store: store
+        )
+
+        async let first = coordinator.run()
+        async let second = coordinator.run()
+        let (firstResult, secondResult) = try await (first, second)
+
+        for result in [firstResult, secondResult] {
+            guard case .updated(let ids, _) = result else {
+                Issue.record("expected both concurrent calls to see .updated, got \(result)")
+                continue
+            }
+            #expect(ids == ["easylist"])
+        }
+
+        let installedData = try await store.read("installed_filters.json", in: .metadata)
+        let installed = try JSONDecoder().decode([InstalledFilter].self, from: installedData)
+        #expect(installed.map(\.id) == ["easylist"])
+    }
 }
