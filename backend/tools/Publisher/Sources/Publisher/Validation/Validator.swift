@@ -30,4 +30,53 @@ enum Validator {
 
         return errors
     }
+
+    /// Full validation entry point: registry-level checks, metadata cross-checks
+    /// (missing/orphaned/duplicate/id-mismatch), and payload existence checks.
+    /// Accumulates every error found; only throws for fatal filesystem errors
+    /// (e.g. metadata directory itself unreadable).
+    static func validate(
+        registry: Registry,
+        metadataDirectory: URL,
+        payloadDirectory: URL
+    ) throws -> ValidationReport {
+        var errors = validateRegistry(registry)
+
+        let registeredIDs = Set(registry.filters.map(\.id))
+        let metadataEntries = try MetadataLoader.loadAll(from: metadataDirectory)
+
+        var metadataByDeclaredID: [String: [String]] = [:] // declaredID -> [filenames]
+        for entry in metadataEntries {
+            let declaredID = entry.metadata.id
+            let expectedFilename = "\(declaredID).json"
+            if entry.filename != expectedFilename {
+                errors.append(.metadataIDMismatch(filename: entry.filename, declaredID: declaredID))
+            }
+            metadataByDeclaredID[declaredID, default: []].append(entry.filename)
+        }
+
+        for (declaredID, filenames) in metadataByDeclaredID {
+            if filenames.count > 1 {
+                errors.append(.duplicateMetadata(id: declaredID))
+            }
+            if !registeredIDs.contains(declaredID) {
+                errors.append(.orphanedMetadata(id: declaredID))
+            }
+        }
+
+        for id in registeredIDs where metadataByDeclaredID[id] == nil {
+            errors.append(.missingMetadata(id: id))
+        }
+
+        for entry in registry.filters {
+            let payloadURL = payloadDirectory
+                .appendingPathComponent(entry.group)
+                .appendingPathComponent("\(entry.id).txt")
+            if !FileManager.default.fileExists(atPath: payloadURL.path) {
+                errors.append(.missingPayload(id: entry.id, expectedPath: payloadURL.path))
+            }
+        }
+
+        return ValidationReport(errors: errors.sorted())
+    }
 }
