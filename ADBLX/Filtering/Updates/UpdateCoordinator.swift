@@ -60,6 +60,7 @@ actor UpdateCoordinator {
         let task = Task { try await runTransaction(onPhaseChange: onPhaseChange) }
         inFlightTask = task
         defer { inFlightTask = nil }
+        defer { try? downloadClient.cleanupWorkspace() }
         return try await task.value
     }
 

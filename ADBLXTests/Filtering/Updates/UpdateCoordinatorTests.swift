@@ -651,4 +651,72 @@ struct UpdateCoordinatorTests {
 
         try? FileManager.default.removeItem(at: filtersDir.appendingPathComponent("easylist.json"))
     }
+
+    @Test("successful run leaves the download workspace empty")
+    func successfulRunLeavesWorkspaceEmpty() async throws {
+        let store = FilterStore(appGroupIdentifier: AppGroup.identifier)
+        let metadataDir = try await store.directoryURL(.metadata)
+        try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("manifest.json"))
+        try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("installed_filters.json"))
+
+        let manifest = FilterManifest(manifestVersion: "1", entries: [manifestEntry(checksum: Checksum.sha256Hex(of: filterSourceJSON()))])
+        let manifestData = try JSONEncoder().encode(manifest)
+        let manifestResponse = HTTPURLResponse(
+            url: manifestEndpoint, statusCode: 200, httpVersion: nil, headerFields: ["ETag": "\"v1\""]
+        )!
+        let filterResponse = HTTPURLResponse(url: filterSourceURL, statusCode: 200, httpVersion: nil, headerFields: nil)!
+        let pipeline = FilterPipeline(
+            validator: FilterValidator(), compiler: PassthroughRuleCompiler(),
+            compositionService: JSONArrayCompositionService(),
+            partitioner: GroupPartitioner(extensionIdentifiers: groupExtensionIdentifiers),
+            store: store, writer: AtomicRuleWriter(), reloader: ReloadCoordinator()
+        )
+        let coordinator = makeCoordinator(
+            manifestResponse: (manifestData, manifestResponse),
+            filterResponse: (filterSourceJSON(), filterResponse),
+            pipeline: pipeline, store: store
+        )
+
+        _ = try await coordinator.run()
+
+        let contents = try? FileManager.default.contentsOfDirectory(
+            at: FilterDownloadClient.workspaceDirectory, includingPropertiesForKeys: nil
+        )
+        #expect((contents ?? []).isEmpty)
+    }
+
+    @Test("a failed run still leaves the download workspace empty")
+    func failedRunLeavesWorkspaceEmpty() async throws {
+        let store = FilterStore(appGroupIdentifier: AppGroup.identifier)
+        let metadataDir = try await store.directoryURL(.metadata)
+        try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("manifest.json"))
+        try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("installed_filters.json"))
+
+        let manifest = FilterManifest(manifestVersion: "1", entries: [manifestEntry(checksum: "wrong-checksum-forces-failure")])
+        let manifestData = try JSONEncoder().encode(manifest)
+        let manifestResponse = HTTPURLResponse(
+            url: manifestEndpoint, statusCode: 200, httpVersion: nil, headerFields: ["ETag": "\"v1\""]
+        )!
+        let filterResponse = HTTPURLResponse(url: filterSourceURL, statusCode: 200, httpVersion: nil, headerFields: nil)!
+        let pipeline = FilterPipeline(
+            validator: FilterValidator(), compiler: PassthroughRuleCompiler(),
+            compositionService: JSONArrayCompositionService(),
+            partitioner: GroupPartitioner(extensionIdentifiers: groupExtensionIdentifiers),
+            store: store, writer: AtomicRuleWriter(), reloader: ReloadCoordinator()
+        )
+        let coordinator = makeCoordinator(
+            manifestResponse: (manifestData, manifestResponse),
+            filterResponse: (filterSourceJSON(), filterResponse),
+            pipeline: pipeline, store: store
+        )
+
+        await #expect(throws: (any Error).self) {
+            _ = try await coordinator.run()
+        }
+
+        let contents = try? FileManager.default.contentsOfDirectory(
+            at: FilterDownloadClient.workspaceDirectory, includingPropertiesForKeys: nil
+        )
+        #expect((contents ?? []).isEmpty)
+    }
 }
