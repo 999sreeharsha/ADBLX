@@ -21,6 +21,7 @@ actor UpdateCoordinator {
     private let store: FilterStore
     private let reloader: ReloadCoordinator
     private let extensionIdentifiers: GroupExtensionIdentifiers
+    private let entitlementService: EntitlementService
     private var inFlightTask: Task<UpdateRunResult, Error>?
 
     init(
@@ -30,7 +31,8 @@ actor UpdateCoordinator {
         pipeline: FilterPipeline,
         store: FilterStore,
         reloader: ReloadCoordinator,
-        extensionIdentifiers: GroupExtensionIdentifiers
+        extensionIdentifiers: GroupExtensionIdentifiers,
+        entitlementService: EntitlementService
     ) {
         self.manifestClient = manifestClient
         self.manifestStore = manifestStore
@@ -39,6 +41,7 @@ actor UpdateCoordinator {
         self.store = store
         self.reloader = reloader
         self.extensionIdentifiers = extensionIdentifiers
+        self.entitlementService = entitlementService
     }
 
     /// `onPhaseChange` is additive — defaults to a no-op so existing callers (and
@@ -81,7 +84,8 @@ actor UpdateCoordinator {
         }
 
         let installedFilters = try await currentInstalledFilters()
-        let plan = UpdatePlanner.plan(manifest: manifest, installed: installedFilters)
+        let isPremiumEntitled = await entitlementService.isPremiumEntitled()
+        let plan = UpdatePlanner.plan(manifest: manifest, installed: installedFilters, isPremiumEntitled: isPremiumEntitled)
         let installGroups: [(group: FilterGroup, entries: [FilterManifest.Entry])] = plan.actions.compactMap {
             if case .install(let group, let entries) = $0 { return (group, entries) }
             return nil

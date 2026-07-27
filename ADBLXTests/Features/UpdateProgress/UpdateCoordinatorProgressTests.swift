@@ -38,7 +38,8 @@ struct UpdateCoordinatorProgressTests {
             manifestStore: ManifestStore(filterStore: store),
             downloadClient: FilterDownloadClient(session: session),
             pipeline: pipeline, store: store, reloader: ReloadCoordinator(),
-            extensionIdentifiers: groupExtensionIdentifiers
+            extensionIdentifiers: groupExtensionIdentifiers,
+            entitlementService: StubEntitlementService(isPremiumEntitled: false)
         )
 
         // No onPhaseChange argument — must compile and behave identically to
@@ -75,7 +76,8 @@ struct UpdateCoordinatorProgressTests {
             manifestStore: ManifestStore(filterStore: store),
             downloadClient: FilterDownloadClient(session: session),
             pipeline: pipeline, store: store, reloader: ReloadCoordinator(),
-            extensionIdentifiers: groupExtensionIdentifiers
+            extensionIdentifiers: groupExtensionIdentifiers,
+            entitlementService: StubEntitlementService(isPremiumEntitled: false)
         )
 
         var observedPhases: [UpdatePhase] = []

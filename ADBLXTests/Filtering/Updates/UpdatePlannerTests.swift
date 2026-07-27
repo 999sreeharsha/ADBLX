@@ -30,42 +30,42 @@ struct UpdatePlannerTests {
     @Test("new manifest entry with no installed counterpart produces .install for its group")
     func newEntryProducesInstall() {
         let manifest = FilterManifest(manifestVersion: "1", entries: [entry(id: "easylist")])
-        let plan = UpdatePlanner.plan(manifest: manifest, installed: [])
+        let plan = UpdatePlanner.plan(manifest: manifest, installed: [], isPremiumEntitled: false)
         #expect(plan.actions == [.install(group: .ads, entries: [entry(id: "easylist")])])
     }
 
     @Test("unchanged installed entry produces .keep")
     func unchangedEntryProducesKeep() {
         let manifest = FilterManifest(manifestVersion: "1", entries: [entry(id: "easylist")])
-        let plan = UpdatePlanner.plan(manifest: manifest, installed: [installed(id: "easylist")])
+        let plan = UpdatePlanner.plan(manifest: manifest, installed: [installed(id: "easylist")], isPremiumEntitled: false)
         #expect(plan.actions == [.keep(filterID: "easylist")])
     }
 
     @Test("changed version on an installed entry produces .install")
     func changedVersionProducesInstall() {
         let manifest = FilterManifest(manifestVersion: "1", entries: [entry(id: "easylist", version: "2026-07-19")])
-        let plan = UpdatePlanner.plan(manifest: manifest, installed: [installed(id: "easylist", version: "2026-07-18")])
+        let plan = UpdatePlanner.plan(manifest: manifest, installed: [installed(id: "easylist", version: "2026-07-18")], isPremiumEntitled: false)
         #expect(plan.actions == [.install(group: .ads, entries: [entry(id: "easylist", version: "2026-07-19")])])
     }
 
     @Test("changed checksum on an installed entry produces .install")
     func changedChecksumProducesInstall() {
         let manifest = FilterManifest(manifestVersion: "1", entries: [entry(id: "easylist", checksum: "checksum-b")])
-        let plan = UpdatePlanner.plan(manifest: manifest, installed: [installed(id: "easylist", checksum: "checksum-a")])
+        let plan = UpdatePlanner.plan(manifest: manifest, installed: [installed(id: "easylist", checksum: "checksum-a")], isPremiumEntitled: false)
         #expect(plan.actions == [.install(group: .ads, entries: [entry(id: "easylist", checksum: "checksum-b")])])
     }
 
     @Test("installed filter absent from the manifest produces .remove")
     func removedFromManifestProducesRemove() {
         let manifest = FilterManifest(manifestVersion: "1", entries: [])
-        let plan = UpdatePlanner.plan(manifest: manifest, installed: [installed(id: "fanboy")])
+        let plan = UpdatePlanner.plan(manifest: manifest, installed: [installed(id: "fanboy")], isPremiumEntitled: false)
         #expect(plan.actions == [.remove(filterID: "fanboy")])
     }
 
     @Test("never-installed premium entry produces .skipPremium, not .keep")
     func neverInstalledPremiumProducesSkipPremium() {
         let manifest = FilterManifest(manifestVersion: "1", entries: [entry(id: "premium-list", premium: true)])
-        let plan = UpdatePlanner.plan(manifest: manifest, installed: [])
+        let plan = UpdatePlanner.plan(manifest: manifest, installed: [], isPremiumEntitled: false)
         #expect(plan.actions == [.skipPremium(entry(id: "premium-list", premium: true))])
     }
 
@@ -74,7 +74,8 @@ struct UpdatePlannerTests {
         let manifest = FilterManifest(manifestVersion: "1", entries: [entry(id: "premium-list", version: "v2", premium: true)])
         let plan = UpdatePlanner.plan(
             manifest: manifest,
-            installed: [installed(id: "premium-list", version: "v1")]
+            installed: [installed(id: "premium-list", version: "v1")],
+            isPremiumEntitled: false
         )
         #expect(plan.actions == [.install(group: .ads, entries: [entry(id: "premium-list", version: "v2", premium: true)])])
     }
@@ -82,7 +83,7 @@ struct UpdatePlannerTests {
     @Test("non-.ads group entry produces .install for its own group, not .unsupportedGroup")
     func nonAdsGroupProducesInstallForItsGroup() {
         let manifest = FilterManifest(manifestVersion: "1", entries: [entry(id: "easyprivacy", group: .privacy)])
-        let plan = UpdatePlanner.plan(manifest: manifest, installed: [])
+        let plan = UpdatePlanner.plan(manifest: manifest, installed: [], isPremiumEntitled: false)
         #expect(plan.actions == [.install(group: .privacy, entries: [entry(id: "easyprivacy", group: .privacy)])])
     }
 
@@ -92,7 +93,7 @@ struct UpdatePlannerTests {
             entry(id: "easylist"),
             entry(id: "peter-lowe", checksum: "checksum-c"),
         ])
-        let plan = UpdatePlanner.plan(manifest: manifest, installed: [])
+        let plan = UpdatePlanner.plan(manifest: manifest, installed: [], isPremiumEntitled: false)
         #expect(plan.actions == [
             .install(group: .ads, entries: [
                 entry(id: "easylist"),
@@ -109,7 +110,7 @@ struct UpdatePlannerTests {
             entry(id: "fanboy-annoyances", group: .annoyances),
             entry(id: "regional-fr", group: .regional),
         ])
-        let plan = UpdatePlanner.plan(manifest: manifest, installed: [])
+        let plan = UpdatePlanner.plan(manifest: manifest, installed: [], isPremiumEntitled: false)
         #expect(plan.actions == [
             .install(group: .ads, entries: [entry(id: "easylist", group: .ads)]),
             .install(group: .privacy, entries: [entry(id: "easyprivacy", group: .privacy)]),
@@ -125,7 +126,7 @@ struct UpdatePlannerTests {
             entry(id: "easyprivacy", group: .privacy),
             entry(id: "peter-lowe", group: .ads, checksum: "checksum-c"),
         ])
-        let plan = UpdatePlanner.plan(manifest: manifest, installed: [])
+        let plan = UpdatePlanner.plan(manifest: manifest, installed: [], isPremiumEntitled: false)
         #expect(plan.actions == [
             .install(group: .ads, entries: [
                 entry(id: "easylist", group: .ads),
@@ -138,7 +139,21 @@ struct UpdatePlannerTests {
     @Test("empty manifest and empty installed list produces an empty plan")
     func emptyInputsProduceEmptyPlan() {
         let manifest = FilterManifest(manifestVersion: "1", entries: [])
-        let plan = UpdatePlanner.plan(manifest: manifest, installed: [])
+        let plan = UpdatePlanner.plan(manifest: manifest, installed: [], isPremiumEntitled: false)
         #expect(plan.actions.isEmpty)
+    }
+
+    @Test("entitled + never-installed premium entry produces .install, not .skipPremium")
+    func entitledPremiumEntryProducesInstall() {
+        let manifest = FilterManifest(manifestVersion: "1", entries: [entry(id: "premium-list", premium: true)])
+        let plan = UpdatePlanner.plan(manifest: manifest, installed: [], isPremiumEntitled: true)
+        #expect(plan.actions == [.install(group: .ads, entries: [entry(id: "premium-list", premium: true)])])
+    }
+
+    @Test("not entitled + never-installed premium entry still produces .skipPremium")
+    func notEntitledPremiumEntryStillProducesSkipPremium() {
+        let manifest = FilterManifest(manifestVersion: "1", entries: [entry(id: "premium-list", premium: true)])
+        let plan = UpdatePlanner.plan(manifest: manifest, installed: [], isPremiumEntitled: false)
+        #expect(plan.actions == [.skipPremium(entry(id: "premium-list", premium: true))])
     }
 }

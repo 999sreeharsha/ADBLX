@@ -50,7 +50,8 @@ struct UpdateProgressModelTests {
             manifestStore: ManifestStore(filterStore: store),
             downloadClient: FilterDownloadClient(session: session),
             pipeline: pipeline, store: store, reloader: ReloadCoordinator(),
-            extensionIdentifiers: groupExtensionIdentifiers
+            extensionIdentifiers: groupExtensionIdentifiers,
+            entitlementService: StubEntitlementService(isPremiumEntitled: false)
         )
         let model = UpdateProgressModel()
 
@@ -74,7 +75,8 @@ struct UpdateProgressModelTests {
             manifestStore: ManifestStore(filterStore: store),
             downloadClient: FilterDownloadClient(session: session),
             pipeline: pipeline, store: store, reloader: ReloadCoordinator(),
-            extensionIdentifiers: groupExtensionIdentifiers
+            extensionIdentifiers: groupExtensionIdentifiers,
+            entitlementService: StubEntitlementService(isPremiumEntitled: false)
         )
         let model = UpdateProgressModel()
 

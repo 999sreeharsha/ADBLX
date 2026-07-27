@@ -87,7 +87,8 @@ enum AppCompositionRoot {
             pipeline: pipeline,
             store: store,
             reloader: ReloadCoordinator(),
-            extensionIdentifiers: extensionIdentifiers
+            extensionIdentifiers: extensionIdentifiers,
+            entitlementService: makeSubscriptionService()
         )
     }
 

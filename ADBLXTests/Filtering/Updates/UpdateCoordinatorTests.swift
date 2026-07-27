@@ -2,6 +2,12 @@ import Testing
 import Foundation
 @testable import ADBLX
 
+struct StubEntitlementService: EntitlementService {
+    let isPremiumEntitled_: Bool
+    init(isPremiumEntitled: Bool) { self.isPremiumEntitled_ = isPremiumEntitled }
+    func isPremiumEntitled() async -> Bool { isPremiumEntitled_ }
+}
+
 @Suite("UpdateCoordinator", .serialized)
 struct UpdateCoordinatorTests {
     private let manifestEndpoint = URL(string: "https://example.com/manifest.json")!
@@ -30,7 +36,8 @@ struct UpdateCoordinatorTests {
         manifestResponse: (Data, URLResponse),
         filterResponse: (Data, URLResponse),
         pipeline: FilterPipeline,
-        store: FilterStore
+        store: FilterStore,
+        isPremiumEntitled: Bool = false
     ) -> UpdateCoordinator {
         let session = MockHTTPSession(responses: [
             manifestEndpoint: .success(manifestResponse),
@@ -43,7 +50,8 @@ struct UpdateCoordinatorTests {
             pipeline: pipeline,
             store: store,
             reloader: ReloadCoordinator(),
-            extensionIdentifiers: groupExtensionIdentifiers
+            extensionIdentifiers: groupExtensionIdentifiers,
+            entitlementService: StubEntitlementService(isPremiumEntitled: isPremiumEntitled)
         )
     }
 
@@ -371,7 +379,8 @@ struct UpdateCoordinatorTests {
             pipeline: pipeline,
             store: store,
             reloader: ReloadCoordinator(),
-            extensionIdentifiers: groupExtensionIdentifiers
+            extensionIdentifiers: groupExtensionIdentifiers,
+            entitlementService: StubEntitlementService(isPremiumEntitled: false)
         )
 
         let result = try await coordinator.run()
@@ -480,7 +489,8 @@ struct UpdateCoordinatorTests {
             pipeline: pipeline,
             store: store,
             reloader: ReloadCoordinator(),
-            extensionIdentifiers: groupExtensionIdentifiers
+            extensionIdentifiers: groupExtensionIdentifiers,
+            entitlementService: StubEntitlementService(isPremiumEntitled: false)
         )
 
         let result = try await coordinator.run()
@@ -718,5 +728,47 @@ struct UpdateCoordinatorTests {
             at: FilterDownloadClient.workspaceDirectory, includingPropertiesForKeys: nil
         )
         #expect((contents ?? []).isEmpty)
+    }
+
+    @Test("an entitled premium manifest entry installs instead of being skipped")
+    func entitledPremiumEntryInstalls() async throws {
+        let store = FilterStore(appGroupIdentifier: AppGroup.identifier)
+        let metadataDir = try await store.directoryURL(.metadata)
+        try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("manifest.json"))
+        try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("installed_filters.json"))
+
+        let premiumEntry = FilterManifest.Entry(
+            id: "easylist", name: "EasyList", group: .ads, sourceURL: filterSourceURL,
+            version: "2026-07-18", checksumSHA256: Checksum.sha256Hex(of: filterSourceJSON()),
+            ruleCount: 1, enabledByDefault: true, premium: true
+        )
+        let manifest = FilterManifest(manifestVersion: "1", entries: [premiumEntry])
+        let manifestData = try JSONEncoder().encode(manifest)
+        let manifestResponse = HTTPURLResponse(
+            url: manifestEndpoint, statusCode: 200, httpVersion: nil, headerFields: ["ETag": "\"v1\""]
+        )!
+        let filterResponse = HTTPURLResponse(url: filterSourceURL, statusCode: 200, httpVersion: nil, headerFields: nil)!
+        let pipeline = FilterPipeline(
+            validator: FilterValidator(), compiler: PassthroughRuleCompiler(),
+            compositionService: JSONArrayCompositionService(),
+            partitioner: GroupPartitioner(extensionIdentifiers: groupExtensionIdentifiers),
+            store: store, writer: AtomicRuleWriter(), reloader: ReloadCoordinator()
+        )
+        let coordinator = makeCoordinator(
+            manifestResponse: (manifestData, manifestResponse),
+            filterResponse: (filterSourceJSON(), filterResponse),
+            pipeline: pipeline, store: store, isPremiumEntitled: true
+        )
+
+        let result = try await coordinator.run()
+
+        guard case .updated(let ids, _) = result else {
+            Issue.record("expected .updated, got \(result)")
+            return
+        }
+        #expect(ids == ["easylist"])
+
+        let filtersDir = try await store.directoryURL(.filters)
+        try? FileManager.default.removeItem(at: filtersDir.appendingPathComponent("easylist.json"))
     }
 }

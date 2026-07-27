@@ -27,7 +27,11 @@ struct UpdatePlan: Equatable {
 /// that needs installing by `FilterGroup` — grouping is by key, not manifest adjacency,
 /// so entries for the same group don't need to be consecutive in the manifest.
 enum UpdatePlanner {
-    static func plan(manifest: FilterManifest, installed: [InstalledFilter]) -> UpdatePlan {
+    static func plan(
+        manifest: FilterManifest,
+        installed: [InstalledFilter],
+        isPremiumEntitled: Bool
+    ) -> UpdatePlan {
         let installedByID = Dictionary(uniqueKeysWithValues: installed.map { ($0.id, $0) })
         var manifestIDs = Set<String>()
         var actions: [UpdateAction] = []
@@ -43,7 +47,7 @@ enum UpdatePlanner {
                     continue
                 }
                 // else: version/checksum changed — falls through to grouping below.
-            } else if entry.premium {
+            } else if entry.premium && !isPremiumEntitled {
                 actions.append(.skipPremium(entry))
                 continue
             }
