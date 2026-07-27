@@ -1,1 +1,42 @@
-[]
+[
+  {
+    "trigger": {
+      "url-filter": "cookie-banner\\.example\\.com"
+    },
+    "action": {
+      "type": "block"
+    }
+  },
+  {
+    "trigger": {
+      "url-filter": "newsletter-modal\\.example\\.com"
+    },
+    "action": {
+      "type": "block"
+    }
+  },
+  {
+    "trigger": {
+      "url-filter": "notification-prompt\\.example\\.com"
+    },
+    "action": {
+      "type": "block"
+    }
+  },
+  {
+    "trigger": {
+      "url-filter": "chat-widget\\.example\\.net"
+    },
+    "action": {
+      "type": "block"
+    }
+  },
+  {
+    "trigger": {
+      "url-filter": "social-share-overlay\\.example\\.net"
+    },
+    "action": {
+      "type": "block"
+    }
+  }
+]
