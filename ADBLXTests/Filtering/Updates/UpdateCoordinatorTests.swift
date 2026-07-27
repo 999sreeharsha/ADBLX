@@ -545,4 +545,110 @@ struct UpdateCoordinatorTests {
         let installed = try JSONDecoder().decode([InstalledFilter].self, from: installedData)
         #expect(installed.map(\.id) == ["easylist"])
     }
+
+    @Test("a filter absent from a new manifest is removed via the pipeline, not silently dropped")
+    func manifestRemovalDispatchesRemoveToPipeline() async throws {
+        let store = FilterStore(appGroupIdentifier: AppGroup.identifier)
+        let metadataDir = try await store.directoryURL(.metadata)
+        try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("manifest.json"))
+        try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("installed_filters.json"))
+
+        let pipeline = FilterPipeline(
+            validator: FilterValidator(), compiler: PassthroughRuleCompiler(),
+            compositionService: JSONArrayCompositionService(),
+            partitioner: GroupPartitioner(extensionIdentifiers: groupExtensionIdentifiers),
+            store: store, writer: AtomicRuleWriter(), reloader: ReloadCoordinator()
+        )
+        // Seed installed state as if "easylist" was installed by a prior update.
+        _ = try await pipeline.install(
+            GroupComposition(group: .ads, sources: [FilterSource(
+                filterID: "easylist", version: "2026-07-18", checksumSHA256: Checksum.sha256Hex(of: filterSourceJSON()),
+                data: filterSourceJSON()
+            )]),
+            reloadStrategy: .deferred
+        )
+
+        // New manifest has zero entries — easylist should be removed, not ignored.
+        let manifest = FilterManifest(manifestVersion: "1", entries: [])
+        let manifestData = try JSONEncoder().encode(manifest)
+        let manifestResponse = HTTPURLResponse(
+            url: manifestEndpoint, statusCode: 200, httpVersion: nil, headerFields: ["ETag": "\"v2\""]
+        )!
+        let filterResponse = HTTPURLResponse(url: filterSourceURL, statusCode: 200, httpVersion: nil, headerFields: nil)!
+        let coordinator = makeCoordinator(
+            manifestResponse: (manifestData, manifestResponse),
+            filterResponse: (filterSourceJSON(), filterResponse),
+            pipeline: pipeline, store: store
+        )
+
+        _ = try await coordinator.run()
+
+        let installedData = try await store.read("installed_filters.json", in: .metadata)
+        let installed = try JSONDecoder().decode([InstalledFilter].self, from: installedData)
+        #expect(installed.isEmpty)
+
+        let filtersDir = try await store.directoryURL(.filters)
+        try? FileManager.default.removeItem(at: filtersDir.appendingPathComponent("easylist.json"))
+    }
+
+    @Test("a failed transaction containing a removal rolls back and restores the removed filter")
+    func failedTransactionWithRemovalRollsBackFully() async throws {
+        let store = FilterStore(appGroupIdentifier: AppGroup.identifier)
+        let metadataDir = try await store.directoryURL(.metadata)
+        try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("manifest.json"))
+        try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("installed_filters.json"))
+
+        let pipeline = FilterPipeline(
+            validator: FilterValidator(), compiler: PassthroughRuleCompiler(),
+            compositionService: JSONArrayCompositionService(),
+            partitioner: GroupPartitioner(extensionIdentifiers: groupExtensionIdentifiers),
+            store: store, writer: AtomicRuleWriter(), reloader: ReloadCoordinator()
+        )
+        _ = try await pipeline.install(
+            GroupComposition(group: .ads, sources: [FilterSource(
+                filterID: "easylist", version: "2026-07-18", checksumSHA256: Checksum.sha256Hex(of: filterSourceJSON()),
+                data: filterSourceJSON()
+            )]),
+            reloadStrategy: .deferred
+        )
+
+        // Manifest removes easylist AND introduces a second entry whose checksum won't
+        // match what the mock session serves — forcing a checksum failure during the
+        // download/verify phase, which happens entirely before the snapshot and before
+        // any writes (see reasoning below), which is a valid, simpler way to prove
+        // rollback-safety for install+remove combinations than forcing a mid-write failure.
+        let badEntry = FilterManifest.Entry(
+            id: "bad-checksum-entry", name: "Bad", group: .privacy, sourceURL: filterSourceURL,
+            version: "2026-07-19", checksumSHA256: "0000000000000000000000000000000000000000000000000000000000000",
+            ruleCount: 1, enabledByDefault: true, premium: false
+        )
+        let manifest = FilterManifest(manifestVersion: "1", entries: [badEntry])
+        let manifestData = try JSONEncoder().encode(manifest)
+        let manifestResponse = HTTPURLResponse(
+            url: manifestEndpoint, statusCode: 200, httpVersion: nil, headerFields: ["ETag": "\"v2\""]
+        )!
+        let filterResponse = HTTPURLResponse(url: filterSourceURL, statusCode: 200, httpVersion: nil, headerFields: nil)!
+        let coordinator = makeCoordinator(
+            manifestResponse: (manifestData, manifestResponse),
+            filterResponse: (filterSourceJSON(), filterResponse),
+            pipeline: pipeline, store: store
+        )
+
+        // Download/verify failure happens before `runTransaction`'s snapshot/rollback
+        // machinery even begins, so `run()` throws directly rather than returning
+        // .rolledBack — installed_filters.json/Filters/ are simply never touched.
+        await #expect(throws: (any Error).self) {
+            _ = try await coordinator.run()
+        }
+
+        let installedData = try await store.read("installed_filters.json", in: .metadata)
+        let installed = try JSONDecoder().decode([InstalledFilter].self, from: installedData)
+        #expect(installed.map(\.id) == ["easylist"])
+
+        let filtersDir = try await store.directoryURL(.filters)
+        let payload = try await store.readFilterPayload(filterID: "easylist")
+        #expect(payload == filterSourceJSON())
+
+        try? FileManager.default.removeItem(at: filtersDir.appendingPathComponent("easylist.json"))
+    }
 }

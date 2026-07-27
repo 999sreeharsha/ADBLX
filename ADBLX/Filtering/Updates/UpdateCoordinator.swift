@@ -85,8 +85,13 @@ actor UpdateCoordinator {
             if case .install(let group, let entries) = $0 { return (group, entries) }
             return nil
         }
+        let removals: [(filterID: String, group: FilterGroup)] = plan.actions.compactMap { action in
+            guard case .remove(let filterID) = action else { return nil }
+            guard let group = installedFilters.first(where: { $0.id == filterID })?.group else { return nil }
+            return (filterID, group)
+        }
 
-        guard !installGroups.isEmpty else {
+        guard !installGroups.isEmpty || !removals.isEmpty else {
             try await manifestStore.save(manifest, etag: etag)
             onPhaseChange(.complete)
             return .upToDate
@@ -107,8 +112,21 @@ actor UpdateCoordinator {
             downloadedByGroup[group] = downloaded
         }
 
+        // Snapshot before any write in the batch begins — this must capture pre-transaction
+        // Filters/ state before any removal in the batch executes (Sprint 8.0 Commit 3).
         let snapshot = try await store.snapshotForRollback()
-        let affectedExtensionIDs = installGroups.map { extensionIdentifiers[$0.group] }
+        // De-duplicated but order-preserving (first occurrence wins) — a plain `Set` would
+        // reload every affected extension exactly once too, but in hash-order rather than
+        // manifest/plan order, which breaks callers (and this file's own
+        // manifestAcrossAllGroupsInstallsEachGroupOnce test) that depend on
+        // ReloadCoordinator.reload(extensionIdentifiers:) producing results in a stable,
+        // predictable sequence.
+        var affectedExtensionIDs: [String] = []
+        for identifier in installGroups.map({ extensionIdentifiers[$0.group] }) + removals.map({ extensionIdentifiers[$0.group] }) {
+            if !affectedExtensionIDs.contains(identifier) {
+                affectedExtensionIDs.append(identifier)
+            }
+        }
         var installedFilterIDs: [String] = []
 
         onPhaseChange(.installing)
@@ -133,8 +151,11 @@ actor UpdateCoordinator {
                 _ = try await pipeline.install(composition, reloadStrategy: .deferred)
                 installedFilterIDs.append(contentsOf: downloaded.map(\.filterID))
             }
+            for removal in removals {
+                _ = try await pipeline.remove(filterID: removal.filterID, group: removal.group, reloadStrategy: .deferred)
+            }
             try await manifestStore.save(manifest, etag: etag)
-            let reloadResults = await reloader.reload(extensionIdentifiers: affectedExtensionIDs)
+            let reloadResults = await reloader.reload(extensionIdentifiers: Array(affectedExtensionIDs))
             onPhaseChange(.complete)
             return .updated(installedFilterIDs: installedFilterIDs, reloadResults: reloadResults)
         } catch {
@@ -148,7 +169,7 @@ actor UpdateCoordinator {
                 // original install failure or crashing the caller with a raw throw.
                 return .rollbackFailed(originalReason: error, restoreError: restoreError)
             }
-            _ = await reloader.reload(extensionIdentifiers: affectedExtensionIDs)
+            _ = await reloader.reload(extensionIdentifiers: Array(affectedExtensionIDs))
             return .rolledBack(reason: error)
         }
     }
