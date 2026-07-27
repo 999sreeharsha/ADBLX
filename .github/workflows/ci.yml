@@ -32,6 +32,21 @@ jobs:
       - name: Verify no project drift
         run: git diff --exit-code ADBLX.xcodeproj
 
+      - name: Verify AppGroup.swift is byte-identical across all targets
+        run: |
+          REFERENCE="ADBLX/AppGroup.swift"
+          for FILE in \
+            "Extensions/ADBLXAdsBlocker/AppGroup.swift" \
+            "Extensions/ADBLXPrivacyBlocker/AppGroup.swift" \
+            "Extensions/ADBLXAnnoyancesBlocker/AppGroup.swift" \
+            "Extensions/ADBLXRegionalBlocker/AppGroup.swift"; do
+            if ! cmp -s "$REFERENCE" "$FILE"; then
+              echo "::error::$FILE differs from $REFERENCE — AppGroup.swift must stay byte-identical across all targets until ADR-0003 lands (see docs/ADR)."
+              exit 1
+            fi
+          done
+          echo "All five AppGroup.swift copies are byte-identical."
+
       - name: Find an available iOS Simulator
         id: simulator
         run: |
