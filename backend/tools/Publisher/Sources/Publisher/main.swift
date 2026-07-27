@@ -1,1 +1,3 @@
-print("Publisher: CLI not yet wired (see Task 11)")
+import ArgumentParser
+
+PublisherCommand.main()
