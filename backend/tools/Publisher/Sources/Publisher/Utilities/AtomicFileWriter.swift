@@ -2,7 +2,7 @@ import Foundation
 
 enum AtomicFileWriterError: Error, Equatable {
     case fsyncFailed(errno: Int32)
-    case renameFailed(errno: Int32)
+    case renameFailed(description: String)
 }
 
 /// Mirrors ADBLX/Filtering/Storage/AtomicRuleWriter.swift's pattern (that type lives in the
@@ -22,17 +22,22 @@ struct AtomicFileWriter {
             throw AtomicFileWriterError.fsyncFailed(errno: errno)
         }
         let syncResult = fcntl(fd, F_FULLFSYNC)
+        // Capture errno immediately — a successful close(fd) can reset errno to 0 (or another
+        // unrelated value), overwriting the real fsync failure's errno if read afterward.
+        let syncErrno = errno
         close(fd)
         if syncResult != 0 {
             try? FileManager.default.removeItem(at: tempURL)
-            throw AtomicFileWriterError.fsyncFailed(errno: errno)
+            throw AtomicFileWriterError.fsyncFailed(errno: syncErrno)
         }
 
         do {
             _ = try FileManager.default.replaceItemAt(destinationURL, withItemAt: tempURL)
         } catch {
             try? FileManager.default.removeItem(at: tempURL)
-            throw AtomicFileWriterError.renameFailed(errno: errno)
+            // `replaceItemAt` throws a Swift `Error` (typically `CocoaError`/`NSError`), not a
+            // raw errno — capture its description rather than an unrelated stale `errno` value.
+            throw AtomicFileWriterError.renameFailed(description: String(describing: error))
         }
     }
 }

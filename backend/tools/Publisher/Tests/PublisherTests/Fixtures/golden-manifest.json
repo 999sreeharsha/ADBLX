@@ -1,38 +1,38 @@
 {
-  "entries" : [
+  "manifestVersion": "2026-07-16",
+  "entries": [
     {
-      "checksumSHA256" : "5e89476b5fc5df2048468a73bd90cf9a5282f75966d85e846f68a16d46c6691a",
-      "enabledByDefault" : true,
-      "group" : "ads",
-      "id" : "easylist",
-      "name" : "EasyList",
-      "premium" : false,
-      "ruleCount" : 2,
-      "sourceURL" : "https:\/\/cdn.adblx.com\/backend\/public\/filters\/ads\/easylist.txt",
-      "version" : "2026-07-15"
+      "id": "easylist",
+      "name": "EasyList",
+      "group": "ads",
+      "sourceURL": "https://cdn.adblx.com/backend/public/filters/ads/easylist.txt",
+      "version": "2026-07-15",
+      "checksumSHA256": "5e89476b5fc5df2048468a73bd90cf9a5282f75966d85e846f68a16d46c6691a",
+      "ruleCount": 2,
+      "enabledByDefault": true,
+      "premium": false
     },
     {
-      "checksumSHA256" : "5e89476b5fc5df2048468a73bd90cf9a5282f75966d85e846f68a16d46c6691a",
-      "enabledByDefault" : true,
-      "group" : "privacy",
-      "id" : "easyprivacy",
-      "name" : "EasyPrivacy",
-      "premium" : false,
-      "ruleCount" : 2,
-      "sourceURL" : "https:\/\/cdn.adblx.com\/backend\/public\/filters\/privacy\/easyprivacy.txt",
-      "version" : "2026-07-16"
+      "id": "easyprivacy",
+      "name": "EasyPrivacy",
+      "group": "privacy",
+      "sourceURL": "https://cdn.adblx.com/backend/public/filters/privacy/easyprivacy.txt",
+      "version": "2026-07-16",
+      "checksumSHA256": "5e89476b5fc5df2048468a73bd90cf9a5282f75966d85e846f68a16d46c6691a",
+      "ruleCount": 2,
+      "enabledByDefault": true,
+      "premium": false
     },
     {
-      "checksumSHA256" : "5e89476b5fc5df2048468a73bd90cf9a5282f75966d85e846f68a16d46c6691a",
-      "enabledByDefault" : false,
-      "group" : "annoyances",
-      "id" : "fanboy-annoyances",
-      "name" : "Fanboy Annoyances",
-      "premium" : true,
-      "ruleCount" : 2,
-      "sourceURL" : "https:\/\/cdn.adblx.com\/backend\/public\/filters\/annoyances\/fanboy-annoyances.txt",
-      "version" : "2026-07-10"
+      "id": "fanboy-annoyances",
+      "name": "Fanboy Annoyances",
+      "group": "annoyances",
+      "sourceURL": "https://cdn.adblx.com/backend/public/filters/annoyances/fanboy-annoyances.txt",
+      "version": "2026-07-10",
+      "checksumSHA256": "5e89476b5fc5df2048468a73bd90cf9a5282f75966d85e846f68a16d46c6691a",
+      "ruleCount": 2,
+      "enabledByDefault": false,
+      "premium": true
     }
-  ],
-  "manifestVersion" : "2026-07-16"
+  ]
 }

@@ -80,22 +80,11 @@ final class PublisherIntegrationTests: XCTestCase {
         let (manifest, report) = try runPublishPipeline(publishBaseURL: "https://cdn.adblx.com")
         XCTAssertTrue(report.isValid)
 
-        let encoder = JSONEncoder()
-        // NOTE: `.sortedKeys` added (brief's Step 1 literal used only `.prettyPrinted`) because
-        // plain `.prettyPrinted` on this toolchain (Swift 6.3 / Foundation on macOS 26) emits
-        // object keys in Dictionary hash-seed order, which is randomized per-process — verified
-        // by running the same encode 5+ times and observing a different key order each time.
-        // That makes a golden byte-for-byte comparison against any fixed key order (declaration
-        // order or otherwise) inherently flaky without `.sortedKeys` or a future declaration-
-        // order-preserving encoder (ManifestWriter, Task 11). `.sortedKeys` is the only
-        // deterministic option available without adding new production code, which this task's
-        // brief explicitly rules out ("do not modify any of the already-implemented and
-        // already-tested modules; this task only adds new test code and fixtures"). Golden
-        // fixture's per-entry key order was updated to match: checksumSHA256, enabledByDefault,
-        // group, id, name, premium, ruleCount, sourceURL, version (alphabetical), top-level:
-        // entries, manifestVersion.
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        let generatedData = try encoder.encode(manifest)
+        // Test the real production serializer (Task 11's `ManifestJSONWriter`), which is what
+        // `PublishCommand` actually calls. `ManifestJSONWriter` hand-builds the JSON text with a
+        // fixed, plan-mandated key order because `JSONEncoder` does not reliably preserve
+        // declaration order on this toolchain (see `ManifestJSONWriter`'s own doc comment).
+        let generatedData = ManifestJSONWriter.write(manifest)
         let generatedJSON = String(decoding: generatedData, as: UTF8.self)
 
         let goldenURL = URL(fileURLWithPath: #filePath)
@@ -103,8 +92,7 @@ final class PublisherIntegrationTests: XCTestCase {
             .appendingPathComponent("Fixtures/golden-manifest.json")
         let goldenJSON = try String(contentsOf: goldenURL, encoding: .utf8)
 
-        XCTAssertEqual(generatedJSON.trimmingCharacters(in: .whitespacesAndNewlines),
-                        goldenJSON.trimmingCharacters(in: .whitespacesAndNewlines))
+        XCTAssertEqual(generatedJSON, goldenJSON)
     }
 
     func test_goldenFilterRegistryMarkdownMatchesByteForByte() throws {
@@ -146,15 +134,16 @@ final class PublisherIntegrationTests: XCTestCase {
             registry: registry, metadataDirectory: fixture.metadataDir, payloadDirectory: fixture.payloadDir
         )
 
+        // This test proves only that validation *detects* the broken filter's missing payload
+        // (whichever position it occupies in the batch) — it does not exercise `PublishCommand`'s
+        // write path, so it cannot prove that no output is written. `PublishCommand` gates every
+        // write behind `report.isValid`, so a false `isValid` here is sufficient for that
+        // guarantee to hold in the real CLI, but that gating logic itself is untested by this file.
         XCTAssertFalse(report.isValid)
         XCTAssertTrue(report.errors.contains {
             if case .missingPayload(let id, _) = $0 { return id == brokenFilterID }
             return false
         })
-
-        // Simulate the real publish pipeline's refusal to write on any validation error.
-        let manifestOutputURL = fixture.root.appendingPathComponent("manifest.json")
-        XCTAssertFalse(FileManager.default.fileExists(atPath: manifestOutputURL.path))
     }
 
     func test_determinism_repeatedRunsProduceByteIdenticalManifest() throws {

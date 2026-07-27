@@ -4,7 +4,7 @@
 
 This document freezes how `backend/public/manifest.json` (specified field-
 by-field in `docs/ManifestSpecification.md`) is produced from
-`docs/FilterRegistry.md` and the published filter payloads. It is a design
+`backend/registry/filters.json` and the published filter payloads. It is a design
 document — it defines the pipeline's inputs, outputs, ownership, and failure
 rules. It does not implement the generator.
 
@@ -37,8 +37,9 @@ Commit 4 deliberately does not answer:
 
 ## Inputs
 
-1. `docs/FilterRegistry.md` — which filters are registered, their `id`,
-   `name`, `group`, `enabledByDefault`, `premium` (Commit 2).
+1. `backend/registry/filters.json` — which filters are registered, their `id`,
+   `name`, `group`, `enabledByDefault`, `premium` (canonical registry input;
+   `docs/FilterRegistry.md` is a generated output, not an input).
 2. `backend/metadata/{id}.json` — one file per registered filter, supplying
    that filter's `version` (defined below).
 3. `backend/public/filters/{group}/{id}.txt` — the published payload used to
@@ -164,12 +165,12 @@ metadata, and published payload before producing any output. Generation
 fails (produces no output, leaves any existing `manifest.json` untouched)
 if any of the following are true:
 
-- A registered filter (per `FilterRegistry.md`) has no corresponding
-  `backend/metadata/{id}.json` file.
+- A registered filter (per `backend/registry/filters.json`) has no
+  corresponding `backend/metadata/{id}.json` file.
 - A `backend/metadata/{id}.json` file exists whose `id` field does not match
   its filename.
 - A `backend/metadata/{id}.json` file exists whose `id` does not correspond
-  to any registered filter in `FilterRegistry.md`.
+  to any registered filter in `backend/registry/filters.json`.
 - Duplicate metadata files for the same `id` (e.g. case-variant filenames on
   a case-insensitive filesystem).
 - The derived payload path `backend/public/filters/{group}/{id}.txt` does

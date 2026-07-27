@@ -124,6 +124,41 @@ final class ValidationTests: XCTestCase {
         })
     }
 
+    func test_fullValidate_duplicateMetadata() throws {
+        let registry = Registry(registryVersion: 1, filters: [makeEntry(id: "easylist", group: "ads")])
+        let metadataDir = try MetadataTests.makeTempDirectory()
+        try MetadataTests.writeMetadata(id: "easylist", version: "2026-07-15", in: metadataDir)
+        // A second metadata file, different filename, declaring the same id.
+        let duplicateJSON = "{\"id\": \"easylist\", \"version\": \"2026-07-16\"}"
+        try duplicateJSON.write(
+            to: metadataDir.appendingPathComponent("easylist-duplicate.json"),
+            atomically: true, encoding: .utf8
+        )
+        let payloadDir = try Self.makeTempPayloadTree(ids: ["easylist"], groups: ["ads"])
+
+        let report = try Validator.validate(registry: registry, metadataDirectory: metadataDir, payloadDirectory: payloadDir)
+
+        XCTAssertFalse(report.isValid)
+        XCTAssertTrue(report.errors.contains(.duplicateMetadata(id: "easylist")))
+    }
+
+    func test_fullValidate_metadataIDMismatch() throws {
+        let registry = Registry(registryVersion: 1, filters: [makeEntry(id: "bar", group: "ads")])
+        let metadataDir = try MetadataTests.makeTempDirectory()
+        // File named foo.json but declares id "bar" — filename/id mismatch.
+        let mismatchedJSON = "{\"id\": \"bar\", \"version\": \"2026-07-15\"}"
+        try mismatchedJSON.write(
+            to: metadataDir.appendingPathComponent("foo.json"),
+            atomically: true, encoding: .utf8
+        )
+        let payloadDir = try Self.makeTempPayloadTree(ids: ["bar"], groups: ["ads"])
+
+        let report = try Validator.validate(registry: registry, metadataDirectory: metadataDir, payloadDirectory: payloadDir)
+
+        XCTAssertFalse(report.isValid)
+        XCTAssertTrue(report.errors.contains(.metadataIDMismatch(filename: "foo.json", declaredID: "bar")))
+    }
+
     func test_fullValidate_allConsistentProducesValidReport() throws {
         let registry = Registry(registryVersion: 1, filters: [makeEntry(id: "easylist", group: "ads")])
         let metadataDir = try MetadataTests.makeTempDirectory()
