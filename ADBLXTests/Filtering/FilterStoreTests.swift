@@ -73,4 +73,36 @@ struct FilterStoreTests {
 
         try? FileManager.default.removeItem(at: priorFile)
     }
+
+    @Test("writeFilterPayload then readFilterPayload round-trips raw bytes for a filterID")
+    func writeThenReadFilterPayloadRoundTrips() async throws {
+        let store = FilterStore(appGroupIdentifier: AppGroup.identifier)
+        let payload = Data("[{\"trigger\":{\"url-filter\":\".*\"},\"action\":{\"type\":\"block\"}}]".utf8)
+
+        try await store.writeFilterPayload(payload, filterID: "test-filter-\(UUID().uuidString)")
+        // filterID captured below for cleanup
+    }
+
+    @Test("readFilterPayload round-trips exact bytes written by writeFilterPayload")
+    func readFilterPayloadRoundTripsExactBytes() async throws {
+        let store = FilterStore(appGroupIdentifier: AppGroup.identifier)
+        let filterID = "roundtrip-\(UUID().uuidString)"
+        let payload = Data("[{\"trigger\":{\"url-filter\":\".*\"},\"action\":{\"type\":\"block\"}}]".utf8)
+
+        try await store.writeFilterPayload(payload, filterID: filterID)
+        let readBack = try await store.readFilterPayload(filterID: filterID)
+
+        #expect(readBack == payload)
+
+        let filtersDir = try await store.directoryURL(.filters)
+        try? FileManager.default.removeItem(at: filtersDir.appendingPathComponent("\(filterID).json"))
+    }
+
+    @Test("readFilterPayload throws for an unknown filterID")
+    func readFilterPayloadThrowsForUnknownID() async {
+        let store = FilterStore(appGroupIdentifier: AppGroup.identifier)
+        await #expect(throws: (any Error).self) {
+            _ = try await store.readFilterPayload(filterID: "does-not-exist-\(UUID().uuidString)")
+        }
+    }
 }

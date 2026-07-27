@@ -73,6 +73,22 @@ actor FilterStore {
         try data.write(to: fileURL, options: .atomic)
     }
 
+    /// Persists one filter's verified raw source payload to `Filters/<filterID>.json` —
+    /// the canonical local cache `.remove` (Sprint 8.0 Commit 3) reads from to recompose
+    /// a group without the network. Callers write this only after checksum verification.
+    func writeFilterPayload(_ data: Data, filterID: String) throws {
+        let fileURL = try url(for: .filters).appendingPathComponent("\(filterID).json")
+        try data.write(to: fileURL, options: .atomic)
+    }
+
+    /// Reads a previously-persisted filter payload. Throws if absent — callers (e.g.
+    /// `FilterPipeline.remove`) treat a missing payload as an error, not a silent skip,
+    /// since `Filters/` is the only source of truth for recomposition.
+    func readFilterPayload(filterID: String) throws -> Data {
+        let fileURL = try url(for: .filters).appendingPathComponent("\(filterID).json")
+        return try Data(contentsOf: fileURL)
+    }
+
     func directoryURL(_ directory: Directory) throws -> URL {
         try url(for: directory)
     }
