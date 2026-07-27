@@ -163,4 +163,21 @@ struct FilterPipelineTests {
         let filters = try JSONDecoder().decode([InstalledFilter].self, from: metadataData)
         #expect(Set(filters.map(\.id)).isSuperset(of: ["easylist", "peter-lowe"]))
     }
+
+    @Test("install persists each source's raw payload to Filters/<filterID>.json")
+    func installPersistsRawPayloadToFiltersDirectory() async throws {
+        let pipeline = makePipeline()
+        let store = FilterStore(appGroupIdentifier: AppGroup.identifier)
+        let payload = Data("[{\"trigger\":{\"url-filter\":\".*\"},\"action\":{\"type\":\"block\"}}]".utf8)
+        let source = FilterSource(filterID: "persist-test", version: "v1", checksumSHA256: "a", data: payload)
+        let composition = GroupComposition(group: .ads, sources: [source])
+
+        _ = try await pipeline.install(composition, reloadStrategy: .deferred)
+
+        let readBack = try await store.readFilterPayload(filterID: "persist-test")
+        #expect(readBack == payload)
+
+        let filtersDir = try await store.directoryURL(.filters)
+        try? FileManager.default.removeItem(at: filtersDir.appendingPathComponent("persist-test.json"))
+    }
 }

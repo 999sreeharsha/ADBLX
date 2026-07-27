@@ -47,6 +47,10 @@ actor FilterPipeline {
             try validator.validate(source.data)
         }
 
+        for source in composition.sources {
+            try await store.writeFilterPayload(source.data, filterID: source.filterID)
+        }
+
         let composed = try compositionService.compose(composition.sources, group: composition.group)
         let compiled = try await compiler.compile(source: composed.data, group: composition.group)
         let partition = try await partitioner.partition(compiled, group: composition.group)
