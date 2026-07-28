@@ -37,12 +37,13 @@ struct UpdateCoordinatorTests {
         filterResponse: (Data, URLResponse),
         pipeline: FilterPipeline,
         store: FilterStore,
-        isPremiumEntitled: Bool = false
+        isPremiumEntitled: Bool = false,
+        delayNanoseconds: UInt64 = 0
     ) -> UpdateCoordinator {
         let session = MockHTTPSession(responses: [
             manifestEndpoint: .success(manifestResponse),
             filterSourceURL: .success(filterResponse),
-        ])
+        ], delayNanoseconds: delayNanoseconds)
         return UpdateCoordinator(
             manifestClient: ManifestClient(session: session, endpoint: manifestEndpoint),
             manifestStore: ManifestStore(filterStore: store),
@@ -554,6 +555,81 @@ struct UpdateCoordinatorTests {
         let installedData = try await store.read("installed_filters.json", in: .metadata)
         let installed = try JSONDecoder().decode([InstalledFilter].self, from: installedData)
         #expect(installed.map(\.id) == ["easylist"])
+    }
+
+    // Regression test for the Sprint 8.0 final-review finding: a joining caller's
+    // `defer { inFlightTask = nil }` could clear a LATER caller's still-running task
+    // out from under it, once staggered completion times let a third caller start a
+    // fresh transaction in the gap between an earlier task finishing and its defer
+    // actually running. The 2-caller `concurrentRunCallsCollapseIntoOneTransaction`
+    // test above doesn't exercise this — with only two callers there's no "later
+    // caller" for a stale defer to clobber. Injects an artificial delay via
+    // `MockHTTPSession.delayNanoseconds` so all three `run()` calls are genuinely
+    // in-flight together (not just incidentally raced by the scheduler), then asserts
+    // only one real transaction happened by checking `installed_filters.json` reflects
+    // exactly one install, not three re-applied installs.
+    @Test("three or more overlapping concurrent run() calls collapse into exactly one transaction")
+    func threeConcurrentRunCallsCollapseIntoOneTransaction() async throws {
+        let store = FilterStore(appGroupIdentifier: AppGroup.identifier)
+        let metadataDir = try await store.directoryURL(.metadata)
+        try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("manifest.json"))
+        try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("installed_filters.json"))
+
+        let manifest = FilterManifest(manifestVersion: "1", entries: [manifestEntry(checksum: Checksum.sha256Hex(of: filterSourceJSON()))])
+        let manifestData = try JSONEncoder().encode(manifest)
+        let manifestResponse = HTTPURLResponse(
+            url: manifestEndpoint, statusCode: 200, httpVersion: nil, headerFields: ["ETag": "\"v1\""]
+        )!
+        let filterResponse = HTTPURLResponse(url: filterSourceURL, statusCode: 200, httpVersion: nil, headerFields: nil)!
+
+        let pipeline = FilterPipeline(
+            validator: FilterValidator(), compiler: PassthroughRuleCompiler(),
+            compositionService: JSONArrayCompositionService(),
+            partitioner: GroupPartitioner(extensionIdentifiers: groupExtensionIdentifiers),
+            store: store, writer: AtomicRuleWriter(), reloader: ReloadCoordinator()
+        )
+        let coordinator = makeCoordinator(
+            manifestResponse: (manifestData, manifestResponse),
+            filterResponse: (filterSourceJSON(), filterResponse),
+            pipeline: pipeline, store: store,
+            delayNanoseconds: 150_000_000 // 150ms — long enough for a third caller to join mid-flight
+        )
+
+        async let first = coordinator.run()
+        async let second = coordinator.run()
+        async let third = coordinator.run()
+        let (firstResult, secondResult, thirdResult) = try await (first, second, third)
+
+        for result in [firstResult, secondResult, thirdResult] {
+            guard case .updated(let ids, _) = result else {
+                Issue.record("expected all three concurrent calls to see .updated, got \(result)")
+                continue
+            }
+            #expect(ids == ["easylist"])
+        }
+
+        // If more than one transaction had actually run to completion, this file would
+        // either fail to decode (torn/interleaved writes) or `installed` would contain
+        // duplicate/re-appended entries rather than exactly one "easylist" — a single
+        // grouped install always writes one entry per filter ID regardless of how many
+        // times install() is invoked with the same composition, so this alone doesn't
+        // fully distinguish 1 run from N idempotent runs. The stronger signal is the
+        // reload count: each real transaction calls reloader.reload() once per affected
+        // extension, so a run() result's reloadResults.count staying at 1 (not 3) across
+        // all three joined results proves only one transaction actually executed —
+        // joiners return the SAME task's result, including its own single-element
+        // reloadResults array, rather than each independently triggering their own reload.
+        for result in [firstResult, secondResult, thirdResult] {
+            guard case .updated(_, let reloadResults) = result else { continue }
+            #expect(reloadResults.count == 1)
+        }
+
+        let installedData = try await store.read("installed_filters.json", in: .metadata)
+        let installed = try JSONDecoder().decode([InstalledFilter].self, from: installedData)
+        #expect(installed.map(\.id) == ["easylist"])
+
+        try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("manifest.json"))
+        try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("installed_filters.json"))
     }
 
     @Test("a filter absent from a new manifest is removed via the pipeline, not silently dropped")

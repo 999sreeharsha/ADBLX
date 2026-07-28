@@ -23,6 +23,12 @@ actor UpdateCoordinator {
     private let extensionIdentifiers: GroupExtensionIdentifiers
     private let entitlementService: EntitlementService
     private var inFlightTask: Task<UpdateRunResult, Error>?
+    // Bumped each time a NEW transaction task is created. `Task` is a struct with no
+    // identity comparison, so this generation counter is what lets the creator of a
+    // task recognize "is `inFlightTask` still the task I created, or has someone else
+    // since replaced it with a newer one" — see run()'s defer below and the Sprint 8.0
+    // final-review fix for the 3+-caller in-flight-guard bug.
+    private var inFlightGeneration = 0
 
     init(
         manifestClient: ManifestClient,
@@ -57,13 +63,30 @@ actor UpdateCoordinator {
     /// alone only serializes execution, it does not prevent two full transactions
     /// from each running to completion (Sprint 8.0 Commit 2).
     func run(onPhaseChange: @escaping (UpdatePhase) -> Void = { _ in }) async throws -> UpdateRunResult {
+        // A caller that merely JOINS an already-running transaction must never touch
+        // `inFlightTask`/`inFlightGeneration` — no defer, no side effect beyond
+        // returning the joined result. Only the caller that actually creates a task
+        // (below) is allowed to clear the shared state, and only if it can prove
+        // nobody has since replaced its task with a newer one.
         if let inFlightTask {
             return try await inFlightTask.value
         }
+        inFlightGeneration += 1
+        let myGeneration = inFlightGeneration
         let task = Task { try await runTransaction(onPhaseChange: onPhaseChange) }
         inFlightTask = task
-        defer { inFlightTask = nil }
-        defer { try? downloadClient.cleanupWorkspace() }
+        defer {
+            // Only reset if `inFlightTask` still refers to the task THIS invocation
+            // created — i.e. no other caller has since started a newer transaction
+            // (which would have bumped `inFlightGeneration` past `myGeneration` and
+            // installed its own task). Without this generation check, a caller that
+            // created task A could clobber a later caller's task C out from under it
+            // once A finishes, even though C is still running.
+            if inFlightGeneration == myGeneration {
+                inFlightTask = nil
+            }
+            try? downloadClient.cleanupWorkspace()
+        }
         return try await task.value
     }
 
