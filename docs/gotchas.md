@@ -246,3 +246,30 @@ whether the underlying daemon-activation gap has been fixed upstream before
 assuming it's still broken.
 
 Found in: `docs/superpowers/plans/2026-07-27-sprint-8.0-foundation-completion.md`, Task 12, 2026-07-28
+
+## Entitlement gating (Sprint 8.0) only blocks a NEW premium install — it never revokes an already-installed premium filter after entitlement lapses
+
+`UpdatePlanner.plan`'s entitlement check (`else if entry.premium &&
+!isPremiumEntitled`, in `ADBLX/Filtering/Updates/UpdatePlan.swift`) only runs
+for a manifest entry that has NO matching `InstalledFilter` yet — i.e. it gates
+whether a premium filter gets installed for the first time. It does nothing
+for a filter that is already installed and whose owning user's entitlement
+subsequently lapses (subscription expires, refund, etc.): on every later
+`UpdateCoordinator.run()`, that filter's manifest entry hits the `existing`
+branch above the entitlement check, so it keeps producing `.keep` (unchanged
+version/checksum) or even `.install` (on a version bump) regardless of
+`isPremiumEntitled` — the entitlement check is never reached for it. A user
+whose premium subscription has lapsed keeps that filter blocking content,
+consuming update bandwidth, and staying installed indefinitely, with no code
+path that ever removes or disables it.
+
+This is an explicit, human-approved product-scope decision for Sprint 8.0 —
+gate new installs only, do not build revocation-on-lapse — not a bug. Task 13's
+review confirmed the gating logic matches its documented scope. Future work
+implementing revocation needs product input first on the desired behavior
+across subscription expiry, grace periods, refunds, and Family
+Sharing/lifetime-purchase edge cases, before touching `UpdatePlanner` to add a
+`.remove` (or new dedicated action case) for an already-installed premium
+filter whose entitlement has lapsed.
+
+Found in: final whole-branch review of `docs/superpowers/plans/2026-07-27-sprint-8.0-foundation-completion.md`, 2026-07-28
