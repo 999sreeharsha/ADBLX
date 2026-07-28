@@ -28,4 +28,10 @@ final class PremiumViewModel {
             purchaseError = error
         }
     }
+
+    func restore() async {
+        isLoading = true
+        status = await service.fetchStatus()
+        isLoading = false
+    }
 }

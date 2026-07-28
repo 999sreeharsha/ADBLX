@@ -263,7 +263,9 @@ struct PremiumView: View {
             }
 
             HStack(spacing: DesignSpacing.stackGap) {
-                Button("premium.action.restore") {}
+                Button("premium.action.restore") {
+                    Task { await viewModel.restore() }
+                }
                     .frame(maxWidth: .infinity)
                 Button("premium.action.manage") {}
                     .frame(maxWidth: .infinity)

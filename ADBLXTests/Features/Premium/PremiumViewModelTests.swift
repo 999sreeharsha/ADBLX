@@ -38,6 +38,22 @@ struct PremiumViewModelTests {
 
         #expect(viewModel.purchaseError == nil)
     }
+
+    @Test("restore() re-fetches status from the service and repopulates it")
+    func restoreRefetchesStatus() async {
+        let status = SubscriptionStatus(
+            isPremium: true,
+            plans: [
+                SubscriptionPlan(id: "annual", name: "Annual", priceDescription: "$19.99", billingPeriodDescription: "per year", isCurrentPlan: true),
+            ]
+        )
+        let viewModel = PremiumViewModel(service: StubSubscriptionService(statusToReturn: status))
+
+        await viewModel.restore()
+
+        #expect(viewModel.status == status)
+        #expect(viewModel.isLoading == false)
+    }
 }
 
 private struct StubSubscriptionService: SubscriptionService {
