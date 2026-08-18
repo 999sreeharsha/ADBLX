@@ -8,7 +8,7 @@ final class ManifestJSONWriterTests: XCTestCase {
             entries: [
                 ManifestEntry(
                     id: "easylist", name: "EasyList", group: "ads",
-                    sourceURL: "https://cdn.adblx.com/backend/public/filters/ads/easylist.txt",
+                    sourceURL: "https://cdn.adblx.com/filters/ads/easylist.txt",
                     version: "2026-07-15", checksumSHA256: "abc123", ruleCount: 62000,
                     enabledByDefault: true, premium: false
                 )
@@ -26,7 +26,7 @@ final class ManifestJSONWriterTests: XCTestCase {
               "id": "easylist",
               "name": "EasyList",
               "group": "ads",
-              "sourceURL": "https://cdn.adblx.com/backend/public/filters/ads/easylist.txt",
+              "sourceURL": "https://cdn.adblx.com/filters/ads/easylist.txt",
               "version": "2026-07-15",
               "checksumSHA256": "abc123",
               "ruleCount": 62000,
@@ -47,13 +47,13 @@ final class ManifestJSONWriterTests: XCTestCase {
             entries: [
                 ManifestEntry(
                     id: "zebra", name: "Zebra", group: "ads",
-                    sourceURL: "https://cdn.adblx.com/backend/public/filters/ads/zebra.txt",
+                    sourceURL: "https://cdn.adblx.com/filters/ads/zebra.txt",
                     version: "2026-07-15", checksumSHA256: "aaa", ruleCount: 1,
                     enabledByDefault: true, premium: false
                 ),
                 ManifestEntry(
                     id: "alpha", name: "Alpha", group: "privacy",
-                    sourceURL: "https://cdn.adblx.com/backend/public/filters/privacy/alpha.txt",
+                    sourceURL: "https://cdn.adblx.com/filters/privacy/alpha.txt",
                     version: "2026-07-20", checksumSHA256: "bbb", ruleCount: 2,
                     enabledByDefault: false, premium: true
                 )
@@ -79,7 +79,7 @@ final class ManifestJSONWriterTests: XCTestCase {
             entries: [
                 ManifestEntry(
                     id: "weird-id", name: "Name with \"quotes\" and \\backslash\\", group: "ads",
-                    sourceURL: "https://cdn.adblx.com/backend/public/filters/ads/weird-id.txt",
+                    sourceURL: "https://cdn.adblx.com/filters/ads/weird-id.txt",
                     version: "2026-07-15", checksumSHA256: "abc123", ruleCount: 1,
                     enabledByDefault: true, premium: false
                 )

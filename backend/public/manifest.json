@@ -1,1 +1,38 @@
-{}
+{
+  "manifestVersion": "2026-08-18",
+  "entries": [
+    {
+      "id": "easylist",
+      "name": "EasyList",
+      "group": "ads",
+      "sourceURL": "https://harshaunofficial.github.io/ADBLX/filters/ads/easylist.txt",
+      "version": "2026-08-18",
+      "checksumSHA256": "c7e0e8b560dcc88ad3647196310a4d592f4e62aa288bf819d059e2ead19a9f82",
+      "ruleCount": 78043,
+      "enabledByDefault": true,
+      "premium": false
+    },
+    {
+      "id": "easyprivacy",
+      "name": "EasyPrivacy",
+      "group": "privacy",
+      "sourceURL": "https://harshaunofficial.github.io/ADBLX/filters/privacy/easyprivacy.txt",
+      "version": "2026-08-18",
+      "checksumSHA256": "c1abebc0eeec6dc485b0d9777fbec1139198debfa92acde5dbd62d0b8395eba5",
+      "ruleCount": 55881,
+      "enabledByDefault": true,
+      "premium": false
+    },
+    {
+      "id": "fanboy-annoyances",
+      "name": "Fanboy Annoyances",
+      "group": "annoyances",
+      "sourceURL": "https://harshaunofficial.github.io/ADBLX/filters/annoyances/fanboy-annoyances.txt",
+      "version": "2026-08-18",
+      "checksumSHA256": "5618053c2e6027fabdd178a2c7dd1b2f3eb0eced314f5391cececffc31248e1e",
+      "ruleCount": 48962,
+      "enabledByDefault": false,
+      "premium": true
+    }
+  ]
+}

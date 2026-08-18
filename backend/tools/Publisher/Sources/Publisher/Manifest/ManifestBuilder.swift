@@ -13,7 +13,7 @@ enum ManifestBuilder {
         let entries: [ManifestEntry] = registry.filters.map { entry in
             let metadata = metadataByID[entry.id]!
             let payload = payloadInfoByID[entry.id]!
-            let sourceURL = "\(publishBaseURL)/backend/public/filters/\(entry.group)/\(entry.id).txt"
+            let sourceURL = "\(publishBaseURL)/filters/\(entry.group)/\(entry.id).txt"
 
             return ManifestEntry(
                 id: entry.id,

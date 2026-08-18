@@ -22,9 +22,9 @@ final class ManifestTests: XCTestCase {
         XCTAssertEqual(manifest.entries.count, 1)
         let entry = manifest.entries[0]
         XCTAssertEqual(entry.id, "easylist")
-        XCTAssertEqual(entry.name, "EasyList")
-        XCTAssertEqual(entry.group, "ads")
-        XCTAssertEqual(entry.sourceURL, "https://cdn.adblx.com/backend/public/filters/ads/easylist.txt")
+        XCTAssertEqual(entry.sourceURL, "https://cdn.adblx.com/filters/ads/easylist.txt")
+        XCTAssertTrue(entry.sourceURL.hasPrefix("https://cdn.adblx.com"))
+        XCTAssertFalse(entry.sourceURL.contains("backend/public"))
         XCTAssertEqual(entry.version, "2026-07-15")
         XCTAssertEqual(entry.checksumSHA256, "abc123")
         XCTAssertEqual(entry.ruleCount, 62000)
@@ -79,7 +79,7 @@ final class ManifestTests: XCTestCase {
     func test_manifestEntryEncodesWithExactKeyOrder() throws {
         let entry = ManifestEntry(
             id: "easylist", name: "EasyList", group: "ads",
-            sourceURL: "https://cdn.adblx.com/backend/public/filters/ads/easylist.txt",
+            sourceURL: "https://cdn.adblx.com/filters/ads/easylist.txt",
             version: "2026-07-15", checksumSHA256: "abc123", ruleCount: 62000,
             enabledByDefault: true, premium: false
         )

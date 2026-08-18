@@ -50,6 +50,31 @@ git reset --hard origin/gh-pages
 find . -mindepth 1 -maxdepth 1 -not -name '.git' -not -name 'README.md' -exec rm -rf {} +
 cp -R "$PUBLIC_DIR"/. "$WORKTREE_DIR"/
 
+# Create standard entry index.html for GitHub Pages
+cat << 'EOF' > index.html
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>ADBLX Filter Registry</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 40px auto; padding: 0 20px; line-height: 1.6; color: #333; }
+    h1 { color: #111; }
+    a { color: #0066cc; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <h1>ADBLX Filter Registry</h1>
+  <p>This site hosts ADBLX filter manifests and filter payloads for the SHIELD ad blocker application.</p>
+  <ul>
+    <li><a href="manifest.json">manifest.json</a></li>
+  </ul>
+</body>
+</html>
+EOF
+
+
 git add -A
 
 if git diff --cached --quiet; then
