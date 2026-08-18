@@ -62,3 +62,7 @@ playground.xcworkspace
 .idea/
 *.swp
 *~
+
+# Deployment worktree
+.gh-pages-worktree/
+
