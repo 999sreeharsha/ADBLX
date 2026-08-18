@@ -9,10 +9,7 @@ protocol ManifestEndpointProvider: Sendable {
 }
 
 struct AppManifestEndpointProvider: ManifestEndpointProvider {
-    // TODO: replace with the real CDN manifest endpoint once available. Not a
-    // Sprint 5 blocker — UpdateCoordinator.run() against this placeholder simply
-    // fails, and the UI surfaces that as a real, honest error (Sprint 5B Commit 5).
-    let manifestURL = URL(string: "https://example.invalid/manifest.json")!
+    let manifestURL = URL(string: "https://harshaunofficial.github.io/ADBLX/manifest.json")!
 }
 
 /// The single place that constructs a FilterPipeline with its real, concrete dependencies.

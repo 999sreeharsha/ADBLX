@@ -126,3 +126,54 @@ bottom-up (each module only depends on modules before it in this list):
   `validate` step, once inside `publish`'s internal guard) — harmless at
   the registry's current size, but worth collapsing if load ever becomes
   expensive.
+
+## Production hosting: GitHub Pages, `gh-pages` branch of this repo
+
+The production manifest is served from a `gh-pages` branch of this same
+ADBLX repository (not a separate repo) via GitHub Pages:
+
+- Manifest: `https://harshaunofficial.github.io/ADBLX/manifest.json`
+- Filters: `https://harshaunofficial.github.io/ADBLX/filters/<group>/<id>.txt`
+
+This is a deployment decision, not an architectural one — the only place
+this URL is expressed in application code is `AppManifestEndpointProvider`
+(`ADBLX/AppCompositionRoot.swift`). If hosting later moves (custom domain,
+CDN), only that one `let` changes.
+
+## Deploying: `backend/tools/publish-pages.sh`
+
+After running `Publisher publish` above, deploy the result:
+
+```bash
+./backend/tools/publish-pages.sh
+```
+
+The script is intentionally "dumb" — it copies whatever exists under
+`backend/public/` to the `gh-pages` branch verbatim, with no knowledge of
+filter groups, manifest structure, or versions. `Publisher` produces the
+artifact; `publish-pages.sh` deploys it — keep that separation when editing
+either.
+
+It maintains a **persistent worktree at `.gh-pages-worktree/`**, checked out
+to the `gh-pages` branch, so it never disturbs your active branch or working
+tree. **This directory is intentional and persistent — do not delete it** as
+part of routine cleanup; it is recreated automatically if removed, but doing
+so forces a full re-fetch on the next publish.
+
+The script is self-bootstrapping and idempotent:
+
+- If `origin/gh-pages` doesn't exist yet, it creates it as an orphan branch
+  (no shared history with `main`/`dev`) and pushes it, before creating the
+  worktree.
+- If run again with no content changes, it prints `No changes to publish.`
+  and exits `0` without creating an empty commit.
+
+## First-time production setup (operational, one-time)
+
+These steps are performed by the repository owner, not automated by this
+script:
+
+1. Run `Publisher publish --publish-base-url https://harshaunofficial.github.io/ADBLX`.
+2. Run `./backend/tools/publish-pages.sh` to push the first `gh-pages` commit.
+3. In GitHub repo Settings → Pages, set the source to the `gh-pages` branch, root.
+4. Verify `https://harshaunofficial.github.io/ADBLX/manifest.json` is reachable over HTTPS.
