@@ -263,13 +263,21 @@ whose premium subscription has lapsed keeps that filter blocking content,
 consuming update bandwidth, and staying installed indefinitely, with no code
 path that ever removes or disables it.
 
-This is an explicit, human-approved product-scope decision for Sprint 8.0 —
-gate new installs only, do not build revocation-on-lapse — not a bug. Task 13's
-review confirmed the gating logic matches its documented scope. Future work
-implementing revocation needs product input first on the desired behavior
-across subscription expiry, grace periods, refunds, and Family
-Sharing/lifetime-purchase edge cases, before touching `UpdatePlanner` to add a
-`.remove` (or new dedicated action case) for an already-installed premium
+This was an explicit, human-approved product-scope decision for Sprint 8.0 —
+gate new installs only, do not build revocation-on-lapse. Task 13's review
+confirmed the gating logic matched its documented scope at the time.
+
+**Status update (Sprint 8.05, 2026-07-28): promoted from deferred to
+required before the Sprint 8.1 Release Candidate.** Premium filter lists
+remaining installed after entitlement expiry is acceptable for the
+Safari-only MVP, but this policy must be implemented before the DNS Packet
+Tunnel ships — once a second enforcement surface (DNS) exists, premium
+access would otherwise continue indefinitely after subscription expiry,
+refund, or Family Sharing revocation, with no code path that ever removes or
+disables the affected filter. Product input is still needed on the desired
+behavior across subscription expiry, grace periods, refunds, and Family
+Sharing/lifetime-purchase edge cases, before touching `UpdatePlanner` to add
+a `.remove` (or new dedicated action case) for an already-installed premium
 filter whose entitlement has lapsed.
 
-Found in: final whole-branch review of `docs/superpowers/plans/2026-07-27-sprint-8.0-foundation-completion.md`, 2026-07-28
+Found in: final whole-branch review of `docs/superpowers/plans/2026-07-27-sprint-8.0-foundation-completion.md`, 2026-07-28. Promoted to a release blocker in `docs/superpowers/specs/2026-07-28-sprint-8.05-foundation-closure-design.md`, Task 4, 2026-07-28.
