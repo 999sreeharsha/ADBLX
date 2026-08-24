@@ -9,7 +9,7 @@ protocol ManifestEndpointProvider: Sendable {
 }
 
 struct AppManifestEndpointProvider: ManifestEndpointProvider {
-    let manifestURL = URL(string: "https://harshaunofficial.github.io/ADBLX/manifest.json")!
+    let manifestURL = URL(string: "https://999sreeharsha.github.io/ADBLX/manifest.json")!
 }
 
 /// The single place that constructs a FilterPipeline with its real, concrete dependencies.
