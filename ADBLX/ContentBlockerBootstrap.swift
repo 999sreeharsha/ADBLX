@@ -23,18 +23,36 @@ enum ContentBlockerBootstrap {
         manifestStore: ManifestStore
     ) async -> Bool {
         do {
-            if try await manifestStore.load() != nil {
-                logger.info("Cached manifest present — skipping bundled snapshot bootstrap")
-                return false
+            if let _ = try await manifestStore.load() {
+                if let appGroupURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: AppGroup.identifier) {
+                    let adsCompiled = appGroupURL.appendingPathComponent("Compiled/Ads.json")
+                    if FileManager.default.fileExists(atPath: adsCompiled.path),
+                       let data = try? Data(contentsOf: adsCompiled), data.count > 10_000 {
+                        logger.info("Cached manifest and valid compiled rules present — skipping bundled snapshot bootstrap")
+                        return false
+                    }
+                }
             }
         } catch {
             logger.error("ManifestStore.load() failed during bootstrap gate check: \(error, privacy: .public)")
-            return false
         }
 
         do {
-            let result = try await pipeline.installBundledSnapshotIfNeeded()
-            logger.info("Filter pipeline installed \(result.installedRuleCount) rule(s) for \(result.group.rawValue, privacy: .public)")
+            let results = try await pipeline.installBundledSnapshotIfNeeded()
+            var logLines = ["=== SHIELD BLOCKING BASELINE ==="]
+            var totalRules = 0
+            for result in results {
+                totalRules += result.installedRuleCount
+                let durationStr = String(format: "%.3f", result.compileStatistics.compileDuration)
+                let name = result.group.rawValue.capitalized
+                let count = result.installedRuleCount
+                let isSynthetic = count <= 100
+                let sourceDesc = isSynthetic ? "bundled_fixture (FALLBACK)" : "bundled_corpus"
+                logLines.append("• \(name): \(count) rules [source=\(sourceDesc)] in \(durationStr)s")
+            }
+            logLines.append("• Total active rules: \(totalRules)")
+            logLines.append("================================")
+            logger.info("\(logLines.joined(separator: "\n"), privacy: .public)")
             return true
         } catch {
             logger.error("Filter pipeline install failed: \(error, privacy: .public)")

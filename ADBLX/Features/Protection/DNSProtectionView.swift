@@ -1,5 +1,6 @@
 // swiftlint:disable no_hardcoded_ui_string
 // swiftlint:disable inclusive_language
+// swiftlint:disable type_body_length
 import SwiftUI
 import ADBLXShared
 
@@ -11,11 +12,11 @@ struct DNSProtectionView: View {
     @State private var showActivationDisclosure = false
     
     init(
-        subscriptionService: SubscriptionService = StoreKitSubscriptionService(),
+        subscriptionService: SubscriptionService = AppCompositionRoot.makeSubscriptionService(),
         viewModel: DNSProtectionViewModel? = nil
     ) {
         self.subscriptionService = subscriptionService
-        let entitlement = (subscriptionService as? EntitlementService) ?? StoreKitSubscriptionService()
+        let entitlement = (subscriptionService as? EntitlementService) ?? AppCompositionRoot.makeSubscriptionService()
         _viewModel = State(initialValue: viewModel ?? DNSProtectionViewModel(entitlementService: entitlement))
     }
     

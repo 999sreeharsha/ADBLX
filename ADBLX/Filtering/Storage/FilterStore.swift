@@ -24,15 +24,24 @@ actor FilterStore {
 
     private let appGroupIdentifier: String
     private let fileManager: FileManager
+    private let overrideBaseURL: URL?
 
-    init(appGroupIdentifier: String, fileManager: FileManager = .default) {
+    init(
+        appGroupIdentifier: String = AppGroup.identifier,
+        fileManager: FileManager = .default,
+        overrideBaseURL: URL? = nil
+    ) {
         self.appGroupIdentifier = appGroupIdentifier
         self.fileManager = fileManager
+        self.overrideBaseURL = overrideBaseURL
     }
 
     /// Root container URL for the App Group. Not exposed outside this type —
     /// callers ask for files/data, not paths.
     private func containerURL() throws -> URL {
+        if let overrideBaseURL {
+            return overrideBaseURL
+        }
         guard let url = fileManager.containerURL(
             forSecurityApplicationGroupIdentifier: appGroupIdentifier
         ) else {

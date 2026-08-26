@@ -41,15 +41,17 @@ enum UpdatePlanner {
         for entry in manifest.entries {
             manifestIDs.insert(entry.id)
 
+            if entry.premium && !isPremiumEntitled {
+                actions.append(.skipPremium(entry))
+                continue
+            }
+
             if let existing = installedByID[entry.id] {
                 if existing.installedVersion == entry.version && existing.checksumSHA256 == entry.checksumSHA256 {
                     actions.append(.keep(filterID: entry.id))
                     continue
                 }
                 // else: version/checksum changed — falls through to grouping below.
-            } else if entry.premium && !isPremiumEntitled {
-                actions.append(.skipPremium(entry))
-                continue
             }
             // else: new, non-premium entry — falls through to grouping below.
 

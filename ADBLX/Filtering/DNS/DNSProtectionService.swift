@@ -39,22 +39,26 @@ public final class RealDNSProtectionService: DNSProtectionServiceProtocol, @unch
     private let settingsStore: DNSProtectionSettingsStore
     private let entitlementService: EntitlementService
     private let logger = Logger(subsystem: "com.ADBLX.ADBLX", category: "DNSProtectionService")
+    private static let signposter = OSSignposter(subsystem: "com.ADBLX.ADBLX", category: "DNSProtectionService")
     private let stateLock = OSAllocatedUnfairLock(initialState: (
         tunnelManager: NETunnelProviderManager?.none,
         statusHandler: (@Sendable (DNSConnectionStatus) -> Void)?.none
     ))
     private var notificationObserver: AnyObject?
+    private var entitlementTask: Task<Void, Never>?
     
     public init(
         settingsStore: DNSProtectionSettingsStore = DNSProtectionSettingsStore(),
-        entitlementService: EntitlementService = StoreKitSubscriptionService()
+        entitlementService: EntitlementService = AppCompositionRoot.makeSubscriptionService()
     ) {
         self.settingsStore = settingsStore
         self.entitlementService = entitlementService
         setupStatusObserver()
+        setupEntitlementObserver()
     }
     
     deinit {
+        entitlementTask?.cancel()
         if let observer = notificationObserver {
             NotificationCenter.default.removeObserver(observer)
         }
@@ -64,10 +68,51 @@ public final class RealDNSProtectionService: DNSProtectionServiceProtocol, @unch
         stateLock.withLock { $0.statusHandler = handler }
     }
     
+    private func setupEntitlementObserver() {
+        entitlementTask = Task.detached(priority: .userInitiated) { [weak self] in
+            guard let self else { return }
+            for await state in await self.entitlementService.stateUpdates() {
+                if !state.hasPremiumAccess {
+                    await self.handleEntitlementLoss()
+                }
+            }
+        }
+    }
+
+    private func handleEntitlementLoss() async {
+        let settings = settingsStore.loadSettings()
+        let manager = await getOrLoadManager()
+
+        // Idempotency: if already disconnected/disabled and settings already disabled, do nothing
+        if let manager, manager.connection.status == .disconnected && !manager.isEnabled && !settings.isEnabled {
+            return
+        }
+
+        let spID = Self.signposter.makeSignpostID()
+        let teardownInterval = Self.signposter.beginInterval("dns.entitlementTeardown", id: spID)
+        defer { Self.signposter.endInterval("dns.entitlementTeardown", teardownInterval) }
+
+        logger.info("Entitlement lost (.free) — executing idempotent DNS teardown")
+
+        if let manager {
+            if manager.connection.status != .disconnected && manager.connection.status != .invalid {
+                manager.connection.stopVPNTunnel()
+            }
+            if manager.isEnabled {
+                manager.isEnabled = false
+                try? await saveManager(manager)
+            }
+        }
+        if settings.isEnabled {
+            settingsStore.setEnabled(false)
+        }
+        notifyStatusChange(.disconnected)
+    }
+
     // MARK: - Status Loading
     
     public func loadStatus() async -> (DNSProtectionSettings, DNSConnectionStatus) {
-        let settings = settingsStore.loadSettings()
+        var settings = settingsStore.loadSettings()
         let manager = await getOrLoadManager()
         
         guard let mgr = manager else {
@@ -76,14 +121,15 @@ public final class RealDNSProtectionService: DNSProtectionServiceProtocol, @unch
         
         let entitled = await entitlementService.isPremiumEntitled()
         if mgr.connection.status == .connected && !entitled {
-            mgr.connection.stopVPNTunnel()
-            mgr.isEnabled = false
-            try? await saveManager(mgr)
-            settingsStore.setEnabled(false)
+            await handleEntitlementLoss()
             return (settingsStore.loadSettings(), .disconnected)
         }
         
         let status = mapVPNStatus(mgr.connection.status)
+        if mgr.connection.status == .disconnected && !mgr.isEnabled && settings.isEnabled {
+            settingsStore.setEnabled(false)
+            settings.isEnabled = false
+        }
         return (settings, status)
     }
     
@@ -98,6 +144,7 @@ public final class RealDNSProtectionService: DNSProtectionServiceProtocol, @unch
             )
         }
         let settings = settingsStore.loadSettings()
+        try await publishAllowlistGeneration(settings.allowlistDomains)
         guard let manager = await getOrLoadManager() else {
             throw NSError(
                 domain: "DNSProtectionService",
@@ -107,7 +154,7 @@ public final class RealDNSProtectionService: DNSProtectionServiceProtocol, @unch
         }
         
         let pProtocol = (manager.protocolConfiguration as? NETunnelProviderProtocol) ?? NETunnelProviderProtocol()
-        pProtocol.providerBundleIdentifier = "com.ADBLX.ADBLX.ADBLXPacketTunnel"
+        pProtocol.providerBundleIdentifier = "com.ADBLX.ADBLX.PacketTunnel"
         pProtocol.serverAddress = "127.0.0.1"
         
         var providerConfig: [String: Any] = [
@@ -233,11 +280,32 @@ public final class RealDNSProtectionService: DNSProtectionServiceProtocol, @unch
         return currentAllowlist
     }
     
+    private func loadBlocklistSources() -> [String] {
+        var sources: [String] = []
+        if let adsURL = Bundle.main.url(forResource: "easylist", withExtension: "txt") ??
+                        Bundle.main.url(forResource: "easylist", withExtension: "txt", subdirectory: "Filters"),
+           let adsText = try? String(contentsOf: adsURL, encoding: .utf8) {
+            sources.append(adsText)
+        }
+        if let privacyURL = Bundle.main.url(forResource: "easyprivacy", withExtension: "txt") ??
+                           Bundle.main.url(forResource: "easyprivacy", withExtension: "txt", subdirectory: "Filters"),
+           let privacyText = try? String(contentsOf: privacyURL, encoding: .utf8) {
+            sources.append(privacyText)
+        }
+        if let annoyancesURL = Bundle.main.url(forResource: "fanboy-annoyances", withExtension: "txt") ??
+                               Bundle.main.url(forResource: "fanboy-annoyances", withExtension: "txt", subdirectory: "Filters"),
+           let annoyancesText = try? String(contentsOf: annoyancesURL, encoding: .utf8) {
+            sources.append(annoyancesText)
+        }
+        return sources
+    }
+
     private func publishAllowlistGeneration(_ allowlist: [String]) async throws {
+        let blocklistSources = loadBlocklistSources()
         try await Task.detached(priority: .userInitiated) {
             let appGroupBase = DNSAppGroupPaths.appGroupContainerURL() ?? FileManager.default.temporaryDirectory
             _ = try DNSArtifactPublisher().publish(
-                blocklistSources: [],
+                blocklistSources: blocklistSources,
                 allowlistRules: allowlist,
                 baseAppGroupURL: appGroupBase
             )

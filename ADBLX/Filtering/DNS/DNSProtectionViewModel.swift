@@ -6,6 +6,7 @@ import ADBLXShared
 public final class DNSProtectionViewModel {
     private let service: DNSProtectionServiceProtocol
     private let entitlementService: EntitlementService
+    private var entitlementObservationTask: Task<Void, Never>?
     
     public var isEnabled: Bool = false
     public var isPremium: Bool = false
@@ -24,7 +25,7 @@ public final class DNSProtectionViewModel {
     
     public init(
         service: DNSProtectionServiceProtocol = RealDNSProtectionService(),
-        entitlementService: EntitlementService = StoreKitSubscriptionService()
+        entitlementService: EntitlementService = AppCompositionRoot.makeSubscriptionService()
     ) {
         self.service = service
         self.entitlementService = entitlementService
@@ -35,6 +36,24 @@ public final class DNSProtectionViewModel {
                     self?.isEnabled = true
                 } else if case .disconnected = newStatus {
                     self?.isEnabled = false
+                }
+            }
+        }
+        setupEntitlementObserver()
+    }
+
+    deinit {
+        entitlementObservationTask?.cancel()
+    }
+
+    private func setupEntitlementObserver() {
+        entitlementObservationTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            for await state in await self.entitlementService.stateUpdates() {
+                self.isPremium = state.hasPremiumAccess
+                if !state.hasPremiumAccess && self.isEnabled {
+                    self.isEnabled = false
+                    self.connectionStatus = .disconnected
                 }
             }
         }
@@ -53,7 +72,7 @@ public final class DNSProtectionViewModel {
             self.isEnabled = false
             self.connectionStatus = .disconnected
         } else {
-            self.isEnabled = settings.isEnabled
+            self.isEnabled = (status == .connected || status == .connecting) && settings.isEnabled
             self.connectionStatus = status
         }
         

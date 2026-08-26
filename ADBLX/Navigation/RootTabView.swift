@@ -49,6 +49,7 @@ struct RootTabView: View {
         dependencies: AppCompositionRoot.makeUIDependencies(
             configuration: .mock,
             store: store,
+            pipeline: pipeline,
             updateCoordinator: AppCompositionRoot.makeUpdateCoordinator(pipeline: pipeline, store: store)
         ),
         appearance: .constant(.system)

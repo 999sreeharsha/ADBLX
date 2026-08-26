@@ -1,5 +1,6 @@
-// ADBLX/Filtering/Pipeline/FilterPipeline.swift
 import Foundation
+import os
+import WebKit
 
 /// Sole orchestrator of the rule pipeline: validate → compose → compile → partition →
 /// atomic write → persist metadata → reload. Every other Filtering/ type stays
@@ -15,6 +16,9 @@ actor FilterPipeline {
     private let store: FilterStore
     private let writer: AtomicRuleWriter
     private let reloader: ReloadCoordinator
+    private let allowlistStore: AllowlistStore?
+    
+    private static let signposter = OSSignposter(subsystem: "com.ADBLX", category: "FilterPipeline")
 
     init(
         validator: FilterValidator,
@@ -23,7 +27,8 @@ actor FilterPipeline {
         partitioner: RulePartitioner,
         store: FilterStore,
         writer: AtomicRuleWriter,
-        reloader: ReloadCoordinator
+        reloader: ReloadCoordinator,
+        allowlistStore: AllowlistStore? = nil
     ) {
         self.validator = validator
         self.compiler = compiler
@@ -32,6 +37,7 @@ actor FilterPipeline {
         self.store = store
         self.writer = writer
         self.reloader = reloader
+        self.allowlistStore = allowlistStore
     }
 
     /// Installs an entire group's composition in one pass: validate every source, persist
@@ -43,6 +49,9 @@ actor FilterPipeline {
         _ composition: GroupComposition,
         reloadStrategy: ReloadStrategy = .immediate
     ) async throws -> PipelineResult {
+        let totalState = Self.signposter.beginInterval("Pipeline.install", id: Self.signposter.makeSignpostID())
+        defer { Self.signposter.endInterval("Pipeline.install", totalState) }
+        
         for source in composition.sources {
             try validator.validate(source.data)
         }
@@ -56,8 +65,6 @@ actor FilterPipeline {
                 group: composition.group,
                 installedVersion: source.version,
                 checksumSHA256: source.checksumSHA256,
-                // lastUpdated/ruleCount are placeholders overwritten by installGroup once
-                // compile statistics are known — see installGroup's merge step below.
                 lastUpdated: Date(),
                 ruleCount: 0
             )
@@ -105,6 +112,70 @@ actor FilterPipeline {
         return result
     }
 
+    /// Recomposes all installed filter groups with the latest canonical allowlist rules,
+    /// atomic-writes to `Compiled/<Group>.json`, and reloads affected extensions.
+    func syncAllowlist(reloadStrategy: ReloadStrategy = .immediate) async throws -> [PipelineResult] {
+        let existingFilters = (try? await loadInstalledFilters()) ?? []
+        let installedGroups = Set(existingFilters.map(\.group))
+        let targetGroups: [FilterGroup] = installedGroups.isEmpty ? [.ads] : Array(installedGroups).sorted(by: { $0.rawValue < $1.rawValue })
+
+        var results: [PipelineResult] = []
+        var extensionsToReload: [String] = []
+
+        for group in targetGroups {
+            let groupFilters = existingFilters.filter { $0.group == group }
+            var sources: [FilterSource] = []
+            for filter in groupFilters {
+                if let data = try? await store.readFilterPayload(filterID: filter.id) {
+                    sources.append(FilterSource(
+                        filterID: filter.id,
+                        version: filter.installedVersion,
+                        checksumSHA256: filter.checksumSHA256,
+                        data: data
+                    ))
+                }
+            }
+
+            if sources.isEmpty && group == .ads {
+                if let bundledURL = Bundle.main.url(forResource: "blockerList", withExtension: "json"),
+                   let data = try? Data(contentsOf: bundledURL) {
+                    sources.append(FilterSource(
+                        filterID: "ads-bundled",
+                        version: "bundled-snapshot",
+                        checksumSHA256: Checksum.sha256Hex(of: data),
+                        data: data
+                    ))
+                }
+            }
+
+            guard !sources.isEmpty else { continue }
+
+            let composition = GroupComposition(group: group, sources: sources)
+            let result = try await installGroup(
+                composition,
+                upsertingFilterEntries: [],
+                removingFilterIDs: [],
+                reloadStrategy: .deferred
+            )
+            results.append(result)
+
+            let partition = try await partitioner.partition(
+                CompiledRuleSet(group: group, rawJSON: Data(), ruleCount: 0, statistics: result.compileStatistics),
+                group: group
+            )
+            extensionsToReload.append(partition.extensionIdentifier)
+        }
+
+        if reloadStrategy == .immediate && !extensionsToReload.isEmpty {
+            let reloadResults = await reloader.reload(extensionIdentifiers: extensionsToReload)
+            for idx in results.indices {
+                results[idx].reloadResults = reloadResults
+            }
+        }
+
+        return results
+    }
+
     /// Pure composition pipeline shared by `install` and `remove`: compose → compile →
     /// partition → atomic write `Compiled/<Group>.json` → merge `installed_filters.json`
     /// (remove `removingFilterIDs`, then upsert `upsertingFilterEntries`) → write
@@ -117,24 +188,58 @@ actor FilterPipeline {
         removingFilterIDs: Set<String>,
         reloadStrategy: ReloadStrategy
     ) async throws -> PipelineResult {
-        let composed = try compositionService.compose(composition.sources, group: composition.group)
-        let compiled = try await compiler.compile(source: composed.data, group: composition.group)
-        let partition = try await partitioner.partition(compiled, group: composition.group)
+        let composeState = Self.signposter.beginInterval("Pipeline.compose", id: Self.signposter.makeSignpostID())
+        let allowlistDomains = await allowlistStore?.loadDomains() ?? []
+        let allowlistRules = SafariAllowlistCompiler.compile(domains: allowlistDomains)
+        let composed = try compositionService.compose(
+            composition.sources,
+            group: composition.group,
+            allowlistRules: allowlistRules
+        )
+        Self.signposter.endInterval("Pipeline.compose", composeState)
 
+        let compileState = Self.signposter.beginInterval("Pipeline.compile", id: Self.signposter.makeSignpostID())
+        let compiled = try await compiler.compile(source: composed.data, group: composition.group)
+        Self.signposter.endInterval("Pipeline.compile", compileState)
+
+        let partitionState = Self.signposter.beginInterval("Pipeline.partition", id: Self.signposter.makeSignpostID())
+        let partition = try await partitioner.partition(compiled, group: composition.group)
+        Self.signposter.endInterval("Pipeline.partition", partitionState)
+
+        // WebKit In-Process DFA Ingestion Gate:
+        // Validate that Safari's runtime DFA compiler accepts this exact JSON before writing to disk
+        if let jsonString = String(data: partition.json, encoding: .utf8),
+           let dfaStore = WKContentRuleListStore.default() {
+            let gateIdentifier = "pipeline_gate_\(composition.group.rawValue)"
+            let gateState = Self.signposter.beginInterval("Pipeline.webKitGate", id: Self.signposter.makeSignpostID())
+            do {
+                _ = try await dfaStore.compileContentRuleList(
+                    forIdentifier: gateIdentifier,
+                    encodedContentRuleList: jsonString
+                )
+                Self.signposter.endInterval("Pipeline.webKitGate", gateState)
+                // Explicitly purge the transient gate entry to prevent unbounded disk/metadata growth
+                try? await dfaStore.removeContentRuleList(forIdentifier: gateIdentifier)
+            } catch {
+                Self.signposter.endInterval("Pipeline.webKitGate", gateState)
+                try? await dfaStore.removeContentRuleList(forIdentifier: gateIdentifier)
+                Self.logger.error("WebKit DFA compiler rejected \(composition.group.rawValue) JSON: \(error.localizedDescription)")
+                throw FilterPipelineError.webKitCompilationRejected(
+                    group: composition.group,
+                    reason: error.localizedDescription
+                )
+            }
+        }
+
+        let writeState = Self.signposter.beginInterval("Pipeline.atomicWrite", id: Self.signposter.makeSignpostID())
         let destinationURL = try await store.directoryURL(.compiled)
             .appendingPathComponent("\(partition.group.rawValue.capitalized).json")
         try writer.write(partition.json, to: destinationURL)
+        Self.signposter.endInterval("Pipeline.atomicWrite", writeState)
 
         var existingFilters = (try? await loadInstalledFilters()) ?? []
         existingFilters.removeAll { removingFilterIDs.contains($0.id) }
 
-        // ruleCount/lastUpdated are group-level, not per-source (docs/gotchas.md), so every
-        // surviving entry in `composition.group` — whether it arrived via
-        // `upsertingFilterEntries` or was already installed and untouched by this call — must
-        // reflect the SAME freshly-compiled counts. Build the upsert map first so an entry
-        // that's both "already existing" and "being upserted" gets refreshed exactly once,
-        // using the upserted entry's other fields (installedVersion/checksumSHA256) where
-        // present.
         var upsertsByID: [String: InstalledFilter] = [:]
         for entry in upsertingFilterEntries {
             upsertsByID[entry.id] = entry
@@ -153,7 +258,6 @@ actor FilterPipeline {
                 ruleCount: compiled.ruleCount
             )
         }
-        // Any upserted entries that weren't already present (new sources being installed).
         for entry in upsertsByID.values {
             existingFilters.append(InstalledFilter(
                 id: entry.id,
@@ -170,12 +274,14 @@ actor FilterPipeline {
         let statisticsData = try JSONEncoder().encode(compiled.statistics)
         try await store.writeMetadata(statisticsData, filename: "statistics.json")
 
+        let reloadState = Self.signposter.beginInterval("Pipeline.reload", id: Self.signposter.makeSignpostID())
         let reloadResults: [ReloadCoordinator.ReloadResult]
         if reloadStrategy == .immediate {
             reloadResults = await reloader.reload(extensionIdentifiers: [partition.extensionIdentifier])
         } else {
             reloadResults = []
         }
+        Self.signposter.endInterval("Pipeline.reload", reloadState)
 
         return PipelineResult(
             group: composition.group,
@@ -186,24 +292,120 @@ actor FilterPipeline {
         )
     }
 
-    /// Sprint 1: always (re)installs from the bundled snapshot on every call — "IfNeeded"
-    /// becomes meaningful once Part 10 adds version comparison against a fetched manifest.
-    /// Reinstalling identical content on every launch is harmless (same bytes, same reload).
-    func installBundledSnapshotIfNeeded() async throws -> PipelineResult {
-        guard let bundledURL = Bundle.main.url(forResource: "blockerList", withExtension: "json") else {
+    private static let logger = Logger(subsystem: "com.ADBLX", category: "FilterPipeline")
+
+    /// Resolves a bundled resource URL searching main bundle, current bundle, and all loaded bundles
+    /// across root and "Filters" subdirectory.
+    private func bundledURL(forResource name: String, withExtension ext: String) -> URL? {
+        if let url = Bundle.main.url(forResource: name, withExtension: ext) {
+            return url
+        }
+        if let url = Bundle.main.url(forResource: name, withExtension: ext, subdirectory: "Filters") {
+            return url
+        }
+        for bundle in Bundle.allBundles {
+            if let url = bundle.url(forResource: name, withExtension: ext) ??
+                         bundle.url(forResource: name, withExtension: ext, subdirectory: "Filters") {
+                return url
+            }
+        }
+        return nil
+    }
+
+    /// Installs the bundled snapshot baseline for each configured filter group independently:
+    /// Ads (EasyList -> fallback blockerList fixture), Privacy (EasyPrivacy), Annoyances (Fanboy Annoyances).
+    ///
+    /// Per-group isolation: failure in one filter list does not prevent remaining groups from installing.
+    func installBundledSnapshotIfNeeded() async throws -> [PipelineResult] {
+        var results: [PipelineResult] = []
+        var atLeastOneInstalled = false
+
+        // 1. Ads Group (EasyList -> Fallback: blockerList.json fixture)
+        if let adsURL = bundledURL(forResource: "easylist", withExtension: "txt") {
+            do {
+                let adsData = try Data(contentsOf: adsURL)
+                let adsComp = GroupComposition(
+                    group: .ads,
+                    sources: [FilterSource(
+                        filterID: "easylist",
+                        version: "bundled-baseline",
+                        checksumSHA256: Checksum.sha256Hex(of: adsData),
+                        data: adsData
+                    )]
+                )
+                let result = try await install(adsComp, reloadStrategy: .immediate)
+                results.append(result)
+                atLeastOneInstalled = true
+            } catch {
+                Self.logger.error("Failed to install bundled EasyList: \(error, privacy: .public)")
+            }
+        } else if let fallbackURL = bundledURL(forResource: "blockerList", withExtension: "json") {
+            do {
+                let fallbackData = try Data(contentsOf: fallbackURL)
+                let fallbackComp = GroupComposition(
+                    group: .ads,
+                    sources: [FilterSource(
+                        filterID: "ads-bundled",
+                        version: "bundled-snapshot",
+                        checksumSHA256: Checksum.sha256Hex(of: fallbackData),
+                        data: fallbackData
+                    )]
+                )
+                let result = try await install(fallbackComp, reloadStrategy: .immediate)
+                results.append(result)
+                atLeastOneInstalled = true
+            } catch {
+                Self.logger.error("Failed to install bundled fallback fixture: \(error, privacy: .public)")
+            }
+        }
+
+        // 2. Privacy Group (EasyPrivacy)
+        if let privacyURL = bundledURL(forResource: "easyprivacy", withExtension: "txt") {
+            do {
+                let privacyData = try Data(contentsOf: privacyURL)
+                let privacyComp = GroupComposition(
+                    group: .privacy,
+                    sources: [FilterSource(
+                        filterID: "easyprivacy",
+                        version: "bundled-baseline",
+                        checksumSHA256: Checksum.sha256Hex(of: privacyData),
+                        data: privacyData
+                    )]
+                )
+                let result = try await install(privacyComp, reloadStrategy: .immediate)
+                results.append(result)
+                atLeastOneInstalled = true
+            } catch {
+                Self.logger.error("Failed to install bundled EasyPrivacy: \(error, privacy: .public)")
+            }
+        }
+
+        // 3. Annoyances Group (Fanboy Annoyances)
+        if let annoyancesURL = bundledURL(forResource: "fanboy-annoyances", withExtension: "txt") {
+            do {
+                let annoyancesData = try Data(contentsOf: annoyancesURL)
+                let annoyancesComp = GroupComposition(
+                    group: .annoyances,
+                    sources: [FilterSource(
+                        filterID: "fanboy-annoyances",
+                        version: "bundled-baseline",
+                        checksumSHA256: Checksum.sha256Hex(of: annoyancesData),
+                        data: annoyancesData
+                    )]
+                )
+                let result = try await install(annoyancesComp, reloadStrategy: .immediate)
+                results.append(result)
+                atLeastOneInstalled = true
+            } catch {
+                Self.logger.error("Failed to install bundled Fanboy Annoyances: \(error, privacy: .public)")
+            }
+        }
+
+        guard atLeastOneInstalled else {
             throw FilterPipelineError.bundledSnapshotMissing
         }
-        let data = try Data(contentsOf: bundledURL)
-        let composition = GroupComposition(
-            group: .ads,
-            sources: [FilterSource(
-                filterID: "ads-bundled",
-                version: "bundled-snapshot",
-                checksumSHA256: Checksum.sha256Hex(of: data),
-                data: data
-            )]
-        )
-        return try await install(composition)
+
+        return results
     }
 
     private func loadInstalledFilters() async throws -> [InstalledFilter] {
@@ -217,7 +419,7 @@ enum ReloadStrategy {
     case deferred
 }
 
-struct PipelineResult {
+struct PipelineResult: Sendable {
     var group: FilterGroup
     var compiledRuleCount: Int
     var installedRuleCount: Int
@@ -225,6 +427,7 @@ struct PipelineResult {
     var reloadResults: [ReloadCoordinator.ReloadResult]
 }
 
-enum FilterPipelineError: Error {
+enum FilterPipelineError: Error, Equatable {
     case bundledSnapshotMissing
+    case webKitCompilationRejected(group: FilterGroup, reason: String)
 }

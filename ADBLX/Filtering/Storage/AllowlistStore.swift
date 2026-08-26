@@ -2,10 +2,8 @@
 import Foundation
 
 /// Persists `allowlist.json` (FilterStore/Metadata) via the same atomic-write
-/// mechanism as `installed_filters.json`/`filter_preferences.json`. Storage only —
-/// this does not exempt any domain from blocking. Real enforcement (touching
-/// FilterPipeline/CompositionService/RuleCompiler) is separate, larger, deferred
-/// work (Sprint 5B design doc).
+/// mechanism as `installed_filters.json`/`filter_preferences.json`.
+/// Uses `SafariDomainNormalizer` to enforce valid RFC 1123 domain syntax and deduplication.
 actor AllowlistStore {
     private let store: FilterStore
     private static let filename = "allowlist.json"
@@ -22,16 +20,28 @@ actor AllowlistStore {
         return decoded
     }
 
-    func add(domain: String) async {
-        var entries = await load()
-        entries.append(AllowlistEntry(id: UUID().uuidString, domain: domain))
-        try? await save(entries)
+    func loadDomains() async -> [String] {
+        let entries = await load()
+        return entries.map(\.domain)
     }
 
-    func remove(id: String) async {
+    @discardableResult
+    func add(domain: String) async throws -> AllowlistEntry {
+        let normalized = try SafariDomainNormalizer.normalize(input: domain)
+        var entries = await load()
+        if let existing = entries.first(where: { $0.domain.caseInsensitiveCompare(normalized) == .orderedSame }) {
+            return existing
+        }
+        let entry = AllowlistEntry(id: UUID().uuidString, domain: normalized)
+        entries.append(entry)
+        try await save(entries)
+        return entry
+    }
+
+    func remove(id: String) async throws {
         var entries = await load()
         entries.removeAll { $0.id == id }
-        try? await save(entries)
+        try await save(entries)
     }
 
     private func save(_ entries: [AllowlistEntry]) async throws {

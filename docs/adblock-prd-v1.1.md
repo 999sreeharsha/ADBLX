@@ -149,12 +149,16 @@ Annoy/Reg)                 cosmetic,       DNS filtering,
 | FR-07 | Onboarding detects whether each Safari extension is enabled and guides user | P0 |
 | FR-08 | Per-site allowlist editable in-app; applied across all extensions | P0 |
 | FR-09 | Filters screen renders catalog dynamically from manifest (groups, versions, rule-count meter per extension) | P0 |
-| FR-10 | Paywall with free trial; products: monthly, annual, lifetime (StoreKit 2) | P0 |
+| FR-10 | Paywall with 15-day universal trial (PD-01); products: monthly, annual, lifetime (StoreKit 2) | P0 |
 | FR-11 | Local packet tunnel filters DNS against hosts lists; on/off toggle; VPN-conflict detection | P1 |
 | FR-12 | Web extension blocks YouTube ads on youtube.com in Safari | P1 |
 | FR-13 | iCloud sync of enabled filters + allowlist | P1 |
 | FR-14 | "Report broken site" action → auto-allowlist prompt + report to backend | P1 |
 | FR-15 | Custom filter list import by URL, with rule budget warning | P2 |
+| FR-16 | Rule-budget enforcement (150K per extension target) | P0 |
+| FR-17 | Multi-language localization (English + Hindi, Japanese, Spanish, German, French) | P1 |
+
+---
 
 ## 8. Non-Functional Requirements
 
@@ -169,10 +173,18 @@ Annoy/Reg)                 cosmetic,       DNS filtering,
 
 ## 9. Monetization
 
-- **Free:** Safari blocking with base filters (genuinely good — trust builder and App Store rating driver).
-- **Premium subscription:** $1.99/mo · **$14.99/yr** (anchor) · 7-day free trial.
-- **Lifetime IAP:** $39.99 — critical for this audience's subscription aversion.
-- Upsell moments: YouTube detected in Safari history is out of scope (privacy) — instead upsell contextually: after onboarding success, on Annoyances toggle tap, on "Update now" for free users.
+> [!NOTE]
+> **Superseded by [PD-01](file:///Users/sreeharshag/Work/ADBLX/docs/Architecture/PD-01-monetization-and-trial.md)** (2026-08-26). See PD-01 for authoritative trial lifecycle, effective entitlement resolution, and paywall surface definitions.
+
+- **Free:** Safari blocking with base filters (Ads/Privacy groups forever — trust builder and App Store rating driver).
+- **15-Day Universal Trial:** Universal, app-side trial with zero payment info upfront; managed by `TrialManager` / Keychain and resolved via `EntitlementService`.
+- **Pricing Tiers:**
+  - **Monthly:** $1.99/mo (StoreKit 2 auto-renewable subscription)
+  - **Annual:** **$14.99/yr** (anchor tier, StoreKit 2 auto-renewable subscription)
+  - **Lifetime:** $39.99 (non-consumable IAP)
+- **Paywall Surfaces:**
+  - **Day-15 Forced Decision:** `TrialExpiredDecisionView` with first-class, equally-weighted "Continue with Free".
+  - **Contextual Gating:** `ContextualPaywallView` on locked feature taps (DNS, Regional lists, YouTube extension).
 - Target: 5% free→paid conversion @ 90 days; 60% of paid revenue from annual, 30% lifetime, 10% monthly.
 
 ---

@@ -5,7 +5,17 @@ import Foundation
 struct StubEntitlementService: EntitlementService {
     let isPremiumEntitled_: Bool
     init(isPremiumEntitled: Bool) { self.isPremiumEntitled_ = isPremiumEntitled }
+    var currentState: EntitlementState {
+        isPremiumEntitled_ ? .annual(expiresAt: Date().addingTimeInterval(86400)) : .free
+    }
+    func stateUpdates() -> AsyncStream<EntitlementState> {
+        let initial = currentState
+        return AsyncStream { continuation in
+            continuation.yield(initial)
+        }
+    }
     func isPremiumEntitled() async -> Bool { isPremiumEntitled_ }
+    func refreshEntitlements() async -> EntitlementState { currentState }
 }
 
 @Suite("UpdateCoordinator", .serialized)

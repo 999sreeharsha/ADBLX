@@ -1,18 +1,14 @@
 import Foundation
 
 /// Basic sanity validation before a filter source enters the compile stage.
-/// This is a precursor to FR-04 (checksum verification), NOT FR-04 itself — checksum
-/// enforcement activates in Part 10 once downloads exist. This sprint only guards against
-/// obviously-bad bundled fixtures.
+/// Guards against empty, truncated, or non-UTF8 filter source payloads.
 ///
-/// Target: main app ONLY. `validate` is `nonisolated` — see Task 3's note on
-/// SWIFT_DEFAULT_ACTOR_ISOLATION.
+/// Target: main app ONLY. `validate` is `nonisolated`.
 struct FilterValidator {
     enum ValidationError: Error, Equatable {
         case notUTF8
         case empty
         case tooLarge(byteCount: Int, limit: Int)
-        case invalidJSON
     }
 
     /// Generous ceiling — this is a sanity guard against corrupt/truncated downloads,
@@ -29,9 +25,6 @@ struct FilterValidator {
         }
         guard String(data: data, encoding: .utf8) != nil else {
             throw ValidationError.notUTF8
-        }
-        guard (try? JSONSerialization.jsonObject(with: data)) != nil else {
-            throw ValidationError.invalidJSON
         }
     }
 }

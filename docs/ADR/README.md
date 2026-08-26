@@ -7,7 +7,7 @@ Immutable decision records for ADBLX. Each ADR is dated and not edited after acc
 | ADR | Status |
 | --- | ------ |
 | [0001 — Publisher writes manifest.json](0001-manifest-json-manual-writer.md) | Accepted |
-| [0002 — Rule compiler architecture & licensing](0002-rule-compiler-architecture-and-licensing.md) | Proposed |
+| [0002 — Rule compiler architecture & licensing](0002-rule-compiler-architecture-and-licensing.md) | Accepted |
 | [0003 — Local-VPN traffic scope](0003-local-vpn-traffic-scope.md) | Accepted |
 | [0004 — DNS interception model](0004-dns-interception-model.md) | Proposed / Conditional — Gate A |
 | [0005 — Blocked DNS query response](0005-blocked-dns-query-response.md) | Accepted |

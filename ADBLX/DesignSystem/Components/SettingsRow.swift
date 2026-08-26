@@ -19,6 +19,8 @@ struct SettingsRow: View {
                 .font(.caption)
                 .foregroundStyle(DesignColors.outline)
         }
+        .padding(.vertical, DesignSpacing.gutter)
+        .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
     }
 }

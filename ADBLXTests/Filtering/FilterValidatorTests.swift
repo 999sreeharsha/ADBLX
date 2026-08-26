@@ -29,15 +29,13 @@ struct FilterValidatorTests {
         }
     }
 
-    @Test("rejects malformed JSON")
-    func rejectsMalformedJSON() {
+    @Test("accepts valid UTF-8 ABP text")
+    func acceptsValidABPText() throws {
         let validator = FilterValidator()
-        #expect(throws: FilterValidator.ValidationError.invalidJSON) {
-            try validator.validate(Data("not json".utf8))
-        }
+        try validator.validate(Data("||doubleclick.net^$third-party\n".utf8))
     }
 
-    @Test("accepts valid JSON array")
+    @Test("accepts valid UTF-8 JSON array")
     func acceptsValidJSON() throws {
         let validator = FilterValidator()
         try validator.validate(Data("[{\"a\":1}]".utf8))

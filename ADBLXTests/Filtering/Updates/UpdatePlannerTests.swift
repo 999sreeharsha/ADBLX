@@ -69,13 +69,24 @@ struct UpdatePlannerTests {
         #expect(plan.actions == [.skipPremium(entry(id: "premium-list", premium: true))])
     }
 
-    @Test("already-installed premium entry with a version change still produces .install")
-    func installedPremiumEntryStillUpdates() {
+    @Test("when not entitled, premium entry with a version change produces .skipPremium")
+    func nonEntitledPremiumEntrySkipsUpdate() {
         let manifest = FilterManifest(manifestVersion: "1", entries: [entry(id: "premium-list", version: "v2", premium: true)])
         let plan = UpdatePlanner.plan(
             manifest: manifest,
             installed: [installed(id: "premium-list", version: "v1")],
             isPremiumEntitled: false
+        )
+        #expect(plan.actions == [.skipPremium(entry(id: "premium-list", version: "v2", premium: true))])
+    }
+
+    @Test("when entitled, premium entry with a version change produces .install")
+    func entitledPremiumEntryInstallsUpdate() {
+        let manifest = FilterManifest(manifestVersion: "1", entries: [entry(id: "premium-list", version: "v2", premium: true)])
+        let plan = UpdatePlanner.plan(
+            manifest: manifest,
+            installed: [installed(id: "premium-list", version: "v1")],
+            isPremiumEntitled: true
         )
         #expect(plan.actions == [.install(group: .ads, entries: [entry(id: "premium-list", version: "v2", premium: true)])])
     }

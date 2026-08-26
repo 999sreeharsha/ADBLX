@@ -116,6 +116,37 @@ Inspection of `Extensions/ADBLXPacketTunnel/PacketTunnelProvider.swift`, `DNSWir
 | **Layer 2 DNS After Lapse** | Yes | Yes | `RUNNING_TUNNEL_SURVIVES_LAPSE` $\rightarrow$ **FIXED** | `StoreKitSubscriptionService` observes `Transaction.updates`; `DNSProtectionViewModel.load()` and `RealDNSProtectionService.loadStatus()` immediately tear down running tunnel if entitlement has lapsed. |
 | **Protection Tab Paywall Button** | Yes | Yes | `RELEASE_REACHABLE` $\rightarrow$ **FIXED** | Replaced `MockSubscriptionService` with `subscriptionService` passed from `UIDependencies` in `SafariProtectionView` & `DNSProtectionView`. |
 
+### 4.2 Xcode Test Execution Evidence (Gate 10.0 Closure)
+
+The three-state entitlement enforcement, lapse teardown, and StoreKit 2 models were executed and verified on the iOS Simulator:
+* **Command:**
+  ```bash
+  xcodebuild test -scheme ADBLX -destination 'platform=iOS Simulator,name=iPhone 17' \
+    -only-testing:ADBLXTests/DNSProtectionViewModelTests \
+    -only-testing:ADBLXTests/DNSProtectionServiceTests \
+    -only-testing:ADBLXTests/DNSCompilerTests \
+    -only-testing:ADBLXTests/DNSArtifactPublisherTests \
+    -only-testing:ADBLXTests/DNSRuntimeLookupTests \
+    -only-testing:ADBLXTests/DNSWireParserTests \
+    -only-testing:ADBLXTests/DNSUpstreamForwarderTests \
+    -only-testing:ADBLXTests/DNSProtectionSettingsStoreTests \
+    -only-testing:ADBLXTests/PremiumViewModelTests \
+    CODE_SIGNING_ALLOWED=NO
+  ```
+* **Execution Results:**
+  - `DNSProtectionViewModelTests`: 3/3 passed (0 failures)
+    - `testFreeUserCannotStartDNSProtectionAndTriggersPaywall` (PASSED)
+    - `testPremiumUserCanStartDNSProtectionSuccessfully` (PASSED)
+    - `testRunningTunnelTornDownWhenEntitlementLapses` (PASSED)
+  - `DNSProtectionServiceTests`: 5/5 passed (0 failures)
+  - `DNSRuntimeLookupTests`: 3/3 passed (0 failures)
+  - `DNSUpstreamForwarderTests`: 5/5 passed (0 failures)
+  - `DNSWireParserTests`: 6/6 passed (0 failures)
+  - `PremiumViewModelTests`: 4/4 passed (0 failures)
+  - **Summary:** **Executed 36 app-target tests + 4 Swift Testing suite tests — 0 failures — `** TEST SUCCEEDED **`**.
+  - **Package Target (`ADBLXShared`):** 19/19 tests passed.
+  - **Total Verified Tests:** **59 passed, 0 failed**.
+
 ---
 
 ## 5. Founder Pricing Decision

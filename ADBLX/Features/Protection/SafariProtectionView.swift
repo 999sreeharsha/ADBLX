@@ -10,7 +10,7 @@ struct SafariProtectionView: View {
     init(
         viewModel: ProtectionViewModel,
         updateCoordinator: UpdateCoordinator,
-        subscriptionService: SubscriptionService = StoreKitSubscriptionService()
+        subscriptionService: SubscriptionService = AppCompositionRoot.makeSubscriptionService()
     ) {
         self._viewModel = State(initialValue: viewModel)
         self.updateCoordinator = updateCoordinator

@@ -75,6 +75,96 @@
         }
       }
     },
+    "about.licenses.navTitle" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Licenses & Attributions"
+          }
+        }
+      }
+    },
+    "about.licenses.headerTitle" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filter List Attributions"
+          }
+        }
+      }
+    },
+    "about.licenses.headerSubtitle" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ADBLX uses and complies with open-source filter lists maintained by the ad-blocking community."
+          }
+        }
+      }
+    },
+    "about.licenses.sectionFilterLists" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "FILTER LISTS"
+          }
+        }
+      }
+    },
+    "about.licenses.sectionNotice" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "COMPLIANCE & DERIVATIVE NOTICE"
+          }
+        }
+      }
+    },
+    "about.licenses.complianceStatement" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ADBLX compiles filter lists using a clean-room native declarative parser (ADR-0002). We are deeply grateful to the open-source authors and filter list maintainers whose tireless efforts make a clean, privacy-respecting web possible."
+          }
+        }
+      }
+    },
+    "about.licenses.easylistDesc" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Primary subscription removing advertisements from web pages, including banners and video ads."
+          }
+        }
+      }
+    },
+    "about.licenses.easyprivacyDesc" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Strict privacy list blocking tracking scripts, analytics beacons, and telemetry collectors."
+          }
+        }
+      }
+    },
+    "about.licenses.annoyancesDesc" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comprehensive filter list blocking cookie notices, social widgets, and overlays."
+          }
+        }
+      }
+    },
     "about.section.connect" : {
       "localizations" : {
         "en" : {
@@ -135,6 +225,15 @@
         }
       }
     },
+    "Apply Resolver Changes" : {
+
+    },
+    "Blocks ads, tracking, and telemetry across all installed apps using local DNS filtering." : {
+
+    },
+    "Cancel" : {
+
+    },
     "card.preview.status" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -168,6 +267,33 @@
       }
     },
     "DNS Filtering Spike (8B-0.1A)" : {
+
+    },
+    "DNS Protection" : {
+
+    },
+    "DNS Protection Error" : {
+
+    },
+    "Domain Allowlist" : {
+
+    },
+    "Domains added here bypass the DNS blocklist without restarting the VPN tunnel." : {
+
+    },
+    "e.g. 192.168.1.1 or 1.1.1.1" : {
+
+    },
+    "e.g. 2606:4700::1111" : {
+
+    },
+    "Enable DNS Protection" : {
+
+    },
+    "Enable Protection" : {
+
+    },
+    "Enter domain (e.g. example.com)" : {
 
     },
     "home.action.reloadSafari" : {
@@ -386,6 +512,12 @@
     "Installed:" : {
 
     },
+    "IPv4 Address" : {
+
+    },
+    "IPv6 Address (Optional)" : {
+
+    },
     "navigation.tab.home" : {
       "localizations" : {
         "en" : {
@@ -427,6 +559,15 @@
       }
     },
     "No" : {
+
+    },
+    "No custom allowlisted domains." : {
+
+    },
+    "Non-blocked DNS queries are forwarded to your chosen upstream provider." : {
+
+    },
+    "OK" : {
 
     },
     "onboarding.button.getStarted" : {
@@ -829,6 +970,9 @@
         }
       }
     },
+    "premium.plan.periodMonthly" : {
+
+    },
     "premium.plan.periodOneTime" : {
       "localizations" : {
         "en" : {
@@ -1001,6 +1145,7 @@
       }
     },
     "protection.dns.message" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1011,6 +1156,7 @@
       }
     },
     "protection.dns.title" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1169,6 +1315,9 @@
           }
         }
       }
+    },
+    "RECOMMENDED" : {
+
     },
     "settings.action.add" : {
       "localizations" : {
@@ -1356,6 +1505,9 @@
     "Stop" : {
 
     },
+    "System-wide DNS Shield" : {
+
+    },
     "togglerow.preview.subtitle" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1374,6 +1526,186 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ads"
+          }
+        }
+      }
+    },
+    "trial.button.continueFree" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continue with Free Version"
+          }
+        }
+      }
+    },
+    "trial.button.startTrial" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start 15-Day Free Trial"
+          }
+        }
+      }
+    },
+    "trial.expired.button.continueFree" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continue with Free Version"
+          }
+        }
+      }
+    },
+    "trial.expired.button.viewPlans" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "View Premium Plans"
+          }
+        }
+      }
+    },
+    "trial.expired.includedFree.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What You Keep with Free Version"
+          }
+        }
+      }
+    },
+    "trial.expired.premiumFeatures.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unlocked with Premium"
+          }
+        }
+      }
+    },
+    "trial.expired.subtitle" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose how you would like to continue with ADBLX."
+          }
+        }
+      }
+    },
+    "trial.expired.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your Free Trial Has Ended"
+          }
+        }
+      }
+    },
+    "trial.feature.dns.body" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block ads and tracking across all your apps with zero battery impact."
+          }
+        }
+      }
+    },
+    "trial.feature.dns.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "System-Wide DNS Protection"
+          }
+        }
+      }
+    },
+    "trial.feature.safari.body" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block video ads on YouTube and remove stubborn page annoyances."
+          }
+        }
+      }
+    },
+    "trial.feature.safari.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Advanced Safari Blocking"
+          }
+        }
+      }
+    },
+    "trial.feature.tracking.body" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All filtering happens on your device. Zero telemetry, zero logging."
+          }
+        }
+      }
+    },
+    "trial.feature.tracking.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "On-Device Privacy"
+          }
+        }
+      }
+    },
+    "trial.notice.noCommitment.body" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "We will notify you before your trial ends. No automatic charges."
+          }
+        }
+      }
+    },
+    "trial.notice.noCommitment.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No Payment Required"
+          }
+        }
+      }
+    },
+    "trial.onboarding.subtitle" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "15 days of full protection, on us. No payment required."
+          }
+        }
+      }
+    },
+    "trial.onboarding.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Experience ADBLX Premium"
           }
         }
       }
@@ -1447,6 +1779,9 @@
           }
         }
       }
+    },
+    "Upstream Resolver" : {
+
     },
     "v%@" : {
 

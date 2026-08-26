@@ -11,8 +11,7 @@ struct SettingsSnapshot: Equatable {
     var allowlist: [AllowlistEntry]
 }
 
-/// What Settings needs from the backend (FR-08's per-site allowlist). A later
-/// sprint's real implementation persists to the shared App Group container.
+/// What Settings needs from the backend (FR-08's per-site allowlist).
 protocol SettingsService: Sendable {
     func fetchSnapshot() async -> SettingsSnapshot
     func addAllowlistEntry(domain: String) async
@@ -24,7 +23,7 @@ actor MockSettingsService: SettingsService {
         iCloudSyncEnabled: false,
         allowlist: [
             AllowlistEntry(id: "1", domain: "news.example.com"),
-            AllowlistEntry(id: "2", domain: "shop.example.com"),
+            AllowlistEntry(id: "2", domain: "shop.example.com")
         ]
     )
 
@@ -39,15 +38,15 @@ actor MockSettingsService: SettingsService {
     }
 }
 
-/// Real SettingsService. iCloudSyncEnabled stays hardcoded false — no iCloud sync
-/// backend exists yet, unchanged scope for Sprint 5B (Sprint 5B design doc).
-/// Allowlist is real and persisted via AllowlistStore, but storage-only: it does
-/// not yet exempt anything from blocking.
+/// Real SettingsService coordinating canonical AllowlistStore persistence and
+/// triggering deterministic FilterPipeline recompilation and extension reloading.
 actor RealSettingsService: SettingsService {
     private let allowlistStore: AllowlistStore
+    private let pipeline: FilterPipeline?
 
-    init(allowlistStore: AllowlistStore) {
+    init(allowlistStore: AllowlistStore, pipeline: FilterPipeline? = nil) {
         self.allowlistStore = allowlistStore
+        self.pipeline = pipeline
     }
 
     func fetchSnapshot() async -> SettingsSnapshot {
@@ -56,10 +55,26 @@ actor RealSettingsService: SettingsService {
     }
 
     func addAllowlistEntry(domain: String) async {
-        await allowlistStore.add(domain: domain)
+        guard let entry = try? await allowlistStore.add(domain: domain) else { return }
+        if let pipeline {
+            do {
+                _ = try await pipeline.syncAllowlist()
+            } catch {
+                try? await allowlistStore.remove(id: entry.id)
+            }
+        }
     }
 
     func removeAllowlistEntry(id: String) async {
-        await allowlistStore.remove(id: id)
+        let previous = await allowlistStore.load()
+        guard let target = previous.first(where: { $0.id == id }) else { return }
+        try? await allowlistStore.remove(id: id)
+        if let pipeline {
+            do {
+                _ = try await pipeline.syncAllowlist()
+            } catch {
+                try? await allowlistStore.add(domain: target.domain)
+            }
+        }
     }
 }

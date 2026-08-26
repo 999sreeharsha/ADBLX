@@ -16,7 +16,7 @@ struct AppManifestEndpointProvider: ManifestEndpointProvider {
 /// FilterPipeline itself never constructs its own dependencies — everything is injected —
 /// so swapping PassthroughRuleCompiler for a SafariConverterLib-backed implementation (post
 /// ADR-0001) only ever changes this file.
-enum AppCompositionRoot {
+public enum AppCompositionRoot {
     static let extensionIdentifiers = GroupExtensionIdentifiers(
         ads: "com.ADBLX.ADBLX.AdsBlocker",
         privacy: "com.ADBLX.ADBLX.PrivacyBlocker",
@@ -32,15 +32,16 @@ enum AppCompositionRoot {
         FilterStore(appGroupIdentifier: AppGroup.identifier)
     }
 
-    static func makeFilterPipeline(store: FilterStore) -> FilterPipeline {
+    static func makeFilterPipeline(store: FilterStore, allowlistStore: AllowlistStore? = nil) -> FilterPipeline {
         FilterPipeline(
             validator: FilterValidator(),
-            compiler: PassthroughRuleCompiler(),
+            compiler: NativeRuleCompilerAdapter(),
             compositionService: JSONArrayCompositionService(),
             partitioner: GroupPartitioner(extensionIdentifiers: extensionIdentifiers),
             store: store,
             writer: AtomicRuleWriter(),
-            reloader: ReloadCoordinator()
+            reloader: ReloadCoordinator(),
+            allowlistStore: allowlistStore ?? makeAllowlistStore(store: store)
         )
     }
 
@@ -61,8 +62,62 @@ enum AppCompositionRoot {
         AllowlistStore(store: store)
     }
 
-    static func makeSubscriptionService() -> StoreKitSubscriptionService {
-        StoreKitSubscriptionService()
+    private static let sharedTrialKeychainStore = TrialKeychainStore()
+    private static let sharedTrialManager = TrialManager(store: sharedTrialKeychainStore)
+    private static let sharedSubscriptionService = StoreKitSubscriptionService(trialManager: sharedTrialManager)
+
+    /// The single `TrialManager` instance shared app-wide.
+    public static func makeTrialManager() -> TrialManager {
+        sharedTrialManager
+    }
+
+    /// The single `StoreKitSubscriptionService` instance shared app-wide.
+    public static func makeSubscriptionService() -> StoreKitSubscriptionService {
+        sharedSubscriptionService
+    }
+
+    private static let sharedWebExtensionEntitlementCoordinator: WebExtensionEntitlementCoordinator = {
+        let coordinator = WebExtensionEntitlementCoordinator(entitlementService: sharedSubscriptionService)
+        coordinator.startObserving()
+        return coordinator
+    }()
+
+    /// The single `WebExtensionEntitlementCoordinator` instance shared app-wide.
+    public static func makeWebExtensionEntitlementCoordinator() -> WebExtensionEntitlementCoordinator {
+        sharedWebExtensionEntitlementCoordinator
+    }
+
+    private static let sharedTrialNotificationScheduler: TrialNotificationScheduler = {
+        let scheduler = TrialNotificationScheduler(entitlementService: sharedSubscriptionService)
+        Task {
+            await scheduler.startObserving()
+        }
+        return scheduler
+    }()
+
+    /// The single `TrialNotificationScheduler` instance shared app-wide.
+    public static func makeTrialNotificationScheduler() -> TrialNotificationScheduler {
+        sharedTrialNotificationScheduler
+    }
+
+    private static let sharedTrialDecisionStore = TrialKeychainDecisionStore()
+
+    /// The single `TrialDecisionStore` instance shared app-wide.
+    public static func makeTrialDecisionStore() -> TrialDecisionStoreProtocol {
+        sharedTrialDecisionStore
+    }
+
+    @MainActor
+    private static let sharedTrialExpiryRouter = TrialExpiryRouter(
+        entitlementService: sharedSubscriptionService,
+        trialManager: sharedTrialManager,
+        decisionStore: sharedTrialDecisionStore
+    )
+
+    /// The single `TrialExpiryRouter` instance shared app-wide.
+    @MainActor
+    public static func makeTrialExpiryRouter() -> TrialExpiryRouter {
+        sharedTrialExpiryRouter
     }
 
     /// The single injectable throttle interval for launch-time update evaluation.
@@ -113,6 +168,7 @@ enum AppCompositionRoot {
     static func makeUIDependencies(
         configuration: UIDependenciesConfiguration,
         store: FilterStore,
+        pipeline: FilterPipeline? = nil,
         updateCoordinator: UpdateCoordinator
     ) -> UIDependencies {
         switch configuration {
@@ -123,7 +179,7 @@ enum AppCompositionRoot {
                 homeService: RealHomeService(store: store),
                 protectionService: RealProtectionService(store: store, preferencesStore: preferencesStore),
                 subscriptionService: makeSubscriptionService(),
-                settingsService: RealSettingsService(allowlistStore: allowlistStore),
+                settingsService: RealSettingsService(allowlistStore: allowlistStore, pipeline: pipeline),
                 updateCoordinator: updateCoordinator
             )
         }

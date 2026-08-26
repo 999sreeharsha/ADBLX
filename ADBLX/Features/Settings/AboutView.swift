@@ -84,7 +84,9 @@ struct AboutView: View {
 
             Card {
                 VStack(spacing: 0) {
-                    SettingsRow(titleKey: "about.row.licenses", systemImage: "doc.text.fill")
+                    NavigationLink(destination: FilterAttributionView()) {
+                        SettingsRow(titleKey: "about.row.licenses", systemImage: "doc.text.fill")
+                    }
                     Divider().overlay(DesignColors.outlineVariant.opacity(0.2))
                     Link(destination: URL(string: "https://adblx.app/privacy")!) {
                         SettingsRow(titleKey: "about.link.privacyPolicy", systemImage: "hand.raised.fill")

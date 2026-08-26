@@ -8,11 +8,11 @@ public enum WebExtensionBootstrap {
         category: "WebExtensionBootstrap"
     )
 
-    public static func ensureInitialWebExtensionRulesInstalled() {
+    public static func ensureInitialWebExtensionRulesInstalled(isPremium: Bool = false) {
         let entitlementPublisher = WebExtensionEntitlementPublisher()
         do {
-            try entitlementPublisher.publish(isPremium: true)
-            logger.info("Published active premium entitlement for Layer 3")
+            try entitlementPublisher.publish(isPremium: isPremium)
+            logger.info("Published initial WebExtension entitlement (isPremium=\(isPremium))")
         } catch {
             logger.error("Failed to publish WebExtension entitlement: \(error, privacy: .public)")
         }

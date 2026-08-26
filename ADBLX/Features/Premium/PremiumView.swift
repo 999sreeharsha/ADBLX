@@ -68,6 +68,24 @@ struct PremiumView: View {
         }
     }
 
+    private func planIcon(for planID: String) -> String {
+        switch planID {
+        case "monthly": return "calendar.badge.clock"
+        case "annual": return "calendar"
+        case "lifetime": return "infinity"
+        default: return "star.fill"
+        }
+    }
+
+    private func planPeriodKey(for planID: String) -> LocalizedStringKey {
+        switch planID {
+        case "monthly": return "premium.plan.periodMonthly"
+        case "annual": return "premium.plan.periodYearly"
+        case "lifetime": return "premium.plan.periodOneTime"
+        default: return ""
+        }
+    }
+
     private func planCard(_ plan: SubscriptionPlan, isBestValue: Bool) -> some View {
         Button {
             Task { await viewModel.purchase(planID: plan.id) }
@@ -78,7 +96,7 @@ struct PremiumView: View {
                         Circle()
                             .fill((isBestValue ? DesignColors.tertiary : DesignColors.surfaceContainer).opacity(isBestValue ? 0.2 : 0.5))
                             .frame(width: 48, height: 48)
-                        Image(systemName: isBestValue ? "calendar" : "infinity")
+                        Image(systemName: planIcon(for: plan.id))
                             .foregroundStyle(isBestValue ? DesignColors.tertiary : DesignColors.outline)
                     }
                     VStack(alignment: .leading, spacing: DesignSpacing.base / 2) {
@@ -94,7 +112,7 @@ struct PremiumView: View {
                         Text(plan.priceDescription)
                             .font(DesignTypography.headlineMedium)
                             .foregroundStyle(isBestValue ? DesignColors.tertiary : DesignColors.onSurfaceVariant)
-                        Text(isBestValue ? "premium.plan.periodYearly" : "premium.plan.periodOneTime")
+                        Text(planPeriodKey(for: plan.id))
                             .font(DesignTypography.labelCaps)
                             .foregroundStyle(DesignColors.onSurfaceVariant)
                     }
@@ -248,7 +266,7 @@ struct PremiumView: View {
     private var actionButtons: some View {
         VStack(spacing: DesignSpacing.stackGap) {
             Button {
-                if let plan = viewModel.status?.plans.first(where: { $0.id == "annual" }) {
+                if let plan = viewModel.status?.plans.first(where: { $0.id == "annual" }) ?? viewModel.status?.plans.first {
                     Task { await viewModel.purchase(planID: plan.id) }
                 }
             } label: {

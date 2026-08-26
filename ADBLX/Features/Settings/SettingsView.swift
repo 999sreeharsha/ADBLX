@@ -46,6 +46,7 @@ struct SettingsView: View {
                                         .foregroundStyle(DesignColors.error)
                                 }
                             }
+                            .padding(.vertical, DesignSpacing.base)
                         }
                         HStack {
                             TextField("settings.placeholder.addDomain", text: $newDomain)
@@ -147,6 +148,8 @@ struct SettingsView: View {
                 .font(.caption)
                 .foregroundStyle(DesignColors.outline)
         }
+        .padding(.vertical, DesignSpacing.gutter)
+        .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
     }
 
