@@ -9,6 +9,19 @@ final class StoreKitSubscriptionService: SubscriptionService, EntitlementService
     static let annualProductID = "com.ADBLX.ADBLX.premium.annual"
     static let lifetimeProductID = "com.ADBLX.ADBLX.premium.lifetime"
 
+    init() {
+        listenForTransactionUpdates()
+    }
+
+    private func listenForTransactionUpdates() {
+        Task.detached(priority: .background) {
+            for await update in Transaction.updates {
+                guard case .verified(let transaction) = update else { continue }
+                await transaction.finish()
+            }
+        }
+    }
+
     func fetchStatus() async -> SubscriptionStatus {
         let entitled = await isPremiumEntitled()
         let products = (try? await Product.products(for: [Self.annualProductID, Self.lifetimeProductID])) ?? []
@@ -55,6 +68,10 @@ final class StoreKitSubscriptionService: SubscriptionService, EntitlementService
         @unknown default:
             return false
         }
+    }
+
+    func restorePurchases() async throws {
+        try await AppStore.sync()
     }
 
     func isPremiumEntitled() async -> Bool {

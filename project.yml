@@ -4,6 +4,9 @@ options:
 configFiles:
   Debug: Config/Debug.xcconfig
   Release: Config/Release.xcconfig
+packages:
+  ADBLXShared:
+    path: Packages/ADBLXShared
 settings:
   base:
     DEVELOPMENT_TEAM: 93F78RF6FG
@@ -27,6 +30,8 @@ targets:
     entitlements:
       path: ADBLX/ADBLX.entitlements
       properties:
+        com.apple.developer.networking.networkextension:
+          - packet-tunnel-provider
         com.apple.security.application-groups:
           - group.com.ADBLX.shared
     dependencies:
@@ -42,6 +47,7 @@ targets:
         embed: true
       - target: ADBLXSafariWebExtension
         embed: true
+      - package: ADBLXShared
     settings:
       base:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
@@ -89,8 +95,15 @@ targets:
     sources:
       - path: ADBLXTests
         type: syncedFolder
+      - path: Extensions/ADBLXPacketTunnel/DNSRuntime
+        type: syncedFolder
+      - path: Extensions/ADBLXPacketTunnel/WireEngine
+        type: syncedFolder
+      - path: Extensions/ADBLXPacketTunnel/Forwarder
+        type: syncedFolder
     dependencies:
       - target: ADBLX
+      - package: ADBLXShared
     settings:
       base:
         BUNDLE_LOADER: "$(TEST_HOST)"
@@ -280,12 +293,21 @@ targets:
     sources:
       - path: Extensions/ADBLXPacketTunnel
         type: syncedFolder
+    dependencies:
+      - package: ADBLXShared
     info:
       path: Extensions/ADBLXPacketTunnel/Info.plist
       properties:
         NSExtension:
           NSExtensionPointIdentifier: com.apple.networkextension.packet-tunnel
           NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).PacketTunnelProvider
+    entitlements:
+      path: Extensions/ADBLXPacketTunnel/ADBLXPacketTunnel.entitlements
+      properties:
+        com.apple.developer.networking.networkextension:
+          - packet-tunnel-provider
+        com.apple.security.application-groups:
+          - group.com.ADBLX.shared
     settings:
       base:
         CODE_SIGN_STYLE: Automatic
@@ -307,6 +329,8 @@ targets:
     sources:
       - path: Extensions/ADBLXSafariWebExtension
         type: syncedFolder
+    dependencies:
+      - package: ADBLXShared
     info:
       path: Extensions/ADBLXSafariWebExtension/Info.plist
       properties:

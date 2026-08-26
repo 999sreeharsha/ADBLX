@@ -26,7 +26,8 @@ struct RootTabView: View {
             NavigationStack {
                 SafariProtectionView(
                     viewModel: ProtectionViewModel(service: dependencies.protectionService),
-                    updateCoordinator: dependencies.updateCoordinator
+                    updateCoordinator: dependencies.updateCoordinator,
+                    subscriptionService: dependencies.subscriptionService
                 )
             }
         case .premium:

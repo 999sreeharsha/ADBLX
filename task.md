@@ -1,0 +1,40 @@
+# Sprint 8B Task List: Production Layer 2 DNS Protection
+
+- [x] **8B.1 — Production Architecture & Target Boundary Plan (Frozen)**
+- [x] **8B.2 — Shared Schema, Main-App Compiler & Generation Publisher**
+  - [x] Shared artifact contract (`DNSArtifactFormat`, `DNSArtifactHeader`, `CRC32`, `DNSArtifactValidator`, `DNSGenerationManifest`, `DNSAppGroupPaths` in `ADBLXShared`)
+  - [x] Main-app compilers (`DNSDomainNormalizer`, `DNSBinarySerializer`, `DNSBlocklistCompiler`, `DNSAllowlistCompiler` in `ADBLX/Filtering/DNS/`)
+  - [x] Immutable generation publisher (`DNSArtifactPublisher` in `ADBLX/Filtering/DNS/`)
+  - [x] Unit tests passing in both `ADBLXShared` (11 tests) and `ADBLXTests` (10 tests)
+- [x] **8B.3 — Direct-Mapped Runtime Lookup Engine (ADBLXPacketTunnel)**
+  - [x] `MappedDNSArtifact` (Direct mapped byte binary search, zero heap copies of offset table)
+  - [x] `DNSLookupSnapshot` (Self-contained immutable snapshot)
+  - [x] `DNSLookupEngine` (Allowlist-first precedence + C2 suffix walk + **short critical-section snapshot acquisition with lock-free artifact traversal**)
+  - [x] `DNSGenerationLoader` (Full manifest, CRC32, SHA-256 validation + atomic swap + Last-Known-Good fallback)
+  - [x] Comprehensive unit & concurrent active-traffic integration tests (13 tests in `ADBLXTests`, 11 in `ADBLXShared`)
+- [x] **8B.4 — Wire DNS Parser & NXDOMAIN Engine (ADBLXPacketTunnel)**
+  - [x] `InternetChecksum` (RFC 791 IPv4 header checksum, RFC 768 / RFC 8200 IPv4/IPv6 UDP pseudo-header checksums)
+  - [x] `DNSWireModels` (`InlineReversedDomainBuffer`, `ParsedDNSQuery`)
+  - [x] `DNSPacketParser` (IPv4/IPv6 length checks, UDP validation, fragmentation rejection, compression pointer rejection, inline lowercase label reversal)
+  - [x] `NXDOMAINResponseBuilder` (Endpoint swapping, TxID preservation, RCODE=3/RCODE=2, QDCOUNT=1, valid IP/UDP checksums)
+  - [x] Comprehensive unit tests passing in `ADBLXTests` (19 total tests in `ADBLXTests`)
+- [x] **8B.5 — Async Upstream UDP Forwarder & Socket Reuse Engine (ADBLXPacketTunnel)**
+  - [x] `DNSForwarderMetrics` (Structured logging and signpost instrumentation)
+  - [x] `DNSForwarderModels` (`UpstreamResolverConfig`, `PendingQuery`, `DNSForwarderResult`)
+  - [x] `DNSUpstreamSocket` (`BSDUDPUpstreamSocket` with `DispatchSourceRead` zero-polling event loop)
+  - [x] `DNSUpstreamForwarder` (Actor-isolated socket reuse, collision-safe transaction rewriting, bounded capacity table, response endpoint swapping, timeout eviction, clean shutdown)
+  - [x] **8B.5-H1**: Physical-device routing exclusion verified across 20,000 queries in Gate 1
+  - [x] **8B.5-H2**: Immediate `SERVFAIL` (RCODE=2) synthesis on capacity exhaustion verified
+  - [x] **8B.5-H3**: Upstream source endpoint (IP & Port 53) validation verified
+  - [x] 24 / 24 unit & concurrency tests passing in `ADBLXTests`
+- [x] **8B.6 — Main App Settings & Lifecycle UI**
+  - [x] `DNSProtectionSettingsStore` (Persistent user settings, IP & domain validation)
+  - [x] `DNSProtectionService` (Lifecycle controller, `NETunnelProviderManager` ownership, status observation, allowlist background compilation & generation publication with zero tunnel restart)
+  - [x] `DNSProtectionViewModel` & `DNSProtectionView` (Serene Shield UI, Quad9 default disclosure, Custom IP override, live allowlist manager FR-08)
+  - [x] 33 / 33 tests passing in `ADBLXTests`
+- [x] **8B.7 — Production Verification Gates & Gate D Energy Benchmark**
+  - [x] Gate 1: Physical routing exclusion proof (20,000 queries across Wi-Fi & 5G Cellular; zero recursive loops)
+  - [x] Gate 2: True Layer 1 + Layer 2 coexistence with explicit protection scope qualification (Port 53 UDP traffic)
+  - [x] Gate 3: Live allowlist reload under traffic & corrupted candidate rejection (ADR-0009) with zero tunnel reconnect
+  - [x] Gate 4: Gate D energy benchmark with documented 24h extrapolation methodology (~1.3% battery/day, <3.0% PRD budget)
+  - [x] 8B.7.1: Evidence audit & terminology hardening complete

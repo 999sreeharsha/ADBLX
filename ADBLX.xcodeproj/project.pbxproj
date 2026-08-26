@@ -7,12 +7,16 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		10652AFA772B2FEB292A7178 /* ADBLXShared in Frameworks */ = {isa = PBXBuildFile; productRef = A1B2EB58F091B542E463F7C0 /* ADBLXShared */; };
 		15A64BEFC76AC7EC13E5DFB6 /* ADBLXPrivacyBlocker.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = F09181B523459EB98934CA02 /* ADBLXPrivacyBlocker.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		57C996C3E906FADEB3ECA76B /* ADBLXShared in Frameworks */ = {isa = PBXBuildFile; productRef = 4A7F0B0459E7823B4C5977C2 /* ADBLXShared */; };
 		5EF290312D432CE2C2A39BDB /* ADBLXAdsBlocker.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = E2F6DD6F2EACB8B84B9FAD7D /* ADBLXAdsBlocker.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		7DC4D47E69C24AA79059959F /* ADBLXAnnoyancesBlocker.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = A4F1B788D3F46BBC97DACE47 /* ADBLXAnnoyancesBlocker.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		C82533F2477CBA36F2A87214 /* ADBLXPacketTunnel.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 5D507ADA71442B7732E25662 /* ADBLXPacketTunnel.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		CEF8A6ABFD75C96ADCCB96D0 /* ADBLXRegionalBlocker.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 4270ABDB6F2A340D314B5511 /* ADBLXRegionalBlocker.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		D44D2247F4E04DB04B09A783 /* ADBLXShared in Frameworks */ = {isa = PBXBuildFile; productRef = A916609DF2B60921FA88365B /* ADBLXShared */; };
 		DB24C9594CB35C1331342331 /* ADBLXSafariWebExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = C18C5D670DA3B78285B44C94 /* ADBLXSafariWebExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		E1DE3657BA96468FBE806389 /* ADBLXShared in Frameworks */ = {isa = PBXBuildFile; productRef = 422A593D05AF0B7E0C2DAE9F /* ADBLXShared */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -94,56 +98,57 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		0774520D89681EE00363A7DE /* ADBLX.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ADBLX.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		269873BA9A7421D0F1488E18 /* ADBLXTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ADBLXTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		0774520D89681EE00363A7DE /* ADBLX.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = ADBLX.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		269873BA9A7421D0F1488E18 /* ADBLXTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = ADBLXTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		2B308625A55359393052EBDF /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
-		4270ABDB6F2A340D314B5511 /* ADBLXRegionalBlocker.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ADBLXRegionalBlocker.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		51BB17E426853BD9CF673A19 /* ADBLXUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ADBLXUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		5D507ADA71442B7732E25662 /* ADBLXPacketTunnel.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ADBLXPacketTunnel.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		A4F1B788D3F46BBC97DACE47 /* ADBLXAnnoyancesBlocker.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ADBLXAnnoyancesBlocker.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		C18C5D670DA3B78285B44C94 /* ADBLXSafariWebExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ADBLXSafariWebExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		34A30DE5E4057AB7F708F91D /* ADBLXShared */ = {isa = PBXFileReference; lastKnownFileType = folder; name = ADBLXShared; path = Packages/ADBLXShared; sourceTree = SOURCE_ROOT; };
+		4270ABDB6F2A340D314B5511 /* ADBLXRegionalBlocker.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = ADBLXRegionalBlocker.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		51BB17E426853BD9CF673A19 /* ADBLXUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = ADBLXUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		5D507ADA71442B7732E25662 /* ADBLXPacketTunnel.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = ADBLXPacketTunnel.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		A4F1B788D3F46BBC97DACE47 /* ADBLXAnnoyancesBlocker.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = ADBLXAnnoyancesBlocker.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		C18C5D670DA3B78285B44C94 /* ADBLXSafariWebExtension.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = ADBLXSafariWebExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		CE383A84E1D527E02B0E4CA0 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
-		E2F6DD6F2EACB8B84B9FAD7D /* ADBLXAdsBlocker.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ADBLXAdsBlocker.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		F09181B523459EB98934CA02 /* ADBLXPrivacyBlocker.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ADBLXPrivacyBlocker.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		E2F6DD6F2EACB8B84B9FAD7D /* ADBLXAdsBlocker.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = ADBLXAdsBlocker.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		F09181B523459EB98934CA02 /* ADBLXPrivacyBlocker.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = ADBLXPrivacyBlocker.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		2060F4E5B192F6724FA312AF /* Exceptions for "Extensions/ADBLXSafariWebExtension" folder in "ADBLXSafariWebExtension" target */ = {
+		2060F4E5B192F6724FA312AF /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
 			);
 			target = 734790D8FA30AEF8AB59E21B /* ADBLXSafariWebExtension */;
 		};
-		88E813FE543BAE5119B8542D /* Exceptions for "Extensions/ADBLXRegionalBlocker" folder in "ADBLXRegionalBlocker" target */ = {
+		88E813FE543BAE5119B8542D /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
 			);
 			target = C87480D5B9FF5CF1894F7775 /* ADBLXRegionalBlocker */;
 		};
-		ABFB96CE63CB83F440BFF98B /* Exceptions for "Extensions/ADBLXAdsBlocker" folder in "ADBLXAdsBlocker" target */ = {
+		ABFB96CE63CB83F440BFF98B /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
 			);
 			target = 824DB7F7B38E0216F3CDD3A7 /* ADBLXAdsBlocker */;
 		};
-		B68B005B4FB6650B332CBE96 /* Exceptions for "Extensions/ADBLXPacketTunnel" folder in "ADBLXPacketTunnel" target */ = {
+		B68B005B4FB6650B332CBE96 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
 			);
 			target = 8E481CF8054F4670C26FB1CF /* ADBLXPacketTunnel */;
 		};
-		D03E6A87125B987754364C69 /* Exceptions for "Extensions/ADBLXAnnoyancesBlocker" folder in "ADBLXAnnoyancesBlocker" target */ = {
+		D03E6A87125B987754364C69 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
 			);
 			target = C5C128EE93D0F47D2A5E66C4 /* ADBLXAnnoyancesBlocker */;
 		};
-		E89B5CB5F67F8FB7497B6934 /* Exceptions for "Extensions/ADBLXPrivacyBlocker" folder in "ADBLXPrivacyBlocker" target */ = {
+		E89B5CB5F67F8FB7497B6934 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
@@ -156,7 +161,11 @@
 		08840849EAC568D56B6D152C /* Extensions/ADBLXSafariWebExtension */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				2060F4E5B192F6724FA312AF /* Exceptions for "Extensions/ADBLXSafariWebExtension" folder in "ADBLXSafariWebExtension" target */,
+				2060F4E5B192F6724FA312AF /* PBXFileSystemSynchronizedBuildFileExceptionSet */,
+			);
+			explicitFileTypes = {
+			};
+			explicitFolders = (
 			);
 			path = Extensions/ADBLXSafariWebExtension;
 			sourceTree = "<group>";
@@ -164,46 +173,101 @@
 		11126BC11D41F3B6FC5A8F2E /* Extensions/ADBLXRegionalBlocker */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				88E813FE543BAE5119B8542D /* Exceptions for "Extensions/ADBLXRegionalBlocker" folder in "ADBLXRegionalBlocker" target */,
+				88E813FE543BAE5119B8542D /* PBXFileSystemSynchronizedBuildFileExceptionSet */,
+			);
+			explicitFileTypes = {
+			};
+			explicitFolders = (
 			);
 			path = Extensions/ADBLXRegionalBlocker;
 			sourceTree = "<group>";
 		};
+		148CF6E017153490F6E36F85 /* Extensions/ADBLXPacketTunnel/DNSRuntime */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			explicitFileTypes = {
+			};
+			explicitFolders = (
+			);
+			path = Extensions/ADBLXPacketTunnel/DNSRuntime;
+			sourceTree = "<group>";
+		};
 		4467C4E4C0F2D1659CA5361C /* ADBLXUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			explicitFileTypes = {
+			};
+			explicitFolders = (
+			);
 			path = ADBLXUITests;
 			sourceTree = "<group>";
 		};
 		4E46745D031963421B1BB746 /* Extensions/ADBLXAnnoyancesBlocker */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				D03E6A87125B987754364C69 /* Exceptions for "Extensions/ADBLXAnnoyancesBlocker" folder in "ADBLXAnnoyancesBlocker" target */,
+				D03E6A87125B987754364C69 /* PBXFileSystemSynchronizedBuildFileExceptionSet */,
+			);
+			explicitFileTypes = {
+			};
+			explicitFolders = (
 			);
 			path = Extensions/ADBLXAnnoyancesBlocker;
 			sourceTree = "<group>";
 		};
 		4E670790808BA4FFFFB99817 /* ADBLXTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			explicitFileTypes = {
+			};
+			explicitFolders = (
+			);
 			path = ADBLXTests;
 			sourceTree = "<group>";
 		};
 		61773C90EEB5C63FA4DA2D28 /* ADBLX */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			explicitFileTypes = {
+			};
+			explicitFolders = (
+			);
 			path = ADBLX;
+			sourceTree = "<group>";
+		};
+		6CBB8C117B4C92F015138261 /* Extensions/ADBLXPacketTunnel/WireEngine */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			explicitFileTypes = {
+			};
+			explicitFolders = (
+			);
+			path = Extensions/ADBLXPacketTunnel/WireEngine;
 			sourceTree = "<group>";
 		};
 		6E55DB98411B229448E7F2A9 /* Extensions/ADBLXPrivacyBlocker */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				E89B5CB5F67F8FB7497B6934 /* Exceptions for "Extensions/ADBLXPrivacyBlocker" folder in "ADBLXPrivacyBlocker" target */,
+				E89B5CB5F67F8FB7497B6934 /* PBXFileSystemSynchronizedBuildFileExceptionSet */,
+			);
+			explicitFileTypes = {
+			};
+			explicitFolders = (
 			);
 			path = Extensions/ADBLXPrivacyBlocker;
+			sourceTree = "<group>";
+		};
+		85BF56B0E585A2AAEC6C2D4A /* Extensions/ADBLXPacketTunnel/Forwarder */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			explicitFileTypes = {
+			};
+			explicitFolders = (
+			);
+			path = Extensions/ADBLXPacketTunnel/Forwarder;
 			sourceTree = "<group>";
 		};
 		CD03B46135A235F678846099 /* Extensions/ADBLXPacketTunnel */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				B68B005B4FB6650B332CBE96 /* Exceptions for "Extensions/ADBLXPacketTunnel" folder in "ADBLXPacketTunnel" target */,
+				B68B005B4FB6650B332CBE96 /* PBXFileSystemSynchronizedBuildFileExceptionSet */,
+			);
+			explicitFileTypes = {
+			};
+			explicitFolders = (
 			);
 			path = Extensions/ADBLXPacketTunnel;
 			sourceTree = "<group>";
@@ -211,14 +275,61 @@
 		D3984DF576CCEBB0D50C8A9E /* Extensions/ADBLXAdsBlocker */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				ABFB96CE63CB83F440BFF98B /* Exceptions for "Extensions/ADBLXAdsBlocker" folder in "ADBLXAdsBlocker" target */,
+				ABFB96CE63CB83F440BFF98B /* PBXFileSystemSynchronizedBuildFileExceptionSet */,
+			);
+			explicitFileTypes = {
+			};
+			explicitFolders = (
 			);
 			path = Extensions/ADBLXAdsBlocker;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
+/* Begin PBXFrameworksBuildPhase section */
+		30A75559CED6898469B5826B /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E1DE3657BA96468FBE806389 /* ADBLXShared in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4E7A449B3DA44B4FBDDDF090 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				57C996C3E906FADEB3ECA76B /* ADBLXShared in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		628331B093E096FCB9F1038F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				10652AFA772B2FEB292A7178 /* ADBLXShared in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A41DA53F33D9B41B4EC02D5C /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D44D2247F4E04DB04B09A783 /* ADBLXShared in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
 /* Begin PBXGroup section */
+		2F19974A1F17BCD69B2695EF /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				34A30DE5E4057AB7F708F91D /* ADBLXShared */,
+			);
+			path = Packages;
+			sourceTree = "<group>";
+		};
 		36502E7A4796624FAD8BD33E /* Products */ = {
 			isa = PBXGroup;
 			children = (
@@ -254,9 +365,13 @@
 				D3984DF576CCEBB0D50C8A9E /* Extensions/ADBLXAdsBlocker */,
 				4E46745D031963421B1BB746 /* Extensions/ADBLXAnnoyancesBlocker */,
 				CD03B46135A235F678846099 /* Extensions/ADBLXPacketTunnel */,
+				148CF6E017153490F6E36F85 /* Extensions/ADBLXPacketTunnel/DNSRuntime */,
+				85BF56B0E585A2AAEC6C2D4A /* Extensions/ADBLXPacketTunnel/Forwarder */,
+				6CBB8C117B4C92F015138261 /* Extensions/ADBLXPacketTunnel/WireEngine */,
 				6E55DB98411B229448E7F2A9 /* Extensions/ADBLXPrivacyBlocker */,
 				11126BC11D41F3B6FC5A8F2E /* Extensions/ADBLXRegionalBlocker */,
 				08840849EAC568D56B6D152C /* Extensions/ADBLXSafariWebExtension */,
+				2F19974A1F17BCD69B2695EF /* Packages */,
 				36502E7A4796624FAD8BD33E /* Products */,
 			);
 			sourceTree = "<group>";
@@ -270,6 +385,7 @@
 			buildPhases = (
 				3F9F7F063FADDAF03590AE03 /* Sources */,
 				F3A99768FD4A2D8939F84EB8 /* Resources */,
+				628331B093E096FCB9F1038F /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -278,9 +394,13 @@
 			);
 			fileSystemSynchronizedGroups = (
 				4E670790808BA4FFFFB99817 /* ADBLXTests */,
+				148CF6E017153490F6E36F85 /* Extensions/ADBLXPacketTunnel/DNSRuntime */,
+				85BF56B0E585A2AAEC6C2D4A /* Extensions/ADBLXPacketTunnel/Forwarder */,
+				6CBB8C117B4C92F015138261 /* Extensions/ADBLXPacketTunnel/WireEngine */,
 			);
 			name = ADBLXTests;
 			packageProductDependencies = (
+				A1B2EB58F091B542E463F7C0 /* ADBLXShared */,
 			);
 			productName = ADBLXTests;
 			productReference = 269873BA9A7421D0F1488E18 /* ADBLXTests.xctest */;
@@ -336,6 +456,7 @@
 				485054795346E4BCB1BA4384 /* SwiftLint */,
 				091621AA814C583EA42F511D /* Sources */,
 				AD6FA0F3423771E4849031F3 /* Resources */,
+				A41DA53F33D9B41B4EC02D5C /* Frameworks */,
 				CC3032F95F7B13DC9B18B415 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
@@ -353,6 +474,7 @@
 			);
 			name = ADBLX;
 			packageProductDependencies = (
+				A916609DF2B60921FA88365B /* ADBLXShared */,
 			);
 			productName = ADBLX;
 			productReference = 0774520D89681EE00363A7DE /* ADBLX.app */;
@@ -364,6 +486,7 @@
 			buildPhases = (
 				557948948F6DAC2FE2B41331 /* Sources */,
 				0F871898403FBD09EC8E957B /* Resources */,
+				4E7A449B3DA44B4FBDDDF090 /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -374,6 +497,7 @@
 			);
 			name = ADBLXSafariWebExtension;
 			packageProductDependencies = (
+				4A7F0B0459E7823B4C5977C2 /* ADBLXShared */,
 			);
 			productName = ADBLXSafariWebExtension;
 			productReference = C18C5D670DA3B78285B44C94 /* ADBLXSafariWebExtension.appex */;
@@ -406,6 +530,7 @@
 			buildPhases = (
 				5E0592C7294A89F827BF33A1 /* Sources */,
 				3719DB8B64091E3F20F75C85 /* Resources */,
+				30A75559CED6898469B5826B /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -416,6 +541,7 @@
 			);
 			name = ADBLXPacketTunnel;
 			packageProductDependencies = (
+				422A593D05AF0B7E0C2DAE9F /* ADBLXShared */,
 			);
 			productName = ADBLXPacketTunnel;
 			productReference = 5D507ADA71442B7732E25662 /* ADBLXPacketTunnel.appex */;
@@ -498,6 +624,7 @@
 						ProvisioningStyle = Automatic;
 					};
 					8E481CF8054F4670C26FB1CF = {
+						DevelopmentTeam = 93F78RF6FG;
 						ProvisioningStyle = Automatic;
 					};
 					C5C128EE93D0F47D2A5E66C4 = {
@@ -519,6 +646,9 @@
 			);
 			mainGroup = F1EAF4F53FBBA87F8B41E9D6;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				2175AF03ED3C3B26AEC6834D /* XCLocalSwiftPackageReference "Packages/ADBLXShared" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 36502E7A4796624FAD8BD33E /* Products */;
 			projectDirPath = "";
@@ -780,9 +910,9 @@
 		19775027042847738C179854 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Extensions/ADBLXPacketTunnel/ADBLXPacketTunnel.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 93F78RF6FG;
 				INFOPLIST_FILE = Extensions/ADBLXPacketTunnel/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -820,10 +950,7 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
 				MARKETING_VERSION = 1.0;
-				OTHER_LDFLAGS = (
-					"-framework",
-					SafariServices,
-				);
+				OTHER_LDFLAGS = "-framework SafariServices";
 				PRODUCT_BUNDLE_IDENTIFIER = com.ADBLX.ADBLX.SafariWebExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -896,10 +1023,7 @@
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
 				MARKETING_VERSION = 1.0;
-				OTHER_LDFLAGS = (
-					"-framework",
-					SafariServices,
-				);
+				OTHER_LDFLAGS = "-framework SafariServices";
 				PRODUCT_BUNDLE_IDENTIFIER = com.ADBLX.ADBLX;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -948,10 +1072,7 @@
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
 				MARKETING_VERSION = 1.0;
-				OTHER_LDFLAGS = (
-					"-framework",
-					SafariServices,
-				);
+				OTHER_LDFLAGS = "-framework SafariServices";
 				PRODUCT_BUNDLE_IDENTIFIER = com.ADBLX.ADBLX;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -986,10 +1107,7 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
 				MARKETING_VERSION = 1.0;
-				OTHER_LDFLAGS = (
-					"-framework",
-					SafariServices,
-				);
+				OTHER_LDFLAGS = "-framework SafariServices";
 				PRODUCT_BUNDLE_IDENTIFIER = com.ADBLX.ADBLX.SafariWebExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -1325,9 +1443,9 @@
 		E27D733FA6E582D2B41C0F56 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Extensions/ADBLXPacketTunnel/ADBLXPacketTunnel.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 93F78RF6FG;
 				INFOPLIST_FILE = Extensions/ADBLXPacketTunnel/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1444,6 +1562,32 @@
 			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		2175AF03ED3C3B26AEC6834D /* XCLocalSwiftPackageReference "Packages/ADBLXShared" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/ADBLXShared;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		422A593D05AF0B7E0C2DAE9F /* ADBLXShared */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ADBLXShared;
+		};
+		4A7F0B0459E7823B4C5977C2 /* ADBLXShared */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ADBLXShared;
+		};
+		A1B2EB58F091B542E463F7C0 /* ADBLXShared */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ADBLXShared;
+		};
+		A916609DF2B60921FA88365B /* ADBLXShared */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ADBLXShared;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = B35E9E26AF6F177F6DCDA1B7 /* Project object */;
 }

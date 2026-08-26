@@ -60,10 +60,12 @@ private struct StubSubscriptionService: SubscriptionService {
     let statusToReturn: SubscriptionStatus
     func fetchStatus() async -> SubscriptionStatus { statusToReturn }
     func purchase(_ planID: String) async throws -> Bool { true }
+    func restorePurchases() async throws {}
 }
 
 private struct FailingSubscriptionService: SubscriptionService {
     struct PurchaseError: Error {}
     func fetchStatus() async -> SubscriptionStatus { SubscriptionStatus(isPremium: false, plans: []) }
     func purchase(_ planID: String) async throws -> Bool { throw PurchaseError() }
+    func restorePurchases() async throws {}
 }

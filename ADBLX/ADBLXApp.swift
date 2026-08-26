@@ -49,6 +49,7 @@ struct ADBLXApp: App {
                     await ContentBlockerBootstrap.ensureInitialRulesInstalled(
                         pipeline: pipeline, manifestStore: manifestStore
                     )
+                    WebExtensionBootstrap.ensureInitialWebExtensionRulesInstalled()
                     let throttle = AppCompositionRoot.makeUpdateThrottle(store: store)
                     guard await throttle.shouldRun(now: Date()) else { return }
                     do {

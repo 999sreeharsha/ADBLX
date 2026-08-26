@@ -4,7 +4,18 @@ import SwiftUI
 struct SafariProtectionView: View {
     @State var viewModel: ProtectionViewModel
     let updateCoordinator: UpdateCoordinator
+    let subscriptionService: SubscriptionService
     @State private var isShowingUpdateProgress = false
+
+    init(
+        viewModel: ProtectionViewModel,
+        updateCoordinator: UpdateCoordinator,
+        subscriptionService: SubscriptionService = StoreKitSubscriptionService()
+    ) {
+        self._viewModel = State(initialValue: viewModel)
+        self.updateCoordinator = updateCoordinator
+        self.subscriptionService = subscriptionService
+    }
 
     var body: some View {
         ScrollView {
@@ -143,7 +154,7 @@ struct SafariProtectionView: View {
                 }
                 Divider().overlay(DesignColors.outlineVariant.opacity(0.2))
                 NavigationLink {
-                    DNSProtectionView()
+                    DNSProtectionView(subscriptionService: subscriptionService)
                 } label: {
                     configurationRow(
                         icon: "lock.shield.fill",
@@ -200,7 +211,7 @@ struct SafariProtectionView: View {
             }
             Spacer()
             NavigationLink("premium.action.upgrade") {
-                PremiumView(viewModel: PremiumViewModel(service: MockSubscriptionService()))
+                PremiumView(viewModel: PremiumViewModel(service: subscriptionService))
             }
             .font(DesignTypography.bodyLarge)
             .fontWeight(.bold)
@@ -228,7 +239,8 @@ struct SafariProtectionView: View {
             viewModel: ProtectionViewModel(service: MockProtectionService()),
             updateCoordinator: AppCompositionRoot.makeUpdateCoordinator(
                 pipeline: AppCompositionRoot.makeFilterPipeline(store: store), store: store
-            )
+            ),
+            subscriptionService: MockSubscriptionService()
         )
     }
 }

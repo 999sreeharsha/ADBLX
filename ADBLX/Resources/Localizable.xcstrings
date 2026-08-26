@@ -1,22 +1,158 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "card.preview.title" : {
+    "" : {
+
+    },
+    "%@, %@ %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@, %2$@ %3$@"
+          }
+        }
+      }
+    },
+    "about.footer.copyright" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Safari Protection"
+            "value" : "© 2026 ADBLX. All rights reserved."
+          }
+        }
+      }
+    },
+    "about.link.privacyPolicy" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Privacy Policy"
+          }
+        }
+      }
+    },
+    "about.link.termsOfService" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Terms of Service"
+          }
+        }
+      }
+    },
+    "about.link.website" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Official Website"
+          }
+        }
+      }
+    },
+    "about.privacy.statement" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zero data collection. Nothing about your browsing ever leaves your device."
+          }
+        }
+      }
+    },
+    "about.row.licenses" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Source Licenses"
+          }
+        }
+      }
+    },
+    "about.section.connect" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connect"
+          }
+        }
+      }
+    },
+    "about.section.legal" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Legal & Open Source"
+          }
+        }
+      }
+    },
+    "about.tagline" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Secure. Swift. Seamless."
+          }
+        }
+      }
+    },
+    "about.title.app" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ADBLX"
+          }
+        }
+      }
+    },
+    "accessibility.value.off" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Off"
+          }
+        }
+      }
+    },
+    "accessibility.value.on" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "On"
           }
         }
       }
     },
     "card.preview.status" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Enabled"
+          }
+        }
+      }
+    },
+    "card.preview.title" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Safari Protection"
           }
         }
       }
@@ -31,27 +167,10 @@
         }
       }
     },
-    "protection.dns.title" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "DNS Protection"
-          }
-        }
-      }
+    "DNS Filtering Spike (8B-0.1A)" : {
+
     },
-    "protection.dns.message" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "System-wide DNS filtering is coming in a future update. Available with Premium."
-          }
-        }
-      }
-    },
-    "primarybutton.preview.title" : {
+    "home.action.reloadSafari" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -61,45 +180,211 @@
         }
       }
     },
-    "settings.row.about" : {
+    "home.action.updateFilters" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "About"
+            "value" : "Update Filters"
           }
         }
       }
     },
-    "togglerow.preview.title" : {
+    "home.activity.filtersSynchronized.title" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ads"
+            "value" : "Filters Synchronized"
           }
         }
       }
     },
-    "togglerow.preview.subtitle" : {
+    "home.badge.secure" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Blocks display and video ads"
+            "value" : "SECURE"
           }
         }
       }
     },
-    "premium.badge.label" : {
+    "home.lastUpdate.never" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Premium"
+            "value" : "Never"
           }
         }
       }
+    },
+    "home.section.monitoring" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "System Monitoring"
+          }
+        }
+      }
+    },
+    "home.section.quickControl" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quick Control"
+          }
+        }
+      }
+    },
+    "home.section.recentActivity" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recent Activity"
+          }
+        }
+      }
+    },
+    "home.stat.dns.detail" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "—"
+          }
+        }
+      }
+    },
+    "home.stat.dns.label" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "DNS"
+          }
+        }
+      }
+    },
+    "home.stat.dns.value" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not configured"
+          }
+        }
+      }
+    },
+    "home.stat.lastUpdate.label" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Last Update"
+          }
+        }
+      }
+    },
+    "home.stat.rules.label" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rules"
+          }
+        }
+      }
+    },
+    "home.stat.safari.detail" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filters Loaded"
+          }
+        }
+      }
+    },
+    "home.stat.safari.label" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Safari"
+          }
+        }
+      }
+    },
+    "home.stat.safari.value" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enabled"
+          }
+        }
+      }
+    },
+    "home.status.active" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Active"
+          }
+        }
+      }
+    },
+    "home.status.disabledDetail" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Protection is off"
+          }
+        }
+      }
+    },
+    "home.status.enabledDetail" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "System-wide protection is enabled"
+          }
+        }
+      }
+    },
+    "home.status.inactive" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inactive"
+          }
+        }
+      }
+    },
+    "home.title.app" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ADBLX"
+          }
+        }
+      }
+    },
+    "Install & Start" : {
+
+    },
+    "Installed:" : {
+
     },
     "navigation.tab.home" : {
       "localizations" : {
@@ -107,16 +392,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Home"
-          }
-        }
-      }
-    },
-    "navigation.tab.protection" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Protection"
           }
         }
       }
@@ -131,6 +406,16 @@
         }
       }
     },
+    "navigation.tab.protection" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Protection"
+          }
+        }
+      }
+    },
     "navigation.tab.settings" : {
       "localizations" : {
         "en" : {
@@ -141,386 +426,1036 @@
         }
       }
     },
-    "onboarding.title.app" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "ADBLX" } } }
-    },
-    "onboarding.subtitle.tagline" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Browse the web in total peace." } } }
-    },
-    "onboarding.feature.privacy.title" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Privacy First" } } }
-    },
-    "onboarding.feature.privacy.body" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Blocks trackers before they ever load — nothing about your browsing leaves your device." } } }
-    },
-    "onboarding.feature.speed.title" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Pure Speed" } } }
-    },
-    "onboarding.feature.speed.body" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Pages load faster with ads and trackers stripped out before rendering." } } }
-    },
-    "onboarding.feature.simplicity.title" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Simplicity" } } }
-    },
-    "onboarding.feature.simplicity.body" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "One toggle. No configuration required." } } }
-    },
-    "onboarding.section.activation" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Activation" } } }
-    },
-    "onboarding.instruction.enable" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "To start blocking, please enable ADBLX in your Safari settings." } } }
-    },
-    "onboarding.step.openSettings" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Open Settings and tap Safari." } } }
-    },
-    "onboarding.step.tapExtensions" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Tap Extensions or Content Blockers." } } }
-    },
-    "onboarding.step.turnOn" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Turn on all ADBLX switches." } } }
-    },
-    "onboarding.section.staySecure.title" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Stay Secure" } } }
-    },
-    "onboarding.section.staySecure.body" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "We'll let you know when filter updates are ready, with a weekly security report." } } }
+    "No" : {
+
     },
     "onboarding.button.getStarted" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Get Started" } } }
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Get Started"
+          }
+        }
+      }
     },
     "onboarding.button.skip" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Skip for now" } } }
-    },
-    "home.title.app" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "ADBLX" } } }
-    },
-    "home.status.active" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Active" } } }
-    },
-    "home.status.inactive" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Inactive" } } }
-    },
-    "home.status.enabledDetail" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "System-wide protection is enabled" } } }
-    },
-    "home.status.disabledDetail" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Protection is off" } } }
-    },
-    "home.badge.secure" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "SECURE" } } }
-    },
-    "home.section.monitoring" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "System Monitoring" } } }
-    },
-    "home.stat.safari.label" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Safari" } } }
-    },
-    "home.stat.safari.value" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Enabled" } } }
-    },
-    "home.stat.safari.detail" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Filters Loaded" } } }
-    },
-    "home.stat.dns.label" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "DNS" } } }
-    },
-    "home.stat.dns.value" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Not configured" } } }
-    },
-    "home.stat.dns.detail" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "—" } } }
-    },
-    "home.stat.lastUpdate.label" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Last Update" } } }
-    },
-    "home.stat.rules.label" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Rules" } } }
-    },
-    "home.section.quickControl" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Quick Control" } } }
-    },
-    "home.action.updateFilters" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Update Filters" } } }
-    },
-    "home.action.reloadSafari" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Reload Safari Blockers" } } }
-    },
-    "home.section.recentActivity" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Recent Activity" } } }
-    },
-    "home.lastUpdate.never" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Never" } } }
-    },
-    "home.activity.filtersSynchronized.title" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Filters Synchronized" } } }
-    },
-    "protection.safari.title" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Safari Protection" } } }
-    },
-    "protection.safari.subtitle" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Highly optimized content blocking for a faster, cleaner browsing experience on iOS." } } }
-    },
-    "protection.safari.badge.active" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "ACTIVE PROTECTION" } } }
-    },
-    "protection.safari.stat.threatsBlocked" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "%@ Threats Blocked" } } }
-    },
-    "protection.safari.stat.period" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Last 24 hours on Safari" } } }
-    },
-    "protection.section.configuration" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Configuration" } } }
-    },
-    "protection.row.advancedFilterLists" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Advanced Filter Lists" } } }
-    },
-    "protection.row.advancedFilterLists.detail" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "4 Enabled" } } }
-    },
-    "protection.row.dnsProtection" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "DNS Protection" } } }
-    },
-    "protection.row.dnsProtection.detail" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Cloudflare" } } }
-    },
-    "protection.row.speedOptimization" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Speed Optimization" } } }
-    },
-    "premium.badge.upsellLabel" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "ADBLX PREMIUM" } } }
-    },
-    "premium.upsell.title" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Unlock AI Blocking" } } }
-    },
-    "premium.upsell.body" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Zero-day threat detection and custom domain firewalling." } } }
-    },
-    "premium.action.upgrade" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Upgrade" } } }
-    },
-    "protection.filterLists.title" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Filter Lists" } } }
-    },
-    "protection.filterLists.subtitle" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Customize your blocking experience by enabling specialized community-maintained lists." } } }
-    },
-    "protection.filterLists.empty" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Filter lists will appear here after the first successful synchronization." } } }
-    },
-    "protection.category.ads" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Ads" } } }
-    },
-    "protection.category.privacy" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Privacy" } } }
-    },
-    "protection.category.annoyances" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Annoyances" } } }
-    },
-    "protection.category.regional" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Regional" } } }
-    },
-    "protection.category.ads.description" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Blocks display and video ads" } } }
-    },
-    "protection.category.privacy.description" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Blocks trackers and analytics scripts" } } }
-    },
-    "protection.category.annoyances.description" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Hides cookie banners and popups" } } }
-    },
-    "protection.category.regional.description" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Extra rules for regional ad networks" } } }
-    },
-    "protection.action.applyChanges" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Apply Changes" } } }
-    },
-    "premium.hero.title" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Unlock Ultimate Privacy" } } }
-    },
-    "premium.hero.subtitle" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Experience a faster, cleaner, and safer web without limits." } } }
-    },
-    "premium.section.selectPlan" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Select a Plan" } } }
-    },
-    "premium.badge.bestValue" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Best Value" } } }
-    },
-    "premium.plan.periodYearly" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "per year" } } }
-    },
-    "premium.plan.periodOneTime" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "one-time" } } }
-    },
-    "premium.section.power" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Premium Power" } } }
-    },
-    "premium.feature.dns.title" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "DNS Protection" } } }
-    },
-    "premium.feature.dns.description" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "System-wide ad blocking via encrypted DNS queries. Blocks trackers in apps beyond the browser." } } }
-    },
-    "premium.feature.backgroundUpdates.title" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Background Updates" } } }
-    },
-    "premium.feature.backgroundUpdates.description" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Blocklists stay fresh automatically. You never have to manually check for new tracker signatures." } } }
-    },
-    "premium.feature.youtube.title" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "YouTube Safari Enhancements" } } }
-    },
-    "premium.feature.youtube.description" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Native-like experience in Safari with no video ads, background play, and PiP support." } } }
-    },
-    "premium.section.comparison" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Comparison" } } }
-    },
-    "premium.comparison.feature" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Feature" } } }
-    },
-    "premium.comparison.free" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Free" } } }
-    },
-    "premium.comparison.premium" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Premium" } } }
-    },
-    "premium.comparison.safariBlocking" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Safari Blocking" } } }
-    },
-    "premium.comparison.dnsProtection" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "DNS Protection" } } }
-    },
-    "premium.comparison.autoUpdates" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Auto Updates" } } }
-    },
-    "premium.comparison.premiumThemes" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Premium Themes" } } }
-    },
-    "premium.action.upgradeToPremium" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Upgrade to Premium" } } }
-    },
-    "premium.action.restore" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Restore" } } }
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skip for now"
+          }
+        }
+      }
+    },
+    "onboarding.feature.privacy.body" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Blocks trackers before they ever load — nothing about your browsing leaves your device."
+          }
+        }
+      }
+    },
+    "onboarding.feature.privacy.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Privacy First"
+          }
+        }
+      }
+    },
+    "onboarding.feature.simplicity.body" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "One toggle. No configuration required."
+          }
+        }
+      }
+    },
+    "onboarding.feature.simplicity.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Simplicity"
+          }
+        }
+      }
+    },
+    "onboarding.feature.speed.body" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pages load faster with ads and trackers stripped out before rendering."
+          }
+        }
+      }
+    },
+    "onboarding.feature.speed.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pure Speed"
+          }
+        }
+      }
+    },
+    "onboarding.instruction.enable" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To start blocking, please enable ADBLX in your Safari settings."
+          }
+        }
+      }
+    },
+    "onboarding.section.activation" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Activation"
+          }
+        }
+      }
+    },
+    "onboarding.section.staySecure.body" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "We'll let you know when filter updates are ready, with a weekly security report."
+          }
+        }
+      }
+    },
+    "onboarding.section.staySecure.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stay Secure"
+          }
+        }
+      }
+    },
+    "onboarding.step.openSettings" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Settings and tap Safari."
+          }
+        }
+      }
+    },
+    "onboarding.step.tapExtensions" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap Extensions or Content Blockers."
+          }
+        }
+      }
+    },
+    "onboarding.step.turnOn" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turn on all ADBLX switches."
+          }
+        }
+      }
+    },
+    "onboarding.subtitle.tagline" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Browse the web in total peace."
+          }
+        }
+      }
+    },
+    "onboarding.title.app" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ADBLX"
+          }
+        }
+      }
     },
     "premium.action.manage" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Manage" } } }
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manage"
+          }
+        }
+      }
+    },
+    "premium.action.restore" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restore"
+          }
+        }
+      }
+    },
+    "premium.action.upgrade" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Upgrade"
+          }
+        }
+      }
+    },
+    "premium.action.upgradeToPremium" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Upgrade to Premium"
+          }
+        }
+      }
+    },
+    "premium.badge.bestValue" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Best Value"
+          }
+        }
+      }
+    },
+    "premium.badge.label" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Premium"
+          }
+        }
+      }
+    },
+    "premium.badge.upsellLabel" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ADBLX PREMIUM"
+          }
+        }
+      }
+    },
+    "premium.comparison.autoUpdates" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auto Updates"
+          }
+        }
+      }
+    },
+    "premium.comparison.dnsProtection" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "DNS Protection"
+          }
+        }
+      }
+    },
+    "premium.comparison.feature" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Feature"
+          }
+        }
+      }
+    },
+    "premium.comparison.free" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Free"
+          }
+        }
+      }
+    },
+    "premium.comparison.premium" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Premium"
+          }
+        }
+      }
+    },
+    "premium.comparison.premiumThemes" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Premium Themes"
+          }
+        }
+      }
+    },
+    "premium.comparison.safariBlocking" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Safari Blocking"
+          }
+        }
+      }
+    },
+    "premium.feature.backgroundUpdates.description" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Blocklists stay fresh automatically. You never have to manually check for new tracker signatures."
+          }
+        }
+      }
+    },
+    "premium.feature.backgroundUpdates.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Background Updates"
+          }
+        }
+      }
+    },
+    "premium.feature.dns.description" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "System-wide ad blocking via encrypted DNS queries. Blocks trackers in apps beyond the browser."
+          }
+        }
+      }
+    },
+    "premium.feature.dns.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "DNS Protection"
+          }
+        }
+      }
+    },
+    "premium.feature.youtube.description" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Native-like experience in Safari with no video ads, background play, and PiP support."
+          }
+        }
+      }
+    },
+    "premium.feature.youtube.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "YouTube Safari Enhancements"
+          }
+        }
+      }
+    },
+    "premium.hero.subtitle" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Experience a faster, cleaner, and safer web without limits."
+          }
+        }
+      }
+    },
+    "premium.hero.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unlock Ultimate Privacy"
+          }
+        }
+      }
     },
     "premium.legal.subscriptionTerms" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "By subscribing, you agree to our Terms of Use and Privacy Policy. Subscriptions automatically renew unless canceled 24 hours before the end of the current period." } } }
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "By subscribing, you agree to our Terms of Use and Privacy Policy. Subscriptions automatically renew unless canceled 24 hours before the end of the current period."
+          }
+        }
+      }
     },
-    "settings.title" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Settings" } } }
+    "premium.plan.periodOneTime" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "one-time"
+          }
+        }
+      }
     },
-    "settings.appearance.system" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "System" } } }
+    "premium.plan.periodYearly" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "per year"
+          }
+        }
+      }
     },
-    "settings.appearance.light" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Light" } } }
+    "premium.section.comparison" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comparison"
+          }
+        }
+      }
     },
-    "settings.appearance.dark" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Dark" } } }
+    "premium.section.power" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Premium Power"
+          }
+        }
+      }
     },
-    "settings.row.iCloudSync" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "iCloud Sync" } } }
+    "premium.section.selectPlan" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select a Plan"
+          }
+        }
+      }
     },
-    "settings.status.on" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "On" } } }
+    "premium.upsell.body" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zero-day threat detection and custom domain firewalling."
+          }
+        }
+      }
     },
-    "settings.status.off" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Off" } } }
+    "premium.upsell.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unlock AI Blocking"
+          }
+        }
+      }
     },
-    "settings.section.allowlist" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Allowlist" } } }
+    "primarybutton.preview.title" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reload Safari Blockers"
+          }
+        }
+      }
     },
-    "settings.placeholder.addDomain" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Add a domain" } } }
+    "protection.action.applyChanges" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apply Changes"
+          }
+        }
+      }
     },
-    "settings.action.add" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Add" } } }
+    "protection.category.ads" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ads"
+          }
+        }
+      }
     },
-    "settings.section.general" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "General" } } }
+    "protection.category.ads.description" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Blocks display and video ads"
+          }
+        }
+      }
     },
-    "settings.row.appearance" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Appearance" } } }
+    "protection.category.annoyances" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Annoyances"
+          }
+        }
+      }
     },
-    "settings.row.language" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Language" } } }
+    "protection.category.annoyances.description" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hides cookie banners and popups"
+          }
+        }
+      }
     },
-    "settings.row.notifications" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Notifications" } } }
+    "protection.category.privacy" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Privacy"
+          }
+        }
+      }
     },
-    "settings.notifications.comingSoon.message" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Notification settings are coming in a future update." } } }
+    "protection.category.privacy.description" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Blocks trackers and analytics scripts"
+          }
+        }
+      }
     },
-    "settings.row.safariHelp" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Safari Help" } } }
+    "protection.category.regional" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Regional"
+          }
+        }
+      }
     },
-    "settings.safariHelp.comingSoon.message" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Safari setup help is coming in a future update." } } }
+    "protection.category.regional.description" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Extra rules for regional ad networks"
+          }
+        }
+      }
     },
-    "about.title.app" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "ADBLX" } } }
+    "protection.dns.message" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "System-wide DNS filtering is coming in a future update. Available with Premium."
+          }
+        }
+      }
     },
-    "about.tagline" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Secure. Swift. Seamless." } } }
-    },
-    "about.section.connect" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Connect" } } }
-    },
-    "about.link.website" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Official Website" } } }
-    },
-    "about.section.legal" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Legal & Open Source" } } }
-    },
-    "about.row.licenses" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Open Source Licenses" } } }
-    },
-    "about.footer.copyright" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "© 2026 ADBLX. All rights reserved." } } }
-    },
-    "about.privacy.statement" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Zero data collection. Nothing about your browsing ever leaves your device." } } }
-    },
-    "about.link.privacyPolicy" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Privacy Policy" } } }
-    },
-    "about.link.termsOfService" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Terms of Service" } } }
-    },
-    "updateprogress.status.ready" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Ready to update" } } }
-    },
-    "updateprogress.status.checking" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Checking for updates…" } } }
-    },
-    "updateprogress.status.downloading" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Downloading filter updates…" } } }
-    },
-    "updateprogress.status.installing" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Installing filters…" } } }
-    },
-    "updateprogress.status.complete" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Filters updated" } } }
-    },
-    "updateprogress.status.failed" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Unable to check for updates. Please try again later." } } }
-    },
-    "updateprogress.button.done" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Done" } } }
-    },
-    "accessibility.value.on" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "On" } } }
-    },
-    "accessibility.value.off" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Off" } } }
+    "protection.dns.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "DNS Protection"
+          }
+        }
+      }
     },
     "protection.filterList.accessibility.premiumSuffix" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "%@, premium" } } }
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@, premium"
+          }
+        }
+      }
+    },
+    "protection.filterLists.empty" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filter lists will appear here after the first successful synchronization."
+          }
+        }
+      }
+    },
+    "protection.filterLists.subtitle" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Customize your blocking experience by enabling specialized community-maintained lists."
+          }
+        }
+      }
+    },
+    "protection.filterLists.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filter Lists"
+          }
+        }
+      }
+    },
+    "protection.row.advancedFilterLists" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Advanced Filter Lists"
+          }
+        }
+      }
+    },
+    "protection.row.advancedFilterLists.detail" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "4 Enabled"
+          }
+        }
+      }
+    },
+    "protection.row.dnsProtection" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "DNS Protection"
+          }
+        }
+      }
+    },
+    "protection.row.dnsProtection.detail" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cloudflare"
+          }
+        }
+      }
+    },
+    "protection.row.speedOptimization" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Speed Optimization"
+          }
+        }
+      }
+    },
+    "protection.safari.badge.active" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ACTIVE PROTECTION"
+          }
+        }
+      }
+    },
+    "protection.safari.stat.period" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Last 24 hours on Safari"
+          }
+        }
+      }
+    },
+    "protection.safari.stat.threatsBlocked" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ Threats Blocked"
+          }
+        }
+      }
+    },
+    "protection.safari.subtitle" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Highly optimized content blocking for a faster, cleaner browsing experience on iOS."
+          }
+        }
+      }
+    },
+    "protection.safari.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Safari Protection"
+          }
+        }
+      }
+    },
+    "protection.section.configuration" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Configuration"
+          }
+        }
+      }
+    },
+    "settings.action.add" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add"
+          }
+        }
+      }
+    },
+    "settings.appearance.dark" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dark"
+          }
+        }
+      }
+    },
+    "settings.appearance.light" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Light"
+          }
+        }
+      }
+    },
+    "settings.appearance.system" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "System"
+          }
+        }
+      }
+    },
+    "settings.notifications.comingSoon.message" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Notification settings are coming in a future update."
+          }
+        }
+      }
+    },
+    "settings.placeholder.addDomain" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add a domain"
+          }
+        }
+      }
+    },
+    "settings.row.about" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "About"
+          }
+        }
+      }
+    },
+    "settings.row.appearance" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Appearance"
+          }
+        }
+      }
+    },
+    "settings.row.iCloudSync" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud Sync"
+          }
+        }
+      }
+    },
+    "settings.row.language" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Language"
+          }
+        }
+      }
+    },
+    "settings.row.notifications" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Notifications"
+          }
+        }
+      }
+    },
+    "settings.row.safariHelp" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Safari Help"
+          }
+        }
+      }
+    },
+    "settings.safariHelp.comingSoon.message" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Safari setup help is coming in a future update."
+          }
+        }
+      }
+    },
+    "settings.section.allowlist" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Allowlist"
+          }
+        }
+      }
+    },
+    "settings.section.general" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "General"
+          }
+        }
+      }
+    },
+    "settings.status.off" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Off"
+          }
+        }
+      }
+    },
+    "settings.status.on" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "On"
+          }
+        }
+      }
+    },
+    "settings.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Settings"
+          }
+        }
+      }
+    },
+    "Status:" : {
+
+    },
+    "Stop" : {
+
+    },
+    "togglerow.preview.subtitle" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Blocks display and video ads"
+          }
+        }
+      }
+    },
+    "togglerow.preview.title" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ads"
+          }
+        }
+      }
+    },
+    "updateprogress.button.done" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Done"
+          }
+        }
+      }
+    },
+    "updateprogress.status.checking" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Checking for updates…"
+          }
+        }
+      }
+    },
+    "updateprogress.status.complete" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filters updated"
+          }
+        }
+      }
+    },
+    "updateprogress.status.downloading" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Downloading filter updates…"
+          }
+        }
+      }
+    },
+    "updateprogress.status.failed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unable to check for updates. Please try again later."
+          }
+        }
+      }
+    },
+    "updateprogress.status.installing" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Installing filters…"
+          }
+        }
+      }
+    },
+    "updateprogress.status.ready" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ready to update"
+          }
+        }
+      }
+    },
+    "v%@" : {
+
+    },
+    "v4.2.0" : {
+
+    },
+    "Yes" : {
+
     }
   },
   "version" : "1.0"

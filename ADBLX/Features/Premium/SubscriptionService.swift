@@ -20,6 +20,7 @@ struct SubscriptionStatus: Equatable {
 protocol SubscriptionService: Sendable {
     func fetchStatus() async -> SubscriptionStatus
     func purchase(_ planID: String) async throws -> Bool
+    func restorePurchases() async throws
 }
 
 /// Narrow, background-safe entitlement check — distinct from `SubscriptionService`
@@ -47,6 +48,8 @@ struct MockSubscriptionService: SubscriptionService, EntitlementService {
     }
 
     func purchase(_ planID: String) async throws -> Bool { true }
+
+    func restorePurchases() async throws {}
 
     func isPremiumEntitled() async -> Bool { false }
 }
