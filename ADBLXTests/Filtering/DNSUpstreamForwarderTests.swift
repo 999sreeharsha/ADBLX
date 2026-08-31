@@ -92,9 +92,9 @@ final class DNSUpstreamForwarderTests: XCTestCase {
             socketFactory: { _, _, _ in mockSocket }
         )
         
-        let responsesLock = OSAllocatedUnfairLock(initialState: [Data]())
-        try await forwarder.start { responsePacket in
-            responsesLock.withLock { $0.append(responsePacket) }
+        let responsesLock = OSAllocatedUnfairLock(initialState: [(Data, IPVersion)]())
+        try await forwarder.start { responsePacket, ipVersion in
+            responsesLock.withLock { $0.append((responsePacket, ipVersion)) }
         }
         
         var queries: [(packet: Data, query: ParsedDNSQuery)] = []
@@ -140,8 +140,9 @@ final class DNSUpstreamForwarderTests: XCTestCase {
         let receivedResponses = responsesLock.withLock { $0 }
         XCTAssertEqual(receivedResponses.count, 10)
         
-        // Verify every response has the original clientTxID (0x1111) restored!
-        for resp in receivedResponses {
+        // Verify every response has the original clientTxID (0x1111) restored and IPVersion .v4
+        for (resp, ipVer) in receivedResponses {
+            XCTAssertEqual(ipVer, .v4)
             resp.withUnsafeBytes { raw in
                 let base = raw.baseAddress!.assumingMemoryBound(to: UInt8.self)
                 let clientTxID = (UInt16(base[28]) << 8) | UInt16(base[29])
@@ -160,7 +161,7 @@ final class DNSUpstreamForwarderTests: XCTestCase {
             socketFactory: { _, _, _ in mockSocket }
         )
         
-        try await forwarder.start { _ in }
+        try await forwarder.start { _, _ in }
         
         let (pkt, q) = makeIPv4DNSQuery(domain: "timeout.com", txID: 0x9999)
         let result = await forwarder.forward(query: q, originalPacket: pkt)
@@ -183,9 +184,9 @@ final class DNSUpstreamForwarderTests: XCTestCase {
             socketFactory: { _, _, _ in mockSocket }
         )
         
-        let writtenPacketsLock = OSAllocatedUnfairLock(initialState: [Data]())
-        try await forwarder.start { pkt in
-            writtenPacketsLock.withLock { $0.append(pkt) }
+        let writtenPacketsLock = OSAllocatedUnfairLock(initialState: [(Data, IPVersion)]())
+        try await forwarder.start { pkt, ipVer in
+            writtenPacketsLock.withLock { $0.append((pkt, ipVer)) }
         }
         
         let (pkt1, q1) = makeIPv4DNSQuery(domain: "site1.com", txID: 1)
@@ -203,8 +204,9 @@ final class DNSUpstreamForwarderTests: XCTestCase {
         // Verify immediate SERVFAIL packet was emitted for the 3rd query
         let written = writtenPacketsLock.withLock { $0 }
         XCTAssertEqual(written.count, 1, "Immediate SERVFAIL response must be emitted on capacity exhaustion")
+        XCTAssertEqual(written[0].1, .v4)
         
-        written[0].withUnsafeBytes { raw in
+        written[0].0.withUnsafeBytes { raw in
             let base = raw.baseAddress!.assumingMemoryBound(to: UInt8.self)
             let flags = (UInt16(base[30]) << 8) | UInt16(base[31])
             let rcode = flags & 0x000F
@@ -219,9 +221,9 @@ final class DNSUpstreamForwarderTests: XCTestCase {
             socketFactory: { _, _, _ in mockSocket }
         )
         
-        let writtenPacketsLock = OSAllocatedUnfairLock(initialState: [Data]())
-        try await forwarder.start { pkt in
-            writtenPacketsLock.withLock { $0.append(pkt) }
+        let writtenPacketsLock = OSAllocatedUnfairLock(initialState: [(Data, IPVersion)]())
+        try await forwarder.start { pkt, ipVer in
+            writtenPacketsLock.withLock { $0.append((pkt, ipVer)) }
         }
         
         let (pkt, q) = makeIPv4DNSQuery(domain: "secure.com", txID: 0xABCD)
@@ -271,7 +273,7 @@ final class DNSUpstreamForwarderTests: XCTestCase {
             }
         )
         
-        try await forwarder.start { _ in }
+        try await forwarder.start { _, _ in }
         
         let (pkt, q) = makeIPv4DNSQuery(domain: "test.com", txID: 0x4444)
         _ = await forwarder.forward(query: q, originalPacket: pkt)
@@ -298,6 +300,54 @@ final class DNSUpstreamForwarderTests: XCTestCase {
             XCTAssertGreaterThan(uTxID, 0)
         } else {
             XCTFail("Query failed to forward after reconfiguration: \(r2)")
+        }
+    }
+    
+    func testRapidSynchronousResponseDoesNotRaceWithForward() async throws {
+        final class SynchronousEchoSocket: DNSUpstreamSocketProtocol, @unchecked Sendable {
+            private var handler: (@Sendable (Data, String, UInt16) -> Void)?
+            
+            func send(payload: Data) async throws {
+                // Immediately simulate response during send call
+                let txID = (UInt16(payload[0]) << 8) | UInt16(payload[1])
+                var resp = Data([
+                    UInt8((txID >> 8) & 0xFF), UInt8(txID & 0xFF),
+                    0x81, 0x80,
+                    0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00
+                ])
+                resp.append(contentsOf: [0x04, 0x74, 0x65, 0x73, 0x74, 0x00, 0x00, 0x01, 0x00, 0x01])
+                handler?(resp, "9.9.9.9", 53)
+            }
+            
+            func setResponseHandler(_ handler: @escaping @Sendable (Data, String, UInt16) -> Void) {
+                self.handler = handler
+            }
+            
+            func close() {}
+        }
+        
+        let echoSocket = SynchronousEchoSocket()
+        let forwarder = DNSUpstreamForwarder(
+            config: UpstreamResolverConfig(ipv4Address: "9.9.9.9", ipv6Address: nil),
+            socketFactory: { _, _, _ in echoSocket }
+        )
+        
+        let responseReceived = OSAllocatedUnfairLock(initialState: false)
+        try await forwarder.start { _, _ in
+            responseReceived.withLock { $0 = true }
+        }
+        
+        let (pkt, q) = makeIPv4DNSQuery(domain: "test.com", txID: 0x7777)
+        let res = await forwarder.forward(query: q, originalPacket: pkt)
+        
+        if case .forwarded = res {
+            // Allow event loop to process
+            try await Task.sleep(nanoseconds: 50_000_000)
+            XCTAssertTrue(responseReceived.withLock { $0 }, "Immediate response must be captured without race condition drop")
+            let inFlight = await forwarder.activeInFlightCount
+            XCTAssertEqual(inFlight, 0, "In-flight table must be cleared when immediate response is received")
+        } else {
+            XCTFail("Forwarding failed")
         }
     }
 }

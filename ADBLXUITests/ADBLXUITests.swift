@@ -35,12 +35,8 @@ final class ADBLXUITests: XCTestCase {
 
     @MainActor
     func testColdLaunchPerformanceWithLaunchMetric() throws {
-        let options = XCTMeasureOptions()
-        options.iterationCount = 5
-        
-        measure(metrics: [XCTApplicationLaunchMetric(waitUntilResponsive: true)], options: options) {
-            let app = XCUIApplication()
-            app.launch()
+        measure(metrics: [XCTApplicationLaunchMetric(waitUntilResponsive: true)]) {
+            XCUIApplication().launch()
         }
     }
 }

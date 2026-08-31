@@ -40,7 +40,7 @@ struct RealProtectionServiceTests {
             InstalledFilter(
                 id: "easylist-extra", group: .ads, installedVersion: "1", checksumSHA256: "b",
                 lastUpdated: Date(), ruleCount: 62_000
-            ),
+            )
         ]
         let data = try JSONEncoder().encode(filters)
         try await filterStore.writeMetadata(data, filename: "installed_filters.json")
@@ -73,7 +73,7 @@ struct RealProtectionServiceTests {
             InstalledFilter(
                 id: "easylist", group: .ads, installedVersion: "1", checksumSHA256: "a",
                 lastUpdated: Date(), ruleCount: 62_000
-            ),
+            )
         ]
         let data = try JSONEncoder().encode(filters)
         try await filterStore.writeMetadata(data, filename: "installed_filters.json")
@@ -84,5 +84,96 @@ struct RealProtectionServiceTests {
 
         let status = await service.fetchStatus()
         #expect(status.filterLists.first?.isEnabled == false)
+    }
+
+    @Test("masterState aggregates correctly based on participating blockers and Settings states")
+    func masterStateAggregation() async throws {
+        let (filterStore, preferencesStore) = try await makeStores()
+        let mockProvider = MockContentBlockerStateProvider(states: [
+            "com.ADBLX.ADBLX.AdsBlocker": .enabled,
+            "com.ADBLX.ADBLX.PrivacyBlocker": .disabled
+        ])
+
+        let descriptors = [
+            ContentBlockerDescriptor(
+                category: .ads,
+                extensionIdentifier: "com.ADBLX.ADBLX.AdsBlocker",
+                participatesInProtectionStatus: true
+            ),
+            ContentBlockerDescriptor(
+                category: .privacy,
+                extensionIdentifier: "com.ADBLX.ADBLX.PrivacyBlocker",
+                participatesInProtectionStatus: true
+            ),
+            ContentBlockerDescriptor(
+                category: .annoyances,
+                extensionIdentifier: "com.ADBLX.ADBLX.AnnoyancesBlocker",
+                participatesInProtectionStatus: false
+            ),
+            ContentBlockerDescriptor(
+                category: .regional,
+                extensionIdentifier: "com.ADBLX.ADBLX.RegionalBlocker",
+                participatesInProtectionStatus: false
+            )
+        ]
+
+        let service = RealProtectionService(
+            store: filterStore,
+            preferencesStore: preferencesStore,
+            stateProvider: mockProvider,
+            descriptors: descriptors
+        )
+
+        // Case 1: Ads enabled, Privacy disabled in Settings -> partiallyActive
+        var status = await service.fetchStatus()
+        #expect(status.masterState == .partiallyActive)
+
+        // Case 2: Privacy is also enabled in Settings -> active
+        await mockProvider.setState(.enabled, for: "com.ADBLX.ADBLX.PrivacyBlocker")
+        status = await service.fetchStatus()
+        #expect(status.masterState == .active)
+
+        // Case 3: Both disabled in Settings -> disabledInSettings
+        await mockProvider.setState(.disabled, for: "com.ADBLX.ADBLX.AdsBlocker")
+        await mockProvider.setState(.disabled, for: "com.ADBLX.ADBLX.PrivacyBlocker")
+        status = await service.fetchStatus()
+        #expect(status.masterState == .disabledInSettings)
+
+        // Case 4: User disables both in app preferences -> disabledByUser
+        await service.setCategory(.ads, enabled: false)
+        await service.setCategory(.privacy, enabled: false)
+        status = await service.fetchStatus()
+        #expect(status.masterState == .disabledByUser)
+
+        // Case 5: One participating is unavailable -> unavailable
+        await service.setCategory(.ads, enabled: true)
+        await mockProvider.setState(.unavailable("Disk Error"), for: "com.ADBLX.ADBLX.AdsBlocker")
+        status = await service.fetchStatus()
+        #expect(status.masterState == .unavailable)
+    }
+
+    @Test("Settings state never pollutes or mutates FilterPreferencesStore")
+    func settingsStateDoesNotOverwritePreferences() async throws {
+        let (filterStore, preferencesStore) = try await makeStores()
+        let mockProvider = MockContentBlockerStateProvider(states: [
+            "com.ADBLX.ADBLX.AdsBlocker": .disabled
+        ])
+
+        let service = RealProtectionService(
+            store: filterStore,
+            preferencesStore: preferencesStore,
+            stateProvider: mockProvider
+        )
+
+        // Extension is disabled in Settings, but preference was default true
+        let status = await service.fetchStatus()
+        let adsCategory = status.categories.first { $0.id == .ads }
+        #expect(adsCategory?.preferenceEnabled == true)
+        #expect(adsCategory?.extensionSettingsState == .disabled)
+        #expect(adsCategory?.status == .disabledInSettings)
+
+        // Verify direct stored preferences did NOT change
+        let prefs = await preferencesStore.load()
+        #expect(prefs.categories[.ads] == true)
     }
 }

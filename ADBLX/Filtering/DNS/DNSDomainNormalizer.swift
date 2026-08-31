@@ -1,6 +1,10 @@
 import Foundation
 
 public enum DNSDomainNormalizer {
+    /// Lines matching AdBlock cosmetic/procedural filter syntax are not
+    /// domain data under any interpretation and must be rejected outright.
+    private static let cosmeticFilterMarkers = ["##", "#?#", "#@#", "#$#", "#%#"]
+
     /// Normalizes a raw blocklist or allowlist rule line into a canonical reversed-label domain string.
     ///
     /// Examples:
@@ -18,32 +22,40 @@ public enum DNSDomainNormalizer {
             return nil
         }
         
-        // Strip inline comments
+        // 2. Reject cosmetic/procedural rules before ANY comment-stripping logic runs
+        if cosmeticFilterMarkers.contains(where: trimmed.contains) {
+            return nil
+        }
+        
+        // 3. Reject ABP exception rules outright (never invert @@ into a block directive)
+        if trimmed.hasPrefix("@@") {
+            return nil
+        }
+        
+        // Strip inline comments (hosts format: "127.0.0.1 domain.com # comment")
         if let hashIdx = trimmed.firstIndex(of: "#") {
             trimmed = String(trimmed[..<hashIdx]).trimmingCharacters(in: .whitespacesAndNewlines)
         }
-        
         if trimmed.isEmpty { return nil }
         
-        // 2. Strip ABP decorations: ||...^
+        // 4. Parse ABP Syntax: extract domain up to '^' or '$' delimiter
         if trimmed.hasPrefix("||") {
             trimmed = String(trimmed.dropFirst(2))
-        }
-        if trimmed.hasSuffix("^") {
-            trimmed = String(trimmed.dropLast(1))
-        }
-        // If it starts with @@|| (allowlist rule)
-        if trimmed.hasPrefix("@@") {
-            trimmed = String(trimmed.dropFirst(2))
-            if trimmed.hasPrefix("||") {
-                trimmed = String(trimmed.dropFirst(2))
+            
+            // If '$' option modifiers are present (e.g. $third-party, $image, $script, $domain=),
+            // this is a context-dependent content blocker rule, not an unconditional DNS rule.
+            // Suffix walk on DNS cannot evaluate HTTP context; reject to prevent collateral damage.
+            if trimmed.contains("$") {
+                return nil
             }
-            if trimmed.hasSuffix("^") {
-                trimmed = String(trimmed.dropLast(1))
+            
+            // Extract domain up to separator '^'
+            if let caretIdx = trimmed.firstIndex(of: "^") {
+                trimmed = String(trimmed[..<caretIdx])
             }
         }
         
-        // 3. Strip Hosts IP prefixes (e.g. "0.0.0.0 ", "127.0.0.1 ")
+        // 5. Strip Hosts IP prefixes (e.g. "0.0.0.0 ", "127.0.0.1 ")
         let tokens = trimmed.split(whereSeparator: { $0.isWhitespace })
         guard let candidateToken = tokens.first(where: { token in
             token != "0.0.0.0" && token != "127.0.0.1" && token != "::1" && token != "broadcasthost" && token != "local" && token != "localhost"
@@ -52,16 +64,13 @@ public enum DNSDomainNormalizer {
         }
         
         var domain = String(candidateToken).lowercased()
-        
-        // Strip leading/trailing dots
         while domain.hasPrefix(".") { domain.removeFirst() }
         while domain.hasSuffix(".") { domain.removeLast() }
-        
         guard !domain.isEmpty else { return nil }
         
-        // 4. Validate Domain Syntax (Strict rejection of wildcards, slashes, ports, IPs)
-        // Discard unsupported in-string wildcards to avoid broadening blocks
-        if domain.contains("*") || domain.contains("/") || domain.contains(":") || domain.contains("?") || domain.contains("@") {
+        // 6. Strict Syntax Validation (Strict rejection of wildcards, slashes, ports, IPs, carets, dollars)
+        let invalidChars: [Character] = ["*", "/", ":", "?", "@", "^", "$"]
+        if invalidChars.contains(where: { domain.contains($0) }) {
             return nil
         }
         

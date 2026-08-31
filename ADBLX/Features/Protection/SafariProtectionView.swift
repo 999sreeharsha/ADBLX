@@ -5,7 +5,9 @@ struct SafariProtectionView: View {
     @State var viewModel: ProtectionViewModel
     let updateCoordinator: UpdateCoordinator
     let subscriptionService: SubscriptionService
+    @Environment(\.scenePhase) private var scenePhase
     @State private var isShowingUpdateProgress = false
+    @State private var isShowingBrokenSiteReport = false
 
     init(
         viewModel: ProtectionViewModel,
@@ -32,9 +34,36 @@ struct SafariProtectionView: View {
             .padding(DesignSpacing.containerPadding)
         }
         .background(DesignColors.background)
-        .task { await viewModel.load() }
+        .task { await viewModel.refreshProtectionStatus(reason: .initialLoad) }
+        .refreshable { await viewModel.refreshProtectionStatus(reason: .pullToRefresh) }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active {
+                Task { await viewModel.refreshProtectionStatus(reason: .foreground) }
+            }
+        }
         .sheet(isPresented: $isShowingUpdateProgress) {
             UpdateProgressSheet(model: UpdateProgressModel(), coordinator: updateCoordinator)
+        }
+        .sheet(isPresented: $isShowingBrokenSiteReport) {
+            BrokenSiteReportView(
+                viewModel: BrokenSiteReportViewModel(
+                    reporter: AppCompositionRoot.makeBrokenSiteReporter(store: AppCompositionRoot.makeFilterStore())
+                )
+            )
+        }
+        .alert(
+            Text("protection.settingsAlert.title"),
+            isPresented: $viewModel.showSettingsPrompt,
+            presenting: viewModel.pendingSettingsCategory
+        ) { _ in
+            Button("protection.settingsAlert.openSettings") {
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
+                }
+            }
+            Button("protection.settingsAlert.notNow", role: .cancel) { }
+        } message: { category in
+            Text(String(format: String(localized: "protection.settingsAlert.message"), category.name, category.name))
         }
     }
 
@@ -49,16 +78,46 @@ struct SafariProtectionView: View {
         }
     }
 
+    private var masterBadgeLabel: LocalizedStringKey {
+        switch viewModel.status?.masterState {
+        case .active:
+            return "protection.safari.badge.active"
+        case .partiallyActive:
+            return "protection.safari.badge.partiallyActive"
+        case .disabledInSettings:
+            return "protection.safari.badge.disabledInSettings"
+        case .disabledByUser:
+            return "protection.safari.badge.disabledByUser"
+        case .unavailable, .none:
+            return "protection.safari.badge.unavailable"
+        }
+    }
+
+    private var masterBadgeColor: Color {
+        switch viewModel.status?.masterState {
+        case .active:
+            return DesignColors.secondary
+        case .partiallyActive:
+            return Color.yellow
+        case .disabledInSettings:
+            return Color.orange
+        case .disabledByUser:
+            return DesignColors.onSurfaceVariant
+        case .unavailable, .none:
+            return DesignColors.outline
+        }
+    }
+
     private var heroCard: some View {
         VStack(alignment: .leading, spacing: DesignSpacing.base) {
             Spacer()
             HStack(spacing: DesignSpacing.base) {
                 Circle()
-                    .fill(DesignColors.secondary)
+                    .fill(masterBadgeColor)
                     .frame(width: 8, height: 8)
-                Text("protection.safari.badge.active")
+                Text(masterBadgeLabel)
                     .font(DesignTypography.labelCaps)
-                    .foregroundStyle(DesignColors.secondary)
+                    .foregroundStyle(masterBadgeColor)
             }
             Text(String(format: String(localized: "protection.safari.stat.threatsBlocked"), 4281.formatted()))
                 .font(DesignTypography.headlineMedium)
@@ -87,14 +146,14 @@ struct SafariProtectionView: View {
             HStack(alignment: .top) {
                 ZStack {
                     Circle()
-                        .fill(categoryIconColor(category.id).opacity(0.1))
+                        .fill(categoryIconColor(category.id).opacity(category.isEffectivelyActive ? 0.1 : 0.05))
                         .frame(width: 40, height: 40)
                     Image(systemName: categoryIcon(category.id))
-                        .foregroundStyle(categoryIconColor(category.id))
+                        .foregroundStyle(category.isEffectivelyActive ? categoryIconColor(category.id) : DesignColors.onSurfaceVariant)
                 }
                 Spacer()
                 Toggle("", isOn: Binding(
-                    get: { viewModel.status?.categories[index].isEnabled ?? false },
+                    get: { viewModel.status?.categories[index].isEffectivelyActive ?? false },
                     set: { _ in Task { await viewModel.toggleCategory(category.id) } }
                 ))
                 .labelsHidden()
@@ -103,7 +162,29 @@ struct SafariProtectionView: View {
             VStack(alignment: .leading, spacing: DesignSpacing.base / 2) {
                 Text(category.name)
                     .font(DesignTypography.headlineMedium)
-                    .foregroundStyle(DesignColors.onSurface)
+                    .foregroundStyle(category.isEffectivelyActive ? DesignColors.onSurface : DesignColors.onSurfaceVariant)
+
+                switch category.status {
+                case .disabledInSettings:
+                    HStack(spacing: 4) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.caption2)
+                        Text("protection.category.status.disabledInSettings")
+                            .font(DesignTypography.labelCaps)
+                    }
+                    .foregroundStyle(Color.orange)
+                case .unavailable:
+                    HStack(spacing: 4) {
+                        Image(systemName: "questionmark.circle.fill")
+                            .font(.caption2)
+                        Text("protection.category.status.unavailable")
+                            .font(DesignTypography.labelCaps)
+                    }
+                    .foregroundStyle(DesignColors.onSurfaceVariant)
+                case .active, .disabledByUser:
+                    EmptyView()
+                }
+
                 Text(category.description)
                     .font(DesignTypography.bodySmall)
                     .foregroundStyle(DesignColors.onSurfaceVariant)
@@ -164,14 +245,36 @@ struct SafariProtectionView: View {
                     )
                 }
                 Divider().overlay(DesignColors.outlineVariant.opacity(0.2))
-                configurationRow(icon: "bolt.fill", iconColor: DesignColors.primary, titleKey: "protection.row.speedOptimization", detailKey: nil)
+                configurationRow(
+                    icon: "bolt.fill",
+                    iconColor: DesignColors.primary,
+                    titleKey: "protection.row.speedOptimization",
+                    detailKey: nil
+                )
+                Divider().overlay(DesignColors.outlineVariant.opacity(0.2))
+                Button {
+                    isShowingBrokenSiteReport = true
+                } label: {
+                    configurationRow(
+                        icon: "exclamationmark.bubble.fill",
+                        iconColor: DesignColors.secondary,
+                        titleKey: "brokenSite.row.title",
+                        detailKey: "brokenSite.row.detail"
+                    )
+                }
+                .buttonStyle(.plain)
             }
             .background(DesignColors.surfaceContainer)
             .clipShape(RoundedRectangle(cornerRadius: DesignShape.defaultCornerRadius * 2))
         }
     }
 
-    private func configurationRow(icon: String, iconColor: Color, titleKey: LocalizedStringKey, detailKey: LocalizedStringKey?) -> some View {
+    private func configurationRow(
+        icon: String,
+        iconColor: Color,
+        titleKey: LocalizedStringKey,
+        detailKey: LocalizedStringKey?
+    ) -> some View {
         HStack {
             Image(systemName: icon)
                 .foregroundStyle(iconColor)

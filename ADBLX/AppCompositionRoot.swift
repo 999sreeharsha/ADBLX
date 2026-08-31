@@ -17,12 +17,15 @@ struct AppManifestEndpointProvider: ManifestEndpointProvider {
 /// so swapping PassthroughRuleCompiler for a SafariConverterLib-backed implementation (post
 /// ADR-0001) only ever changes this file.
 public enum AppCompositionRoot {
-    static let extensionIdentifiers = GroupExtensionIdentifiers(
-        ads: "com.ADBLX.ADBLX.AdsBlocker",
-        privacy: "com.ADBLX.ADBLX.PrivacyBlocker",
-        annoyances: "com.ADBLX.ADBLX.AnnoyancesBlocker",
-        regional: "com.ADBLX.ADBLX.RegionalBlocker"
-    )
+    static var extensionIdentifiers: GroupExtensionIdentifiers {
+        let base = Bundle.main.bundleIdentifier ?? "com.ADBLX.ADBLX"
+        return GroupExtensionIdentifiers(
+            ads: "\(base).AdsBlocker",
+            privacy: "\(base).PrivacyBlocker",
+            annoyances: "\(base).AnnoyancesBlocker",
+            regional: "\(base).RegionalBlocker"
+        )
+    }
 
     /// The single `FilterStore` instance shared by `FilterPipeline`, `UpdateCoordinator`,
     /// and every real UI service that reads App Group metadata. Callers must not construct
@@ -144,6 +147,30 @@ public enum AppCompositionRoot {
         )
     }
 
+    static func makeBrokenSiteReporter(store: FilterStore) -> BrokenSiteReporting {
+        let allowlistStore = makeAllowlistStore(store: store)
+        let manifestStore = ManifestStore(filterStore: store)
+        let dnsSettingsStore = DNSProtectionSettingsStore()
+        return RealBrokenSiteReporter(
+            allowlistStore: allowlistStore,
+            manifestStore: manifestStore,
+            dnsSettingsStore: dnsSettingsStore,
+            session: makeHTTPSession()
+        )
+    }
+
+    static func makeICloudSyncCoordinator(
+        store: FilterStore,
+        pipeline: FilterPipeline? = nil
+    ) -> ICloudSyncCoordinator {
+        let allowlistStore = makeAllowlistStore(store: store)
+        return ICloudSyncCoordinator(
+            allowlistStore: allowlistStore,
+            pipeline: pipeline,
+            entitlementService: makeSubscriptionService()
+        )
+    }
+
     /// Holds every UI-facing service the app's screens depend on. Screens never
     /// construct services themselves — they receive them from here (or, in tests,
     /// construct their own mocks directly). Real implementations replace the
@@ -155,6 +182,7 @@ public enum AppCompositionRoot {
         let subscriptionService: SubscriptionService
         let settingsService: SettingsService
         let updateCoordinator: UpdateCoordinator
+        let brokenSiteReporter: BrokenSiteReporting
     }
 
     /// Selects which set of backend implementations UIDependencies is built from.
@@ -175,12 +203,18 @@ public enum AppCompositionRoot {
         case .mock:
             let preferencesStore = makeFilterPreferencesStore(store: store)
             let allowlistStore = makeAllowlistStore(store: store)
+            let syncCoordinator = makeICloudSyncCoordinator(store: store, pipeline: pipeline)
             return UIDependencies(
                 homeService: RealHomeService(store: store),
                 protectionService: RealProtectionService(store: store, preferencesStore: preferencesStore),
                 subscriptionService: makeSubscriptionService(),
-                settingsService: RealSettingsService(allowlistStore: allowlistStore, pipeline: pipeline),
-                updateCoordinator: updateCoordinator
+                settingsService: RealSettingsService(
+                    allowlistStore: allowlistStore,
+                    pipeline: pipeline,
+                    iCloudSyncCoordinator: syncCoordinator
+                ),
+                updateCoordinator: updateCoordinator,
+                brokenSiteReporter: makeBrokenSiteReporter(store: store)
             )
         }
     }

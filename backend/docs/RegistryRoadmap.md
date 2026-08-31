@@ -28,10 +28,12 @@ No production filter is registered for the Regional group in v1.
 |---|---|---|
 | AdGuard Base | Ads | Overlaps heavily with EasyList; deferred to avoid redundant rules/compile size in v1. |
 | SHIELD proprietary fixes | Ads | Not yet built (PRD Appendix C direction). |
-| Peter Lowe's | Privacy | Listed as CB + DNS in PRD Appendix A; this registry is CB-only for v1, and the list spans both layers. |
 | `shield-india` | Regional | Not yet built — requires the publisher audit in PRD Appendix C. |
 | EasyList regional variants | Regional | No specific variant selected. |
+| HaGeZi Multi | DNS | Deferred pending licensing attribution review (GPL-3.0) and DNS CDN distribution model. |
 
-DNS-layer-only lists (OISD, HaGeZi Multi) are out of scope entirely until a
-DNS distribution model is designed — see Sprint 6 Commit 1's decision to
-scope the backend to the four Content Blocker `FilterGroup`s.
+## DNS Layer Status
+
+- **Operational Snapshot (v1):** `oisd` and `peter-lowe` are bundled on-device in `ADBLX/Resources/Filters/DNS/` as the initial local operational snapshot (pending open pre-launch legal sign-off per PRD §14 and `agent.md`).
+- **CDN Distribution Model:** DNS blocklist is currently bundled-only with no CDN live-update pathway; every DNS rule change requires a full app release until the DNS registry and manifest pipeline work is designed and integrated.
+- **HaGeZi Multi:** Tracked as a future candidate in the roadmap pending licensing clearance.

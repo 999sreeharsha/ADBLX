@@ -146,6 +146,15 @@ actor FilterStore {
         try? fileManager.removeItem(at: previousRoot)
     }
 
+    /// Discards any leftover snapshot in the `Previous/` directory. Called after a batch
+    /// update commits successfully to ensure no transient snapshot data leaks on disk.
+    func discardRollbackSnapshot() throws {
+        let previousRoot = try previousRootURL()
+        if fileManager.fileExists(atPath: previousRoot.path) {
+            try fileManager.removeItem(at: previousRoot)
+        }
+    }
+
     private func previousRootURL() throws -> URL {
         try containerURL().appendingPathComponent("Previous", isDirectory: true)
     }

@@ -5,6 +5,7 @@ struct SettingsView: View {
     @State var viewModel: SettingsViewModel
     @Binding var appearance: AppearancePreference
     @State private var newDomain = ""
+    @State private var showBrokenSiteReport = false
 
     var body: some View {
         ScrollView {
@@ -61,6 +62,15 @@ struct SettingsView: View {
                         }
                     }
 
+                    Button {
+                        showBrokenSiteReport = true
+                    } label: {
+                        Card {
+                            SettingsRow(titleKey: "brokenSite.row.title", systemImage: "exclamationmark.bubble.fill")
+                        }
+                    }
+                    .buttonStyle(.plain)
+
                     NavigationLink {
                         AboutView()
                     } label: {
@@ -72,6 +82,13 @@ struct SettingsView: View {
                 }
             }
             .padding(DesignSpacing.containerPadding)
+        }
+        .sheet(isPresented: $showBrokenSiteReport) {
+            BrokenSiteReportView(
+                viewModel: BrokenSiteReportViewModel(
+                    reporter: AppCompositionRoot.makeBrokenSiteReporter(store: AppCompositionRoot.makeFilterStore())
+                )
+            )
         }
         .background(DesignColors.background)
         .task { await viewModel.load() }

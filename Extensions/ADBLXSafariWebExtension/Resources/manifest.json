@@ -1,8 +1,7 @@
 {
     "manifest_version": 2,
-    "default_locale": "en",
-    "name": "__MSG_extension_name__",
-    "description": "__MSG_extension_description__",
+    "name": "ADBLX Safari Web Extension",
+    "description": "YouTube Ad Blocker and Video Shield for Safari.",
     "version": "1.0",
     "background": {
         "scripts": ["background.js"],

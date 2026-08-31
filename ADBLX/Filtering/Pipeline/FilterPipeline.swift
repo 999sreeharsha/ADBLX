@@ -208,7 +208,8 @@ actor FilterPipeline {
 
         // WebKit In-Process DFA Ingestion Gate:
         // Validate that Safari's runtime DFA compiler accepts this exact JSON before writing to disk
-        if let jsonString = String(data: partition.json, encoding: .utf8),
+        if partition.ruleCount > 0,
+           let jsonString = String(data: partition.json, encoding: .utf8),
            let dfaStore = WKContentRuleListStore.default() {
             let gateIdentifier = "pipeline_gate_\(composition.group.rawValue)"
             let gateState = Self.signposter.beginInterval("Pipeline.webKitGate", id: Self.signposter.makeSignpostID())

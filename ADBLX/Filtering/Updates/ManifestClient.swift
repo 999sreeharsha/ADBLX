@@ -22,6 +22,7 @@ actor ManifestClient {
 
     func fetch(previousETag: String?) async throws -> ManifestFetchResult {
         var request = URLRequest(url: endpoint)
+        request.cachePolicy = .reloadIgnoringLocalCacheData
         if let previousETag {
             request.setValue(previousETag, forHTTPHeaderField: "If-None-Match")
         }

@@ -10,7 +10,26 @@ final class DNSCompilerTests: XCTestCase {
         XCTAssertEqual(DNSDomainNormalizer.normalizeToReversedDomain(line: "||doubleclick.net^"), "net.doubleclick")
         XCTAssertEqual(DNSDomainNormalizer.normalizeToReversedDomain(line: "||ad.doubleclick.net^"), "net.doubleclick.ad")
         XCTAssertEqual(DNSDomainNormalizer.normalizeToReversedDomain(line: "||sub.sub.doubleclick.net^"), "net.doubleclick.sub.sub")
-        XCTAssertEqual(DNSDomainNormalizer.normalizeToReversedDomain(line: "@@||allow.example.com^"), "com.example.allow")
+    }
+    
+    func testNormalizerRejectsCosmeticAndProceduralFilters() {
+        XCTAssertNil(DNSDomainNormalizer.normalizeToReversedDomain(line: "google.com##.GC3LC41DERB"))
+        XCTAssertNil(DNSDomainNormalizer.normalizeToReversedDomain(line: "whatsapp.com###cookie-policy-banner"))
+        XCTAssertNil(DNSDomainNormalizer.normalizeToReversedDomain(line: "example.com#?#div[jsname=\"wA2P2b\"]"))
+        XCTAssertNil(DNSDomainNormalizer.normalizeToReversedDomain(line: "example.com#@#.ad-banner"))
+        XCTAssertNil(DNSDomainNormalizer.normalizeToReversedDomain(line: "example.com#$#style"))
+        XCTAssertNil(DNSDomainNormalizer.normalizeToReversedDomain(line: "example.com#%#script"))
+    }
+    
+    func testNormalizerRejectsExceptionRulesAndDollarOptions() {
+        // Exception rules must never be inverted into block directives
+        XCTAssertNil(DNSDomainNormalizer.normalizeToReversedDomain(line: "@@||allow.example.com^"))
+        XCTAssertNil(DNSDomainNormalizer.normalizeToReversedDomain(line: "@@||google.com^$generichide"))
+        
+        // Rules with context-dependent options must be rejected
+        XCTAssertNil(DNSDomainNormalizer.normalizeToReversedDomain(line: "||google.com^$third-party"))
+        XCTAssertNil(DNSDomainNormalizer.normalizeToReversedDomain(line: "||doubleclick.net^$image,script"))
+        XCTAssertNil(DNSDomainNormalizer.normalizeToReversedDomain(line: "||tracker.com^$domain=example.com"))
     }
     
     func testNormalizerHostsSyntax() {
@@ -97,5 +116,30 @@ final class DNSCompilerTests: XCTestCase {
         let run2 = try compiler.compile(sourceContents: [feed])
         
         XCTAssertEqual(run1, run2, "Compiling identical feeds must produce bit-for-bit identical binary output")
+    }
+    
+    func testInverseAdSubdomainBlockingPreserved() throws {
+        let feed = """
+        0.0.0.0 adservice.google.com
+        0.0.0.0 analytics.google.com
+        ||doubleclick.net^
+        """
+        let compiler = DNSBlocklistCompiler()
+        let binaryData = try compiler.compile(sourceContents: [feed])
+        let header = try DNSArtifactValidator.validate(data: binaryData)
+        let blockArtifact = MappedDNSArtifact(validatedData: binaryData, header: header)
+        let emptyHeader = DNSArtifactHeader(ruleCount: 0, stringBlobSize: 0, payloadCRC32: 0)
+        let emptyAllow = MappedDNSArtifact(validatedData: emptyHeader.serialize(), header: emptyHeader)
+        let snapshot = DNSLookupSnapshot(generation: 1, blocklist: blockArtifact, allowlist: emptyAllow)
+        let engine = DNSLookupEngine(initialSnapshot: snapshot)
+        
+        // Ad subdomains MUST be blocked
+        XCTAssertEqual(engine.lookup(domain: "adservice.google.com"), .block)
+        XCTAssertEqual(engine.lookup(domain: "analytics.google.com"), .block)
+        XCTAssertEqual(engine.lookup(domain: "ad.doubleclick.net"), .block)
+        
+        // Root domains must NOT be blocked
+        XCTAssertEqual(engine.lookup(domain: "google.com"), .allow)
+        XCTAssertEqual(engine.lookup(domain: "www.google.com"), .allow)
     }
 }

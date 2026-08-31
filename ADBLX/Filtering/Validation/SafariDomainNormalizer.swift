@@ -38,6 +38,12 @@ public enum SafariDomainNormalizer: Sendable {
         
         return cleaned
     }
+
+    /// Normalizes raw input and extracts the registrable eTLD+1 domain using PublicSuffixList.
+    public static func extractETLDPlusOne(input: String) throws -> String {
+        let normalized = try normalize(input: input)
+        return PublicSuffixList.extractETLDPlusOne(from: normalized)
+    }
     
     private static func stripABPPrefixes(_ input: String) -> String {
         var text = input

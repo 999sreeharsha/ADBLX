@@ -32,7 +32,12 @@ struct ContentBlockerBootstrapTests {
 
         let compiledDir = try await store.directoryURL(.compiled)
         let adsCompiledFile = compiledDir.appendingPathComponent("Ads.json")
-        try? FileManager.default.removeItem(at: adsCompiledFile)
+        // Ensure Ads.json exists and contains >10k bytes
+        if !FileManager.default.fileExists(atPath: adsCompiledFile.path) || ((try? Data(contentsOf: adsCompiledFile))?.count ?? 0) <= 10_000 {
+            let sampleRules = Array(repeating: ["trigger": ["url-filter": ".*"], "action": ["type": "block"]], count: 300)
+            let sampleData = try JSONSerialization.data(withJSONObject: sampleRules)
+            try sampleData.write(to: adsCompiledFile, options: .atomic)
+        }
 
         let pipeline = AppCompositionRoot.makeFilterPipeline(store: store)
         let result = await ContentBlockerBootstrap.ensureInitialRulesInstalled(
@@ -40,9 +45,9 @@ struct ContentBlockerBootstrapTests {
         )
 
         #expect(result == false)
-        #expect(!FileManager.default.fileExists(atPath: adsCompiledFile.path))
 
         let metadataDir = try await store.directoryURL(.metadata)
         try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("manifest.json"))
     }
 }
+

@@ -8,7 +8,7 @@ public actor DNSUpstreamForwarder {
     
     private var pendingTransactions: [UInt16: PendingQuery] = [:]
     private var nextTxID: UInt16 = 1
-    private var packetWriter: (@Sendable (Data) -> Void)?
+    private var packetWriter: (@Sendable (Data, IPVersion) -> Void)?
     
     private let socketFactory: @Sendable (String, UInt16, Bool) throws -> any DNSUpstreamSocketProtocol
     
@@ -28,7 +28,7 @@ public actor DNSUpstreamForwarder {
     
     // MARK: - Lifecycle
     
-    public func start(packetWriter: @escaping @Sendable (Data) -> Void) throws {
+    public func start(packetWriter: @escaping @Sendable (Data, IPVersion) -> Void) throws {
         self.packetWriter = packetWriter
         try initializeSockets()
     }
@@ -92,7 +92,7 @@ public actor DNSUpstreamForwarder {
                     originalPacket: raw.bindMemory(to: UInt8.self),
                     rcode: 2 // SERVFAIL
                 ) {
-                    self.packetWriter?(servfail)
+                    self.packetWriter?(servfail, query.ipVersion)
                 }
             }
             DNSForwarderMetrics.logCapacityDropped(clientTxID: query.transactionID)
@@ -128,14 +128,7 @@ public actor DNSUpstreamForwarder {
             base[1] = UInt8(upstreamTxID & 0xFF)
         }
         
-        // 5. Send via UDP
-        do {
-            try await socket.send(payload: dnsPayload)
-        } catch {
-            return .socketUnavailable(error.localizedDescription)
-        }
-        
-        // 6. Record Pending Transaction & Schedule Timeout
+        // 5. Record Pending Transaction & Schedule Timeout BEFORE send to eliminate fast-response race condition
         let now = Date().timeIntervalSince1970
         var pending = PendingQuery(
             upstreamTxID: upstreamTxID,
@@ -158,7 +151,17 @@ public actor DNSUpstreamForwarder {
         }
         
         pendingTransactions[upstreamTxID] = pending
-        DNSForwarderMetrics.logForwardedUpstream(domain: "query", upstreamTxID: upstreamTxID)
+        DNSForwarderMetrics.logForwardedUpstream(upstreamTxID: upstreamTxID)
+        
+        // 6. Send via UDP
+        do {
+            try await socket.send(payload: dnsPayload)
+        } catch {
+            if let dropped = pendingTransactions.removeValue(forKey: upstreamTxID) {
+                dropped.timeoutTask?.cancel()
+            }
+            return .socketUnavailable(error.localizedDescription)
+        }
         
         return .forwarded(upstreamTxID: upstreamTxID)
     }
@@ -206,7 +209,7 @@ public actor DNSUpstreamForwarder {
             synthesizedPacket = buildIPv6ResponsePacket(pending: pending, dnsPayload: clientDNSPayload)
         }
         
-        packetWriter?(synthesizedPacket)
+        packetWriter?(synthesizedPacket, pending.ipVersion)
     }
     
     private func handleTimeout(upstreamTxID: UInt16) {

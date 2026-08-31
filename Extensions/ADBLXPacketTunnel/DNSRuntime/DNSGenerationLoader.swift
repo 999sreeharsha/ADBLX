@@ -17,9 +17,22 @@ public enum DNSGenerationLoaderError: Error, Equatable {
 public final class DNSGenerationLoader {
     private let logger = Logger(subsystem: "com.ADBLX.ADBLX.ADBLXPacketTunnel", category: "DNSGenerationLoader")
     private let fileManager: FileManager
+    private var lastKnownPointerModificationDate: Date?
     
     public init(fileManager: FileManager = .default) {
         self.fileManager = fileManager
+    }
+    
+    private func pointerHasChanged(currentPointerURL: URL) -> Bool {
+        guard let attrs = try? fileManager.attributesOfItem(atPath: currentPointerURL.path),
+              let modDate = attrs[.modificationDate] as? Date else {
+            return true
+        }
+        if modDate == lastKnownPointerModificationDate {
+            return false
+        }
+        lastKnownPointerModificationDate = modDate
+        return true
     }
     
     /// Loads and comprehensively validates the active generation specified by `current.json`.
@@ -40,6 +53,11 @@ public final class DNSGenerationLoader {
         // 1. Read current.json
         guard fileManager.fileExists(atPath: currentPointerURL.path) else {
             throw DNSGenerationLoaderError.currentPointerMissing
+        }
+        
+        if let attrs = try? fileManager.attributesOfItem(atPath: currentPointerURL.path),
+           let modDate = attrs[.modificationDate] as? Date {
+            self.lastKnownPointerModificationDate = modDate
         }
         
         let pointerData: Data
@@ -136,6 +154,15 @@ public final class DNSGenerationLoader {
         engine: DNSLookupEngine,
         baseAppGroupURL: URL? = DNSAppGroupPaths.appGroupContainerURL()
     ) -> Bool {
+        guard let baseURL = baseAppGroupURL,
+              let currentPointerURL = DNSAppGroupPaths.currentPointerURL(base: baseURL) else {
+            return false
+        }
+        
+        guard pointerHasChanged(currentPointerURL: currentPointerURL) else {
+            return false
+        }
+        
         do {
             let candidateSnapshot = try loadActiveGeneration(baseAppGroupURL: baseAppGroupURL)
             if candidateSnapshot.generation != engine.activeGeneration {

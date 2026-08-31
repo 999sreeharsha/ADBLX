@@ -95,4 +95,71 @@ final class DNSArtifactPublisherTests: XCTestCase {
         XCTAssertTrue(genNames.contains("000002"))
         XCTAssertFalse(genNames.contains("000001"))
     }
+    
+    func testCoreDomainFalsePositiveThrowsError() throws {
+        let publisher = DNSArtifactPublisher()
+        
+        // Attempting to publish an artifact blocking root google.com must fail compilation
+        let badFeed = "0.0.0.0 google.com\n0.0.0.0 doubleclick.net"
+        XCTAssertThrowsError(
+            try publisher.publish(
+                blocklistSources: [badFeed],
+                allowlistRules: [],
+                baseAppGroupURL: tempAppGroupURL
+            )
+        ) { error in
+            guard case DNSArtifactPublisherError.coreDomainFalsePositive(let domain) = error else {
+                XCTFail("Expected .coreDomainFalsePositive error, got \(error)")
+                return
+            }
+            XCTAssertTrue(domain.contains("google.com"))
+        }
+    }
+    
+    func testGenerationSwapUpgradeFromContaminatedToClean() throws {
+        let publisher = DNSArtifactPublisher()
+        
+        // 1. Publish simulated initial generation
+        let feed1 = "0.0.0.0 doubleclick.net\n0.0.0.0 ads.example.com"
+        let gen1Manifest = try publisher.publish(
+            blocklistSources: [feed1],
+            allowlistRules: [],
+            baseAppGroupURL: tempAppGroupURL
+        )
+        XCTAssertEqual(gen1Manifest.generation, 1)
+        
+        // 2. Setup DNSGenerationLoader and engine on Generation 1
+        let loader = DNSGenerationLoader()
+        let initialSnapshot = try loader.loadActiveGeneration(baseAppGroupURL: tempAppGroupURL)
+        let engine = DNSLookupEngine(initialSnapshot: initialSnapshot)
+        XCTAssertEqual(engine.activeGeneration, 1)
+        XCTAssertEqual(engine.lookup(domain: "ads.example.com"), .block)
+        
+        // 3. Publish upgraded clean Generation 2
+        let cleanFeed = "0.0.0.0 doubleclick.net\n0.0.0.0 analytics.tracker.io\n||blocked-tracker.net^"
+        let gen2Manifest = try publisher.publish(
+            blocklistSources: [cleanFeed],
+            allowlistRules: [],
+            baseAppGroupURL: tempAppGroupURL
+        )
+        XCTAssertEqual(gen2Manifest.generation, 2)
+        
+        // 4. Trigger reloadIfUpdated on the engine
+        let didSwap = loader.reloadIfUpdated(engine: engine, baseAppGroupURL: tempAppGroupURL)
+        XCTAssertTrue(didSwap, "Engine must atomically swap to the new clean generation")
+        XCTAssertEqual(engine.activeGeneration, 2)
+        
+        // 5. Verify engine lookup reflects clean generation rules
+        XCTAssertEqual(engine.lookup(domain: "blocked-tracker.net"), .block)
+        XCTAssertEqual(engine.lookup(domain: "analytics.tracker.io"), .block)
+        XCTAssertEqual(engine.lookup(domain: "google.com"), .allow)
+        XCTAssertEqual(engine.lookup(domain: "whatsapp.com"), .allow)
+        
+        // 6. Verify directory state: active (000002) and previous (000001) exist
+        let generationsDir = DNSAppGroupPaths.generationsDirectory(base: tempAppGroupURL)!
+        let contents = try fileManager.contentsOfDirectory(at: generationsDir, includingPropertiesForKeys: nil)
+        let genNames = Set(contents.map { $0.lastPathComponent })
+        XCTAssertTrue(genNames.contains("000002"))
+        XCTAssertTrue(genNames.contains("000001"))
+    }
 }

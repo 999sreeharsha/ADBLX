@@ -25,6 +25,12 @@ public enum DNSConnectionStatus: Equatable, Sendable {
     }
 }
 
+/// Explicit allowlisted DNS-layer source enum preventing Layer 1 CB list contamination
+public enum DNSFilterSource: String, CaseIterable, Sendable {
+    case oisd = "oisd"
+    case peterLowe = "peter-lowe"
+}
+
 public protocol DNSProtectionServiceProtocol: AnyObject, Sendable {
     func loadStatus() async -> (DNSProtectionSettings, DNSConnectionStatus)
     func startProtection() async throws
@@ -282,20 +288,12 @@ public final class RealDNSProtectionService: DNSProtectionServiceProtocol, @unch
     
     private func loadBlocklistSources() -> [String] {
         var sources: [String] = []
-        if let adsURL = Bundle.main.url(forResource: "easylist", withExtension: "txt") ??
-                        Bundle.main.url(forResource: "easylist", withExtension: "txt", subdirectory: "Filters"),
-           let adsText = try? String(contentsOf: adsURL, encoding: .utf8) {
-            sources.append(adsText)
-        }
-        if let privacyURL = Bundle.main.url(forResource: "easyprivacy", withExtension: "txt") ??
-                           Bundle.main.url(forResource: "easyprivacy", withExtension: "txt", subdirectory: "Filters"),
-           let privacyText = try? String(contentsOf: privacyURL, encoding: .utf8) {
-            sources.append(privacyText)
-        }
-        if let annoyancesURL = Bundle.main.url(forResource: "fanboy-annoyances", withExtension: "txt") ??
-                               Bundle.main.url(forResource: "fanboy-annoyances", withExtension: "txt", subdirectory: "Filters"),
-           let annoyancesText = try? String(contentsOf: annoyancesURL, encoding: .utf8) {
-            sources.append(annoyancesText)
+        for source in DNSFilterSource.allCases {
+            if let url = Bundle.main.url(forResource: source.rawValue, withExtension: "txt", subdirectory: "Filters/DNS") ??
+                         Bundle.main.url(forResource: source.rawValue, withExtension: "txt"),
+               let text = try? String(contentsOf: url, encoding: .utf8) {
+                sources.append(text)
+            }
         }
         return sources
     }

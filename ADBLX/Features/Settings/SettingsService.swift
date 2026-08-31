@@ -38,20 +38,27 @@ actor MockSettingsService: SettingsService {
     }
 }
 
-/// Real SettingsService coordinating canonical AllowlistStore persistence and
-/// triggering deterministic FilterPipeline recompilation and extension reloading.
+/// Real SettingsService coordinating canonical AllowlistStore persistence,
+/// iCloud sync coordination, and deterministic FilterPipeline recompilation.
 actor RealSettingsService: SettingsService {
     private let allowlistStore: AllowlistStore
     private let pipeline: FilterPipeline?
+    private let iCloudSyncCoordinator: ICloudSyncCoordinator?
 
-    init(allowlistStore: AllowlistStore, pipeline: FilterPipeline? = nil) {
+    init(
+        allowlistStore: AllowlistStore,
+        pipeline: FilterPipeline? = nil,
+        iCloudSyncCoordinator: ICloudSyncCoordinator? = nil
+    ) {
         self.allowlistStore = allowlistStore
         self.pipeline = pipeline
+        self.iCloudSyncCoordinator = iCloudSyncCoordinator
     }
 
     func fetchSnapshot() async -> SettingsSnapshot {
         let allowlist = await allowlistStore.load()
-        return SettingsSnapshot(iCloudSyncEnabled: false, allowlist: allowlist)
+        let syncActive = await iCloudSyncCoordinator?.isSyncActive() ?? false
+        return SettingsSnapshot(iCloudSyncEnabled: syncActive, allowlist: allowlist)
     }
 
     func addAllowlistEntry(domain: String) async {
@@ -59,9 +66,12 @@ actor RealSettingsService: SettingsService {
         if let pipeline {
             do {
                 _ = try await pipeline.syncAllowlist()
+                await iCloudSyncCoordinator?.recordLocalAddition(domain: domain)
             } catch {
                 try? await allowlistStore.remove(id: entry.id)
             }
+        } else {
+            await iCloudSyncCoordinator?.recordLocalAddition(domain: domain)
         }
     }
 
@@ -72,9 +82,12 @@ actor RealSettingsService: SettingsService {
         if let pipeline {
             do {
                 _ = try await pipeline.syncAllowlist()
+                await iCloudSyncCoordinator?.recordLocalDeletion(domain: target.domain)
             } catch {
-                try? await allowlistStore.add(domain: target.domain)
+                _ = try? await allowlistStore.add(domain: target.domain)
             }
+        } else {
+            await iCloudSyncCoordinator?.recordLocalDeletion(domain: target.domain)
         }
     }
 }

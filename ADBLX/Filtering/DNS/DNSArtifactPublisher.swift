@@ -7,9 +7,20 @@ public enum DNSArtifactPublisherError: Error, Equatable {
     case validationFailed(DNSArtifactValidationError)
     case serializationFailed(String)
     case atomicPointerUpdateFailed(String)
+    case coreDomainFalsePositive(domain: String)
 }
 
 public final class DNSArtifactPublisher {
+    public static let protectedCoreDomains: [String] = [
+        "google.com", "www.google.com",
+        "apple.com", "www.apple.com", "icloud.com",
+        "microsoft.com", "amazon.com",
+        "whatsapp.com", "whatsapp.net",
+        "facebook.com", "instagram.com",
+        "youtube.com", "x.com", "twitter.com",
+        "cloudflare.com"
+    ]
+
     private let blocklistCompiler: DNSBlocklistCompiler
     private let allowlistCompiler: DNSAllowlistCompiler
     private let fileManager: FileManager
@@ -79,11 +90,17 @@ public final class DNSArtifactPublisher {
         }
         
         // 4. Validate both binary artifacts from memory/disk
+        let headerBlock: DNSArtifactHeader
+        let headerAllow: DNSArtifactHeader
         do {
-            _ = try DNSArtifactValidator.validate(data: blockData)
-            _ = try DNSArtifactValidator.validate(data: allowData)
+            headerBlock = try DNSArtifactValidator.validate(data: blockData)
+            headerAllow = try DNSArtifactValidator.validate(data: allowData)
+            let blockArtifact = MappedDNSArtifact(validatedData: blockData, header: headerBlock)
+            try validateNoCoreDomainFalsePositives(blockArtifact: blockArtifact)
         } catch let err as DNSArtifactValidationError {
             throw DNSArtifactPublisherError.validationFailed(err)
+        } catch let err as DNSArtifactPublisherError {
+            throw err
         }
         
         let blockFileURL = stagingDir.appendingPathComponent(DNSArtifactFormat.blocklistFilename)
@@ -96,9 +113,6 @@ public final class DNSArtifactPublisher {
         // 5. Compute SHA-256 digests and serialize manifest.json
         let shaBlock = DNSGenerationManifest.computeSHA256(data: blockData)
         let shaAllow = DNSGenerationManifest.computeSHA256(data: allowData)
-        
-        let headerBlock = try DNSArtifactValidator.validate(data: blockData)
-        let headerAllow = try DNSArtifactValidator.validate(data: allowData)
         
         let manifest = DNSGenerationManifest(
             generation: nextGenNumber,
@@ -163,6 +177,14 @@ public final class DNSArtifactPublisher {
             let genName = dirURL.lastPathComponent
             if !keepSet.contains(genName) {
                 try? fileManager.removeItem(at: dirURL)
+            }
+        }
+    }
+    
+    private func validateNoCoreDomainFalsePositives(blockArtifact: MappedDNSArtifact) throws {
+        for domain in Self.protectedCoreDomains {
+            if blockArtifact.matchesDomain(domain: domain) {
+                throw DNSArtifactPublisherError.coreDomainFalsePositive(domain: domain)
             }
         }
     }

@@ -215,4 +215,16 @@ final class DNSProtectionServiceTests: XCTestCase {
         let statuses = statusLock.withLock { $0 }
         XCTAssertEqual(statuses, [.connected, .disconnected])
     }
+    
+    func testLoaderBoundaryOnlyLoadsDNSFilterSources() {
+        // Assert DNSFilterSource contains strictly the approved DNS feeds
+        let allSources = DNSFilterSource.allCases
+        XCTAssertEqual(allSources, [.oisd, .peterLowe])
+        
+        // Assert Content Blocker lists are NEVER part of the DNS enum
+        let sourceStrings = Set(allSources.map(\.rawValue))
+        XCTAssertFalse(sourceStrings.contains("easylist"))
+        XCTAssertFalse(sourceStrings.contains("easyprivacy"))
+        XCTAssertFalse(sourceStrings.contains("fanboy-annoyances"))
+    }
 }

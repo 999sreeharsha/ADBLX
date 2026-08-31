@@ -365,6 +365,15 @@ final class Sprint10ClosureVerificationTests: XCTestCase {
     @MainActor
     func testColdStartLaunchDurationAcrossFiveTrials() async throws {
         print("\n================ ON-DEVICE COLD-START REPEATED BENCHMARK (NFR-05) ================")
+        let warmupStore = AppCompositionRoot.makeFilterStore()
+        let warmupManifestStore = ManifestStore(filterStore: warmupStore)
+        if try await warmupManifestStore.load() == nil {
+            let warmupPipeline = AppCompositionRoot.makeFilterPipeline(store: warmupStore)
+            _ = await ContentBlockerBootstrap.ensureInitialRulesInstalled(pipeline: warmupPipeline, manifestStore: warmupManifestStore)
+            let dummyManifest = FilterManifest(manifestVersion: "1", entries: [])
+            try await warmupManifestStore.save(dummyManifest, etag: "\"baseline\"")
+        }
+
         var durations: [Double] = []
         let trials = 5
         

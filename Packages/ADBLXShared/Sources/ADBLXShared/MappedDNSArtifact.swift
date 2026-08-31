@@ -1,5 +1,4 @@
 import Foundation
-import ADBLXShared
 
 public final class MappedDNSArtifact {
     public let data: Data
@@ -85,6 +84,30 @@ public final class MappedDNSArtifact {
                 }
             }
             
+            return false
+        }
+    }
+    
+    /// Evaluates a domain query using reversed-label suffix walk against the mapped artifact.
+    ///
+    /// Checks exact reversed labels: "com", "com.google", "com.google.www".
+    public func matchesDomain(domain: String) -> Bool {
+        let parts = domain.split(separator: ".")
+        let reversedSuffix = parts.reversed().joined(separator: ".")
+        let utf8Bytes = Array(reversedSuffix.utf8)
+        
+        return utf8Bytes.withUnsafeBufferPointer { ptr -> Bool in
+            guard ptr.count > 0, let baseAddress = ptr.baseAddress else { return false }
+            var checkLen = 0
+            while checkLen <= ptr.count {
+                if checkLen == ptr.count || ptr[checkLen] == 46 /* '.' */ {
+                    let prefixBuf = UnsafeBufferPointer(start: baseAddress, count: checkLen)
+                    if contains(target: prefixBuf) {
+                        return true
+                    }
+                }
+                checkLen += 1
+            }
             return false
         }
     }

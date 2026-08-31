@@ -14,6 +14,186 @@
         }
       }
     },
+    "brokenSite.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Report Broken Site"
+          }
+        }
+      }
+    },
+    "brokenSite.header.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Website Not Working?"
+          }
+        }
+      }
+    },
+    "brokenSite.header.subtitle" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Report a website that breaks when ad or tracker blocking is active. You can also allowlist the domain immediately to restore functionality."
+          }
+        }
+      }
+    },
+    "brokenSite.domain.label" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Website Domain or URL"
+          }
+        }
+      }
+    },
+    "brokenSite.domain.placeholder" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "example.com or https://..."
+          }
+        }
+      }
+    },
+    "brokenSite.category.label" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What is Broken?"
+          }
+        }
+      }
+    },
+    "brokenSite.allowlist.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Allowlist this website now"
+          }
+        }
+      }
+    },
+    "brokenSite.allowlist.subtitle" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Immediately bypasses blocking for this site so it works normally."
+          }
+        }
+      }
+    },
+    "brokenSite.notes.label" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Additional Details (Optional)"
+          }
+        }
+      }
+    },
+    "brokenSite.notes.placeholder" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Briefly describe what happened..."
+          }
+        }
+      }
+    },
+    "brokenSite.privacy.notice" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Privacy Guarantee: Only the domain and active filter versions are submitted. Zero personal data, cookies, URL paths, or browsing history are ever transmitted."
+          }
+        }
+      }
+    },
+    "brokenSite.action.submitAndAllowlist" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Submit Report & Allowlist"
+          }
+        }
+      }
+    },
+    "brokenSite.action.submit" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Submit Report"
+          }
+        }
+      }
+    },
+    "brokenSite.action.close" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Close"
+          }
+        }
+      }
+    },
+    "brokenSite.action.done" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Done"
+          }
+        }
+      }
+    },
+    "brokenSite.success.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Report Submitted"
+          }
+        }
+      }
+    },
+    "brokenSite.row.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Report a Broken Site"
+          }
+        }
+      }
+    },
+    "brokenSite.row.detail" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Allowlist & report issue"
+          }
+        }
+      }
+    },
     "about.footer.copyright" : {
       "localizations" : {
         "en" : {
@@ -1262,6 +1442,106 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ACTIVE PROTECTION"
+          }
+        }
+      }
+    },
+    "protection.safari.badge.partiallyActive" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PARTIALLY ACTIVE"
+          }
+        }
+      }
+    },
+    "protection.safari.badge.disabledInSettings" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "DISABLED IN SETTINGS"
+          }
+        }
+      }
+    },
+    "protection.safari.badge.disabledByUser" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PROTECTION PAUSED"
+          }
+        }
+      }
+    },
+    "protection.safari.badge.unavailable" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "STATUS UNAVAILABLE"
+          }
+        }
+      }
+    },
+    "protection.category.status.disabledInSettings" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Disabled in Settings"
+          }
+        }
+      }
+    },
+    "protection.category.status.unavailable" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Status Unavailable"
+          }
+        }
+      }
+    },
+    "protection.settingsAlert.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enable Safari Extension"
+          }
+        }
+      }
+    },
+    "protection.settingsAlert.message" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ protection is enabled in ADBLX, but the Safari extension is turned off in iOS Settings.\n\nTo enable:\n1. Tap 'Open Settings'\n2. Go to Safari > Extensions (or Apps > Safari > Extensions)\n3. Turn ON the ADBLX %@ extension"
+          }
+        }
+      }
+    },
+    "protection.settingsAlert.openSettings" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Settings"
+          }
+        }
+      }
+    },
+    "protection.settingsAlert.notNow" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not Now"
           }
         }
       }

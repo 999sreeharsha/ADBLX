@@ -9,7 +9,7 @@ public struct UpstreamResolverConfig: Equatable {
     
     public init(
         ipv4Address: String = "9.9.9.9",
-        ipv6Address: String? = "2620:fe::fe",
+        ipv6Address: String? = nil,
         port: UInt16 = 53,
         timeoutSeconds: TimeInterval = 3.0,
         maxInFlightQueries: Int = 256

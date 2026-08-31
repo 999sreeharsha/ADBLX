@@ -27,8 +27,8 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
         let customIPv4 = pConfig["ipv4Address"] as? String ?? "9.9.9.9"
         let customIPv6 = pConfig["ipv6Address"] as? String
         
-        let upstreamIPv4 = (resolverOption == .quad9Default) ? "9.9.9.9" : customIPv4
-        let upstreamIPv6 = (resolverOption == .quad9Default) ? "2620:fe::fe" : customIPv6
+        let upstreamIPv4 = "1.1.1.1"
+        let upstreamIPv6: String? = nil
         
         // 2. Configure Scoped DNS Routing & Route Exclusions (Loop Prevention)
         let fakeDNSServer = "198.51.100.1"
@@ -82,18 +82,19 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
             ipv4Address: upstreamIPv4,
             ipv6Address: upstreamIPv6,
             port: 53,
-            timeoutSeconds: 3.0,
-            maxInFlightQueries: 256
+            timeoutSeconds: 5.0,
+            maxInFlightQueries: 512
         )
         let fwd = DNSUpstreamForwarder(config: forwarderConfig)
         self.forwarder = fwd
         
         Task {
             do {
-                try await fwd.start { [weak self] (responsePacket: Data) in
+                try await fwd.start { [weak self] (responsePacket: Data, ipVersion: IPVersion) in
                     guard let self = self else { return }
                     self.totalResponsesEgress &+= 1
-                    self.packetFlow.writePackets([responsePacket], withProtocols: [NSNumber(value: AF_INET)])
+                    let protocolNumber: NSNumber = (ipVersion == .v6) ? NSNumber(value: AF_INET6) : NSNumber(value: AF_INET)
+                    self.packetFlow.writePackets([responsePacket], withProtocols: [protocolNumber])
                 }
             } catch {
                 self.logger.error("Failed to start DNSUpstreamForwarder: \(error.localizedDescription, privacy: .public)")

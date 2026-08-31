@@ -93,17 +93,22 @@ public final class BSDUDPUpstreamSocket: DNSUpstreamSocketProtocol, @unchecked S
         source.setEventHandler { [weak self] in
             guard let self = self, self.fileDescriptor >= 0 else { return }
             
-            var buffer = [UInt8](repeating: 0, count: 4096)
-            var srcAddr = sockaddr_storage()
-            var addrLen = socklen_t(MemoryLayout<sockaddr_storage>.size)
-            
-            let bytesRead = withUnsafeMutablePointer(to: &srcAddr) { saPtr -> Int in
-                saPtr.withMemoryRebound(to: sockaddr.self, capacity: 1) { sa in
-                    recvfrom(self.fileDescriptor, &buffer, buffer.count, 0, sa, &addrLen)
+            // Non-blocking drain loop: drain all datagrams queued in the socket receive buffer
+            while self.fileDescriptor >= 0 {
+                var buffer = [UInt8](repeating: 0, count: 4096)
+                var srcAddr = sockaddr_storage()
+                var addrLen = socklen_t(MemoryLayout<sockaddr_storage>.size)
+                
+                let bytesRead = withUnsafeMutablePointer(to: &srcAddr) { saPtr -> Int in
+                    saPtr.withMemoryRebound(to: sockaddr.self, capacity: 1) { sa in
+                        recvfrom(self.fileDescriptor, &buffer, buffer.count, 0, sa, &addrLen)
+                    }
                 }
-            }
-            
-            if bytesRead > 0 {
+                
+                guard bytesRead > 0 else {
+                    break // EWOULDBLOCK / EAGAIN or socket error
+                }
+                
                 var senderIP = ""
                 var senderPort: UInt16 = 0
                 if srcAddr.ss_family == sa_family_t(AF_INET) {
@@ -133,11 +138,10 @@ public final class BSDUDPUpstreamSocket: DNSUpstreamSocketProtocol, @unchecked S
             }
         }
         
-        source.setCancelHandler { [weak self] in
-            guard let self = self else { return }
-            if self.fileDescriptor >= 0 {
-                Darwin.close(self.fileDescriptor)
-                self.fileDescriptor = -1
+        let fd = self.fileDescriptor
+        source.setCancelHandler {
+            if fd >= 0 {
+                Darwin.close(fd)
             }
         }
         
@@ -146,11 +150,12 @@ public final class BSDUDPUpstreamSocket: DNSUpstreamSocketProtocol, @unchecked S
     }
     
     public func close() {
-        queue.async {
-            self.readSource?.cancel()
-            self.readSource = nil
-            self.responseHandler = nil
+        if let source = readSource {
+            source.cancel()
+            readSource = nil
         }
+        responseHandler = nil
+        fileDescriptor = -1
     }
     
     deinit {

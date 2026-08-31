@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ADBLX Content Blocker Multi-Extension Verification Harness</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: #0f172a;
+            color: #f8fafc;
+            margin: 0;
+            padding: 24px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        h1 {
+            font-size: 1.25rem;
+            margin-bottom: 8px;
+            color: #38bdf8;
+        }
+        p.subtitle {
+            color: #94a3b8;
+            font-size: 0.875rem;
+            margin-bottom: 24px;
+        }
+        .card {
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            border: 1px solid #334155;
+        }
+        .row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #334155;
+        }
+        .row:last-child {
+            border-bottom: none;
+        }
+        .target-name {
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+        .target-desc {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            margin-top: 2px;
+        }
+        .badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+        .badge-loading {
+            background: #475569;
+            color: #cbd5e1;
+        }
+        .badge-blocked {
+            background: #065f46;
+            color: #34d399;
+            border: 1px solid #059669;
+        }
+        .badge-loaded {
+            background: #991b1b;
+            color: #f87171;
+            border: 1px solid #dc2626;
+        }
+        .test-adblx-annoyance-banner {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: #000;
+            padding: 16px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-weight: bold;
+            text-align: center;
+            font-size: 0.9rem;
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>ADBLX Extension Isolation Test</h1>
+        <p class="subtitle">Real reachable sub-resource verification harness</p>
+
+        <div class="card">
+            <!-- Ads Row -->
+            <div class="row">
+                <div>
+                    <div class="target-name">1. ADBLXAdsBlocker</div>
+                    <div class="target-desc">Subresource: <code>ads-pixel.png</code></div>
+                </div>
+                <div>
+                    <span id="badge-ads" class="badge badge-loading">Checking...</span>
+                </div>
+            </div>
+
+            <!-- Privacy Row -->
+            <div class="row">
+                <div>
+                    <div class="target-name">2. ADBLXPrivacyBlocker</div>
+                    <div class="target-desc">Subresource: <code>privacy-track.js</code></div>
+                </div>
+                <div>
+                    <span id="badge-privacy" class="badge badge-loading">Checking...</span>
+                </div>
+            </div>
+
+            <!-- Annoyances Row -->
+            <div class="row">
+                <div>
+                    <div class="target-name">3. ADBLXAnnoyancesBlocker</div>
+                    <div class="target-desc">Element: <code>.test-adblx-annoyance-banner</code></div>
+                </div>
+                <div>
+                    <span id="badge-annoyances" class="badge badge-loading">Checking...</span>
+                </div>
+            </div>
+
+            <!-- Regional Row -->
+            <div class="row">
+                <div>
+                    <div class="target-name">4. ADBLXRegionalBlocker</div>
+                    <div class="target-desc">Subresource: <code>regional-pixel.png</code></div>
+                </div>
+                <div>
+                    <span id="badge-regional" class="badge badge-loading">Checking...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Target Elements -->
+        <img id="ads-img" src="ads-pixel.png" style="display:none;" 
+             onerror="updateStatus('ads', true)" onload="updateStatus('ads', false)">
+        
+        <img id="regional-img" src="regional-pixel.png" style="display:none;" 
+             onerror="updateStatus('regional', true)" onload="updateStatus('regional', false)">
+
+        <div id="annoyance-element" class="test-adblx-annoyance-banner">
+            🍪 TEST ANNOYANCE BANNER: This cookie notice should be hidden by AnnoyancesBlocker CSS!
+        </div>
+    </div>
+
+    <script>
+        function updateStatus(target, isBlocked) {
+            const el = document.getElementById('badge-' + target);
+            if (!el) return;
+            if (isBlocked) {
+                el.className = 'badge badge-blocked';
+                el.innerText = '🛡️ BLOCKED';
+            } else {
+                el.className = 'badge badge-loaded';
+                el.innerText = '⚠️ LOADED';
+            }
+        }
+
+        // Check Annoyance Banner Visibility
+        function checkAnnoyance() {
+            const banner = document.getElementById('annoyance-element');
+            const badge = document.getElementById('badge-annoyances');
+            if (!banner || !badge) return;
+            
+            const style = window.getComputedStyle(banner);
+            if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0' || banner.offsetHeight === 0) {
+                badge.className = 'badge badge-blocked';
+                badge.innerText = '🛡️ HIDDEN';
+            } else {
+                badge.className = 'badge badge-loaded';
+                badge.innerText = '⚠️ VISIBLE';
+            }
+        }
+
+        // Set fallback timeout for slow/hung requests
+        setTimeout(checkAnnoyance, 100);
+        window.addEventListener('DOMContentLoaded', checkAnnoyance);
+        window.addEventListener('load', checkAnnoyance);
+    </script>
+    <script id="privacy-script" src="privacy-track.js" 
+            onerror="updateStatus('privacy', true)" onload="updateStatus('privacy', false)"></script>
+</body>
+</html>
