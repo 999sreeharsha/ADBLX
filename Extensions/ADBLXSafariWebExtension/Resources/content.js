@@ -36,6 +36,10 @@
     const CONFIG_FETCH_MAX_ATTEMPTS = 4;
     const CONFIG_FETCH_BASE_RETRY_MS = 500;
 
+    // Placeholder config recorded locally when the background page did not answer. It is
+    // not an authoritative answer (unlike "free_tier"), so mountPlayer asks again.
+    const BACKGROUND_UNAVAILABLE_REASON = "background_unavailable";
+
     // 1. Binary Hostname Allowlist (Immutable compiled boundary)
     const ALLOWED_HOSTS = new Set(["m.youtube.com", "www.youtube.com"]);
 
@@ -72,6 +76,14 @@
     let playerGeneration = 0;
     let currentConfig = null;
     let isInitialized = false;
+
+    // Config is page-scoped, not generation-scoped: one in-flight request shared by every
+    // caller, cleared only when all attempts fail so a later mount can try again.
+    let configRequest = null;
+
+    // Generation that currently has observers and media handlers attached. Guards against
+    // a navigation and a late config reply both mounting the same generation.
+    let mountedGeneration = -1;
 
     // Active Detection FSM State (Generation-Scoped)
     let detectionState = DetectionState.UNKNOWN;
@@ -660,8 +672,16 @@
      */
     function mountPlayer(gen) {
         if (gen !== playerGeneration) return;
-        if (!currentConfig || !currentConfig.layer3Enabled) {
-            diag("mountPlayer: SKIPPED — layer3Enabled=", currentConfig && currentConfig.layer3Enabled);
+        if (mountedGeneration === gen) return;
+        if (!currentConfig || currentConfig.reason === BACKGROUND_UNAVAILABLE_REASON) {
+            // No authoritative config yet. The reply handler mounts whatever generation is
+            // current when it lands, so this only has to make sure a request exists.
+            diag("mountPlayer: awaiting config (gen", gen, ")");
+            ensureConfiguration();
+            return;
+        }
+        if (!currentConfig.layer3Enabled) {
+            diag("mountPlayer: SKIPPED — layer3Enabled=", currentConfig.layer3Enabled);
             return;
         }
 
@@ -672,6 +692,7 @@
         }
 
         diag("mountPlayer: player resolved, engine mounting (gen", gen, ")");
+        mountedGeneration = gen;
         activePlayerElement = player;
 
         ensureVideoBound(gen);
@@ -800,22 +821,35 @@
     }
 
     /**
-     * Fetches Layer 3 configuration from background.js.
+     * Returns the single in-flight Layer 3 configuration request, starting one if needed.
+     * Resolves with the resulting config; on success the current generation is mounted.
+     */
+    function ensureConfiguration() {
+        if (!configRequest) {
+            configRequest = new Promise((resolve) => fetchConfiguration(resolve, 0));
+        }
+        return configRequest;
+    }
+
+    /**
+     * Fetches Layer 3 configuration from background.js, retrying unanswered sends.
+     *
+     * The reply is never discarded for being "stale": page lifecycle events routinely bump
+     * playerGeneration before the native-messaging round trip completes, and dropping the
+     * reply then left Layer 3 off for the life of the page.
      */
     function fetchConfiguration(onComplete, attempt) {
         if (typeof browser === "undefined" || !browser.runtime || !browser.runtime.sendMessage) {
+            onComplete(null);
             return;
         }
 
-        const capturedGen = playerGeneration;
         const tryIndex = attempt || 0;
 
         diag("fetchConfiguration: sending getLayer3Config (attempt", tryIndex + 1, ")");
         browser.runtime.sendMessage({ type: "getLayer3Config" }, (response) => {
-            if (capturedGen !== playerGeneration && playerGeneration > 0) return;
-
             if (browser.runtime.lastError || !response) {
-                currentConfig = { layer3Enabled: false, reason: "background_unavailable" };
+                currentConfig = { layer3Enabled: false, reason: BACKGROUND_UNAVAILABLE_REASON };
                 diag("fetchConfiguration: FAILED", browser.runtime.lastError && browser.runtime.lastError.message, "response=", response);
 
                 // Safari suspends the MV3 event page aggressively. An unanswered send
@@ -826,20 +860,21 @@
                 // does not cause an unbounded retry loop.
                 if (tryIndex < CONFIG_FETCH_MAX_ATTEMPTS - 1) {
                     const delayMs = CONFIG_FETCH_BASE_RETRY_MS * Math.pow(2, tryIndex);
-                    setTimeout(() => {
-                        if (capturedGen !== playerGeneration && playerGeneration > 0) return;
-                        fetchConfiguration(onComplete, tryIndex + 1);
-                    }, delayMs);
+                    setTimeout(() => fetchConfiguration(onComplete, tryIndex + 1), delayMs);
                     return; // onComplete runs when an attempt actually resolves
                 }
+                // Every attempt failed: release the request so the next mount retries.
+                configRequest = null;
             } else {
                 currentConfig = response;
                 diag("fetchConfiguration: got config layer3Enabled=", response.layer3Enabled,
                     "reason=", response.reason,
                     "hasRules=", !!(response.rules && response.rules.youtube));
+                // Mount synchronously, for whatever generation is current by now.
+                mountPlayer(playerGeneration);
             }
 
-            if (onComplete) onComplete(currentConfig);
+            onComplete(currentConfig);
         });
     }
 
@@ -868,11 +903,8 @@
             }
         }
 
-        fetchConfiguration((config) => {
-            if (config && config.layer3Enabled) {
-                mountPlayer(playerGeneration);
-            }
-        });
+        // No config yet, so this starts the shared request; its reply does the mount.
+        mountPlayer(playerGeneration);
         return true;
     }
 
@@ -932,7 +964,7 @@
             dispatchInterventions,
             onLifecycleEvent,
             scheduleFrame,
-            fetchConfiguration
+            ensureConfiguration
         };
     }
 })();

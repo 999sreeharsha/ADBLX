@@ -2,7 +2,9 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 
-function createMockDOMEnvironment(hostname = "www.youtube.com") {
+// readyState defaults to "complete" for the legacy suite. A real content script runs at
+// document_start, where it is "loading" — pass it explicitly to model that.
+function createMockDOMEnvironment(hostname = "www.youtube.com", { readyState = "complete" } = {}) {
     const listeners = {};
     const observers = [];
     let rafCallbacks = [];
@@ -118,7 +120,7 @@ function createMockDOMEnvironment(hostname = "www.youtube.com") {
     const mockHead = new MockElement("head");
 
     const mockDocument = {
-        readyState: "complete",
+        readyState,
         head: mockHead,
         createElement: (tag) => new MockElement(tag),
         querySelector: (selector) => {
@@ -953,4 +955,141 @@ test.skip("Candidate C: Second ad in a back-to-back break is also accelerated", 
         video.playbackRate, 16.0,
         "second ad must also be accelerated, got " + video.playbackRate
     );
+});
+
+// MARK: - Config / lifecycle ordering (startup race)
+
+// Regression (audit, 2026-10-27): the content script runs at document_start and its
+// getLayer3Config round trip (wake event page -> native messaging -> appex) is routinely
+// slower than the page's own lifecycle. Any lifecycle event bumps playerGeneration, and
+// fetchConfiguration discarded a reply whose captured generation had gone stale — so
+// currentConfig stayed null, mountPlayer took its SKIPPED path on every later
+// navigation, and nothing ever asked again. Layer 3 was off for the life of the page.
+// The legacy suite never saw it: its mock was always readyState "complete" and always
+// answered the query before any lifecycle event fired.
+//
+// Reply timings, relative to the lifecycle event under test:
+//   before — reply lands, then the event fires.
+//   during — reply lands mid-navigation: after yt-navigate-start has torn the player
+//            down (generation bumped, nothing mounted) but before the event fires.
+//   after  — the event fires while the query is in flight; the reply lands last.
+const ORDERING_CONFIG = {
+    layer3Enabled: true,
+    generation: 1,
+    rules: { youtube: { selectors: { adStateClasses: ["ad-showing"] }, disableMask: {} } }
+};
+
+for (const readyState of ["loading", "interactive", "complete"]) {
+    for (const eventName of ["DOMContentLoaded", "yt-navigate-finish", "yt-page-data-updated"]) {
+        for (const timing of ["before", "during", "after"]) {
+            test(`Config ordering: readyState=${readyState}, reply ${timing} ${eventName} -> one query, one mount`, () => {
+                const env = createMockDOMEnvironment("www.youtube.com", { readyState });
+                const player = env.createElement("div", "movie_player", "html5-video-player");
+                const video = env.createElement("video");
+                player.appendChild(video);
+                env.addDocumentElement(player);
+
+                const content = loadContentWithMock(env);
+                const fire = (name) => env.mockGlobal.window.dispatchEvent(name);
+
+                if (timing === "before") {
+                    env.respondToConfigQuery(ORDERING_CONFIG);
+                    fire(eventName);
+                } else if (timing === "during") {
+                    fire("yt-navigate-start");
+                    env.respondToConfigQuery(ORDERING_CONFIG);
+                    fire(eventName);
+                } else {
+                    fire(eventName);
+                    env.respondToConfigQuery(ORDERING_CONFIG);
+                }
+
+                const state = content.getEngineState();
+                assert.equal(env.getConfigQuerySendCount(), 1, "exactly one config query per page");
+                assert.ok(state.currentConfig, "config must not be dropped");
+                assert.equal(state.currentConfig.layer3Enabled, true);
+
+                const liveObservers = env.observers.filter((o) => !o.disconnected);
+                assert.equal(liveObservers.length, 1, "exactly one live mount");
+                assert.equal(liveObservers[0].target, player);
+                assert.equal(state.activePlayerElement, player);
+                assert.equal((video.eventListeners.timeupdate || []).length, 1,
+                    "media handlers bound exactly once");
+            });
+        }
+    }
+}
+
+test("mountPlayer is idempotent for a generation that is already mounted", () => {
+    const env = createMockDOMEnvironment("www.youtube.com");
+    const player = env.createElement("div", "movie_player", "html5-video-player");
+    const video = env.createElement("video");
+    player.appendChild(video);
+    env.addDocumentElement(player);
+
+    const content = loadContentWithMock(env);
+    env.respondToConfigQuery(ORDERING_CONFIG);
+
+    const gen = content.getEngineState().playerGeneration;
+    content.mountPlayer(gen);
+
+    assert.equal(env.observers.filter((o) => !o.disconnected).length, 1, "no duplicate observer");
+    assert.equal(env.observers.length, 1, "no second observer created");
+    assert.equal((video.eventListeners.timeupdate || []).length, 1, "no duplicate media handlers");
+});
+
+test("mountPlayer re-requests config after every retry was exhausted", (t) => {
+    t.mock.timers.enable({ apis: ["setTimeout"] });
+    const env = createMockDOMEnvironment("www.youtube.com");
+    const player = env.createElement("div", "movie_player", "html5-video-player");
+    player.appendChild(env.createElement("video"));
+    env.addDocumentElement(player);
+
+    const content = loadContentWithMock(env);
+
+    // Background page never answers: drain every bounded retry.
+    for (let i = 0; i < 10; i++) {
+        env.respondToConfigQuery(undefined);
+        t.mock.timers.tick(10000);
+    }
+    const sentAfterExhaustion = env.getConfigQuerySendCount();
+
+    // A later navigation must ask again rather than latching off for the page's life.
+    env.mockGlobal.window.dispatchEvent("yt-navigate-finish");
+    assert.equal(env.getConfigQuerySendCount(), sentAfterExhaustion + 1, "navigation re-requests config");
+
+    // A second navigation while that request is in flight must not send another.
+    env.mockGlobal.window.dispatchEvent("yt-navigate-finish");
+    assert.equal(env.getConfigQuerySendCount(), sentAfterExhaustion + 1, "in-flight request is shared");
+
+    env.respondToConfigQuery(ORDERING_CONFIG);
+    assert.equal(content.getEngineState().activePlayerElement, player, "late success mounts");
+    assert.equal(env.observers.filter((o) => !o.disconnected).length, 1);
+});
+
+test("Config reply with no player present stores config and mounts nothing", () => {
+    const env = createMockDOMEnvironment("www.youtube.com", { readyState: "loading" });
+    const content = loadContentWithMock(env);
+
+    // Mid-navigation: old player torn down, new one not yet in the DOM.
+    env.mockGlobal.window.dispatchEvent("yt-navigate-start");
+    env.respondToConfigQuery(ORDERING_CONFIG);
+
+    let state = content.getEngineState();
+    assert.equal(state.currentConfig.layer3Enabled, true, "config is stored");
+    assert.equal(state.activePlayerElement, null, "nothing mounted");
+    assert.equal(env.observers.length, 0, "no observer created without a player");
+
+    // The player arrives with the navigation's finish event and is mounted exactly once.
+    const player = env.createElement("div", "movie_player", "html5-video-player");
+    const video = env.createElement("video");
+    player.appendChild(video);
+    env.addDocumentElement(player);
+    env.mockGlobal.window.dispatchEvent("yt-navigate-finish");
+
+    state = content.getEngineState();
+    assert.equal(state.activePlayerElement, player);
+    assert.equal(env.observers.filter((o) => !o.disconnected).length, 1);
+    assert.equal((video.eventListeners.timeupdate || []).length, 1);
+    assert.equal(env.getConfigQuerySendCount(), 1, "stored config reused, no second query");
 });
