@@ -329,6 +329,8 @@ targets:
     sources:
       - path: Extensions/ADBLXSafariWebExtension
         type: syncedFolder
+        excludes:
+          - "Tests/**"
     dependencies:
       - package: ADBLXShared
     info:
@@ -337,6 +339,12 @@ targets:
         NSExtension:
           NSExtensionPointIdentifier: com.apple.Safari.web-extension
           NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).SafariWebExtensionHandler
+          # Without this Safari loads the appex as a native extension only: the toggle
+          # appears in Settings but manifest.json is never read and no content script
+          # is ever injected. Resources are copied flat into the bundle root by the
+          # syncedFolder source, so the manifest lives at the bundle root ".".
+          SFSafariWebExtensionManifestPath: "."
+
     entitlements:
       path: Extensions/ADBLXSafariWebExtension/ADBLXSafariWebExtension.entitlements
       properties:

@@ -143,14 +143,40 @@ async function getLayer3State(force = false) {
 
     inFlightRefreshPromise = (async () => {
         try {
+            // Captured before the field is overwritten: the transport-failure path below
+            // needs the last SUCCESSFUL verification time to age the entitlement grace
+            // window, not the timestamp of this (possibly failed) attempt.
+            const priorCheckMs = inMemoryState.lastVersionCheckWallClockMs || 0;
+
             const versionRes = await sendNativeMessage({ type: "checkVersion" });
             const checkTimestamp = Date.now();
             inMemoryState.lastVersionCheckWallClockMs = checkTimestamp;
 
             if (!versionRes) {
-                // Native bridge failure: fail closed immediately for entitlement
+                // Transport failure: the bridge conveyed NO entitlement information, which
+                // is not the same as reporting that the user is not entitled. The event
+                // page is suspended and woken constantly, so a single hiccup on wake used
+                // to disable Layer 3 for the whole session. Keep a previously verified
+                // premium entitlement within the same grace ceiling rule data already uses,
+                // and fail closed once that window lapses.
+                //
+                // A bridge that DOES answer with "free"/"unavailable" still fails closed
+                // immediately, below — that path is unchanged (ADR-0012).
                 inMemoryState.generationStatus = "unavailable";
-                inMemoryState.entitlementState = "unavailable";
+
+                const entitlementAgeMs = checkTimestamp - priorCheckMs;
+                const withinGrace = inMemoryState.entitlementState === "premiumActive" &&
+                    priorCheckMs > 0 &&
+                    entitlementAgeMs <= GRACE_PERIOD_CEILING_MS;
+
+                if (!withinGrace) {
+                    inMemoryState.entitlementState = "unavailable";
+                }
+
+                // Preserve the last successful verification time; overwriting it with this
+                // failed attempt would silently extend the grace window on every failure.
+                inMemoryState.lastVersionCheckWallClockMs = priorCheckMs;
+
                 await persistToStorage();
                 return evaluateEffectiveConfig(checkTimestamp);
             }

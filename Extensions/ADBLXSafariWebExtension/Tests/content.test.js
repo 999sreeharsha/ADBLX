@@ -57,6 +57,9 @@ function createMockDOMEnvironment(hostname = "www.youtube.com") {
             this.eventListeners = {};
             this.parentNode = null;
             this.isConnected = true;
+            // Non-null offsetParent means the element is actually rendered. YouTube keeps
+            // the skip button in the DOM but unrendered during the pre-skip countdown.
+            this.offsetParent = {};
             this.clicksDispatched = 0;
 
             // Media properties
@@ -135,9 +138,11 @@ function createMockDOMEnvironment(hostname = "www.youtube.com") {
     };
 
     let runtimeSendMessageCallback = null;
+    let configQuerySendCount = 0;
     const mockBrowser = {
         runtime: {
             sendMessage: (msg, callback) => {
+                if (msg && msg.type === "getLayer3Config") configQuerySendCount++;
                 runtimeSendMessageCallback = callback;
             }
         }
@@ -197,7 +202,8 @@ function createMockDOMEnvironment(hostname = "www.youtube.com") {
                 item.cb();
             }
         },
-        createElement: (tag, id, cls) => new MockElement(tag, id, cls)
+        createElement: (tag, id, cls) => new MockElement(tag, id, cls),
+        getConfigQuerySendCount: () => configQuerySendCount
     };
 }
 
@@ -779,4 +785,172 @@ test("Candidate C: Safety timeout triggers AMBIGUOUS_SAFE and restores owned sta
         assert.equal(content.getEngineState().isAccelerationActive, false);
         done();
     }, 40);
+});
+
+// Regression (device-observed, 2026-09-06): on m.youtube.com the player container is
+// frequently in the DOM before its <video> child exists. mountPlayer queried for <video>
+// exactly once and, finding none, left activeVideoElement null forever — the class-only
+// MutationObserver never observes childList, so nothing re-binds when the video appears.
+// Result: no media events, mediaActive permanently false, and the FSM cannot confirm an
+// ad (AD_CANDIDATE requires sig02 || (sig01 && (mediaActive || sig03))). This raced:
+// mounting after the video existed worked, mounting before it silently never recovered.
+test("Video element appearing after mount is bound once it exists", () => {
+    const env = createMockDOMEnvironment("www.youtube.com");
+    const player = env.createElement("div", "movie_player", "html5-video-player");
+    env.addDocumentElement(player);
+
+    const content = loadContentWithMock(env);
+    env.respondToConfigQuery({ layer3Enabled: true, generation: 1 });
+
+    // Mounted against a player that has no <video> child yet.
+    let state = content.getEngineState();
+    assert.ok(state.activePlayerElement, "player should mount even without a video child");
+    assert.equal(state.activeVideoElement, null, "no video to bind at this point");
+
+    // YouTube inserts the media element asynchronously.
+    const video = env.createElement("video");
+    player.appendChild(video);
+
+    // The engine must notice and bind it rather than staying blind forever.
+    content.ensureVideoBound(content.getEngineState().playerGeneration);
+
+    state = content.getEngineState();
+    assert.ok(state.activeVideoElement, "video must be bound once it appears");
+    assert.ok(state.boundMediaHandlers, "media event handlers must be attached");
+});
+
+// Regression (device-observed, 2026-09-07): during the pre-skip countdown YouTube keeps
+// the skip button in the DOM and NOT disabled, but unrendered (offsetParent === null).
+// dispatchCandidateBSkip found it, clicked it, and reported success — so
+// dispatchInterventions returned early and never fell through to acceleration, which is
+// the intervention that actually gets the user through the countdown. The engine spent
+// the whole countdown firing clicks at an invisible button.
+// SKIPPED (2026-09-09): the guard this asserts was reverted — on device it correlated
+// with pre-roll ads playing through instead of being accelerated away. The behaviour
+// asserted here is still what we want; re-enable this together with the guard once a
+// test reproduces the device regression and explains the mechanism.
+test.skip("Candidate B: Unrendered skip button (offsetParent null) is not clicked", () => {
+    const env = createMockDOMEnvironment("www.youtube.com");
+    const player = env.createElement("div", "movie_player", "html5-video-player");
+    const video = env.createElement("video");
+    player.appendChild(video);
+
+    const skipBtn = env.createElement("button", null, "ytp-ad-skip-button");
+    skipBtn.offsetParent = null; // in the DOM, but not rendered
+    player.appendChild(skipBtn);
+    env.addDocumentElement(player);
+
+    const content = loadContentWithMock(env);
+    env.respondToConfigQuery({
+        layer3Enabled: true,
+        generation: 1,
+        rules: {
+            youtube: {
+                selectors: { adStateClasses: ["ad-showing"], skipButtons: [".ytp-ad-skip-button"] },
+                disableMask: {}
+            }
+        }
+    });
+
+    const gen = content.getEngineState().playerGeneration;
+    const dispatched = content.dispatchCandidateBSkip(player, gen);
+
+    assert.equal(dispatched, false, "must not report success for an unrendered button");
+    assert.equal(skipBtn.clicksDispatched, 0, "must not click an unrendered button");
+});
+
+// Regression (device-observed, 2026-09-07): Safari suspends the MV3 event page
+// aggressively — it visibly disappears from the Develop menu. When the content script's
+// first getLayer3Config lands while the background page is down, sendMessage invokes the
+// callback with response === undefined AND lastError === undefined (not an error; simply
+// unanswered). fetchConfiguration then latched layer3Enabled:false permanently for that
+// page, with no retry, so the engine never mounted even though the background page woke
+// moments later. Observed as: "fetchConfiguration: FAILED ... response= undefined",
+// then ads playing untouched for the rest of the session.
+test("Unanswered config query is retried rather than latching Layer 3 off", async () => {
+    const env = createMockDOMEnvironment("www.youtube.com");
+    const player = env.createElement("div", "movie_player", "html5-video-player");
+    player.appendChild(env.createElement("video"));
+    env.addDocumentElement(player);
+
+    const content = loadContentWithMock(env);
+
+    assert.equal(env.getConfigQuerySendCount(), 1, "initial query sent");
+
+    // Background page is suspended: callback fires with no response and no lastError.
+    env.respondToConfigQuery(undefined);
+
+    assert.equal(
+        content.getEngineState().currentConfig.layer3Enabled,
+        false,
+        "first failure still yields a disabled config"
+    );
+
+    // The engine must ask again once the background page has had a chance to wake.
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+
+    assert.ok(
+        env.getConfigQuerySendCount() > 1,
+        "config query must be retried after an unanswered send, got " +
+        env.getConfigQuerySendCount()
+    );
+
+    // And a successful retry must bring the engine up.
+    env.respondToConfigQuery({ layer3Enabled: true, generation: 1 });
+    assert.equal(content.getEngineState().currentConfig.layer3Enabled, true);
+});
+
+// Regression (device-observed, 2026-09-09): in a two-ad pre-roll break, the first ad was
+// accelerated away and the second played at normal speed. Between consecutive ads the ad
+// signals never drop, so the FSM stays in AD_CONFIRMED; transitionTo returns early when
+// the state is unchanged, so teardownInterventions never runs, isAccelerationActive stays
+// true from ad 1, and dispatchCandidateCAcceleration's `if (isAccelerationActive) return
+// false` guard blocks ad 2. The existing single-ad test passes because it always has a
+// clean AD_CONFIRMED -> RESET_SETTLING gap that runs teardown.
+// SKIPPED (2026-09-10): the fix this asserts was reverted. On device it stopped the
+// FIRST ad accelerating too — a case the fix should not have touched at all, since
+// isAccelerationActive is false on the first ad. The mechanism is not understood, so
+// the known-good single-ad behaviour takes priority over the second-ad improvement.
+// The bug this describes is real; re-enable together with a fix once the device
+// behaviour is explained rather than inferred from source.
+test.skip("Candidate C: Second ad in a back-to-back break is also accelerated", () => {
+    const env = createMockDOMEnvironment("www.youtube.com");
+    const player = env.createElement("div", "movie_player", "html5-video-player");
+    const video = env.createElement("video");
+    video.playbackRate = 1.0;
+    video.muted = false;
+    player.appendChild(video);
+    env.addDocumentElement(player);
+
+    const content = loadContentWithMock(env);
+    env.respondToConfigQuery({
+        layer3Enabled: true,
+        generation: 1,
+        rules: {
+            youtube: {
+                selectors: { adStateClasses: ["ad-showing"] },
+                parameters: { maxAccelerationRate: 16.0, accelerationSafetyTimeoutMs: 5000 },
+                disableMask: { accelerationDisabled: false, skipClickDisabled: true }
+            }
+        }
+    });
+
+    const gen = content.getEngineState().playerGeneration;
+
+    // Ad 1 begins and is accelerated.
+    player.classList.add("ad-showing");
+    content.evaluateFSM(gen);
+    assert.equal(content.getEngineState().detectionState, content.DetectionState.AD_CONFIRMED);
+    assert.equal(video.playbackRate, 16.0, "first ad must be accelerated");
+
+    // Ad 1 ends and ad 2 begins immediately: YouTube swaps the media element but the ad
+    // signals never drop, so the FSM stays in AD_CONFIRMED throughout.
+    video.playbackRate = 1.0;
+    video.muted = false;
+    content.evaluateFSM(gen);
+
+    assert.equal(
+        video.playbackRate, 16.0,
+        "second ad must also be accelerated, got " + video.playbackRate
+    );
 });

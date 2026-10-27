@@ -4,6 +4,38 @@
 "use strict";
 
 (function () {
+    // TEMPORARY DIAGNOSTIC INSTRUMENTATION (remove after Layer 3 activation is confirmed).
+    // No page content, URLs, or user data are logged — only engine lifecycle + signal booleans.
+    const DIAG = true;
+    function diag(...args) {
+        if (DIAG && typeof console !== "undefined") {
+            console.log("[ADBLX-L3]", ...args);
+        }
+    }
+
+    // First statement to execute. If this line never appears in the console, the content
+    // script was never injected at all (manifest/permission problem, not a code problem).
+    diag("SCRIPT LOADED at", (typeof document !== "undefined" && document.readyState) || "?",
+        "host:", (typeof location !== "undefined" && location.hostname) || "?",
+        "browserAPI:", typeof browser);
+
+    // Surface any exception thrown by this content script specifically, so it can be told
+    // apart from the host page's own errors in a shared console.
+    if (typeof window !== "undefined" && window.addEventListener) {
+        window.addEventListener("error", (e) => {
+            const f = (e && e.filename) || "";
+            if (f.indexOf("content.js") !== -1) {
+                diag("UNCAUGHT in content.js:", e.message, "@", e.lineno + ":" + e.colno);
+            }
+        });
+    }
+
+    // Config fetch retry bounds. Safari's MV3 event page is suspended aggressively, so the
+    // first query from a freshly injected content script frequently goes unanswered; these
+    // give it time to wake without retrying unboundedly if it never does.
+    const CONFIG_FETCH_MAX_ATTEMPTS = 4;
+    const CONFIG_FETCH_BASE_RETRY_MS = 500;
+
     // 1. Binary Hostname Allowlist (Immutable compiled boundary)
     const ALLOWED_HOSTS = new Set(["m.youtube.com", "www.youtube.com"]);
 
@@ -31,6 +63,10 @@
         RESET_SETTLING: "RESET_SETTLING",
         AMBIGUOUS_SAFE: "AMBIGUOUS_SAFE"
     });
+
+    // Diagnostic state (temporary, paired with the DIAG instrumentation above).
+    let diagTimeupdateCount = 0;
+    let diagLastPlayerClasses = "";
 
     // Engine Lifecycle State
     let playerGeneration = 0;
@@ -246,6 +282,14 @@
             return false;
         }
 
+        // NOTE (2026-09-09): a guard rejecting unrendered buttons (offsetParent === null)
+        // and explicitly disabled buttons was added here and then reverted. On device it
+        // correlated with pre-roll ads playing through instead of being accelerated away,
+        // even though reading the intervention ladder suggests returning false here should
+        // simply fall through to Candidate C. The mechanism was never established, so the
+        // guard is out until it can be reintroduced behind a test that reproduces the
+        // regression. See the accompanying test, which is skipped for the same reason.
+
         // Single-click debouncing per ad interval
         const now = Date.now();
         if (hasDispatchedSkipClick && lastSkipDispatchGeneration === gen && (now - lastSkipDispatchTimestamp) < 1000) {
@@ -363,6 +407,8 @@
         const disableMask = (currentConfig && currentConfig.rules &&
             currentConfig.rules.youtube && currentConfig.rules.youtube.disableMask) || {};
 
+        diag("dispatchInterventions: AD_CONFIRMED — disableMask=", JSON.stringify(disableMask));
+
         // 1. Candidate A: Cosmetic Suppression
         if (!disableMask.cosmeticHidingDisabled) {
             applyCosmeticSuppression();
@@ -373,6 +419,7 @@
         if (!disableMask.skipClickDisabled) {
             skipDispatched = dispatchCandidateBSkip(player, gen);
         }
+        diag("dispatchInterventions: skipDispatched=", skipDispatched);
 
         if (skipDispatched) {
             return;
@@ -383,6 +430,12 @@
         if (!disableMask.accelerationDisabled) {
             accelDispatched = dispatchCandidateCAcceleration(video, gen);
         }
+        diag("ACCEL:", "dispatched=", accelDispatched,
+            "| maskDisabled=", !!disableMask.accelerationDisabled,
+            "| alreadyActive=", isAccelerationActive,
+            "| haveVideo=", !!video,
+            "| rate=", video && video.playbackRate,
+            "| muted=", video && video.muted);
 
         if (accelDispatched) {
             return;
@@ -399,6 +452,7 @@
         if (gen !== playerGeneration) return;
         if (detectionState === nextState) return;
 
+        diag("transitionTo:", detectionState, "->", nextState, "(gen", gen, ")");
         detectionState = nextState;
 
         if (nextState === DetectionState.AD_CONFIRMED) {
@@ -456,6 +510,70 @@
             const sig02 = hasSIG02SkipControl(player);
             const sig03 = hasSIG03AdBadge(player);
             const mediaActive = isMediaActive(video);
+
+            // Log the player's class list only when it CHANGES. A static dump cannot
+            // distinguish "class marks an ad is playing now" from "class is always
+            // present" — and treating an always-present class as an ad signal would
+            // false-positive on normal playback, which is the one outcome the Cardinal
+            // Rule forbids. The delta shows exactly which classes toggle at ad onset.
+            const classesNow = player.className || "";
+            if (diagLastPlayerClasses === "") {
+                // Baseline: always print once so the absence of later deltas is meaningful
+                // (it proves the classes are static) rather than ambiguous with "this build
+                // was never installed".
+                diag("CLASS BASELINE @t=", video ? Math.round(video.currentTime) : "?",
+                    "|", classesNow.slice(0, 400));
+            }
+            if (classesNow !== diagLastPlayerClasses) {
+                const before = new Set(diagLastPlayerClasses.split(/\s+/).filter(Boolean));
+                const after = new Set(classesNow.split(/\s+/).filter(Boolean));
+                const added = [...after].filter((c) => !before.has(c));
+                const removed = [...before].filter((c) => !after.has(c));
+                diag("CLASS DELTA @t=", video ? Math.round(video.currentTime) : "?",
+                    "| ADDED:", added.join(",") || "(none)",
+                    "| REMOVED:", removed.join(",") || "(none)");
+                diagLastPlayerClasses = classesNow;
+
+                // At each class change, report which ad-ish elements actually exist in the
+                // DOM. SIG-02/SIG-03 may be missing because their selectors are stale
+                // rather than because no ad is present; this shows the real markup.
+                if (typeof document !== "undefined") {
+                    const probes = [
+                        "[class*='skip']", "[class*='ad-badge']", "[class*='ad-text']",
+                        "[class*='ytp-ad']", "[class*='ytm-ad']", "[id*='ad']"
+                    ];
+                    const found = probes
+                        .map((sel) => {
+                            try {
+                                const els = document.querySelectorAll(sel);
+                                if (!els.length) return null;
+                                const names = [...els].slice(0, 3)
+                                    .map((e) => (e.className || e.id || "?").toString().slice(0, 60));
+                                return sel + "=" + els.length + "[" + names.join(" | ") + "]";
+                            } catch (e) { return null; }
+                        })
+                        .filter(Boolean);
+                    diag("AD DOM PROBE:", found.length ? found.join("  ;  ") : "(nothing matched)");
+                }
+            }
+
+            // mediaActive is a conjunction of three conditions; when timeupdate is firing
+            // but mediaActive reads false, exactly one of them is wrong. Log them apart,
+            // plus whether the bound element is still the page's live <video>.
+            if ((diagTimeupdateCount % 20) === 1) {
+                const live = (typeof document !== "undefined") ? document.querySelector("video") : null;
+                diag("MEDIA STATE: bound?", !!video,
+                    "paused=", video && video.paused,
+                    "ended=", video && video.ended,
+                    "readyState=", video && video.readyState,
+                    "currentTime=", video && Math.round(video.currentTime),
+                    "| boundIsLive=", !!video && video === live,
+                    "| videosOnPage=", (typeof document !== "undefined") ? document.querySelectorAll("video").length : -1);
+            }
+
+            diag("evaluateFSM: state=", detectionState,
+                "sig01(adClass)=", sig01, "sig02(skipBtn)=", sig02,
+                "sig03(adBadge)=", sig03, "mediaActive=", mediaActive);
 
             switch (detectionState) {
             case DetectionState.UNKNOWN:
@@ -542,32 +660,68 @@
      */
     function mountPlayer(gen) {
         if (gen !== playerGeneration) return;
-        if (!currentConfig || !currentConfig.layer3Enabled) return;
+        if (!currentConfig || !currentConfig.layer3Enabled) {
+            diag("mountPlayer: SKIPPED — layer3Enabled=", currentConfig && currentConfig.layer3Enabled);
+            return;
+        }
 
         const player = resolvePlayerElement();
-        if (!player) return;
+        if (!player) {
+            diag("mountPlayer: no player element resolved yet (gen", gen, ")");
+            return;
+        }
 
+        diag("mountPlayer: player resolved, engine mounting (gen", gen, ")");
         activePlayerElement = player;
 
-        const video = player.querySelector("video");
-        if (video) {
-            activeVideoElement = video;
-            bindMediaEvents(video, gen);
-        }
+        ensureVideoBound(gen);
 
         if (typeof MutationObserver !== "undefined") {
             activeClassObserver = new MutationObserver((mutations) => {
                 if (gen !== playerGeneration) return;
+                // The <video> child is frequently inserted after the player container
+                // exists, so every mutation is also a chance to bind it if we haven't.
+                ensureVideoBound(gen);
                 onPlayerClassMutation(mutations, gen);
             });
 
             activeClassObserver.observe(player, {
                 attributes: true,
-                attributeFilter: ["class"]
+                attributeFilter: ["class"],
+                childList: true,
+                subtree: true
             });
         }
 
         evaluateFSM(gen);
+    }
+
+    /**
+     * Binds media events to the player's `<video>` element, if one exists and we have not
+     * already bound it. Idempotent and safe to call repeatedly.
+     *
+     * YouTube inserts the media element asynchronously — often after the player container
+     * is already in the DOM — and swaps it between ad and content playback. Resolving it
+     * only once at mount left the engine permanently blind whenever it lost that race.
+     */
+    function ensureVideoBound(gen) {
+        if (gen !== playerGeneration) return;
+        if (!activePlayerElement) return;
+
+        const video = activePlayerElement.querySelector("video");
+        if (!video || video === activeVideoElement) return;
+
+        // Release handlers bound to a previous (swapped-out) element before rebinding.
+        if (activeVideoElement && boundMediaHandlers) {
+            for (const [eventName, handler] of Object.entries(boundMediaHandlers)) {
+                activeVideoElement.removeEventListener(eventName, handler);
+            }
+            boundMediaHandlers = null;
+        }
+
+        diag("ensureVideoBound: binding video element (gen", gen, ")");
+        activeVideoElement = video;
+        bindMediaEvents(video, gen);
     }
 
     /**
@@ -600,6 +754,13 @@
      */
     function onMediaEvent(eventName, gen) {
         if (gen !== playerGeneration) return;
+        // timeupdate fires ~4x/sec; log it sparsely so the console stays readable while
+        // still proving media events are reaching the engine at all.
+        if (eventName !== "timeupdate") {
+            diag("mediaEvent:", eventName, "(gen", gen, ")");
+        } else if ((diagTimeupdateCount++ % 20) === 0) {
+            diag("mediaEvent: timeupdate #", diagTimeupdateCount, "(gen", gen, ")");
+        }
         evaluateFSM(gen);
     }
 
@@ -641,20 +802,41 @@
     /**
      * Fetches Layer 3 configuration from background.js.
      */
-    function fetchConfiguration(onComplete) {
+    function fetchConfiguration(onComplete, attempt) {
         if (typeof browser === "undefined" || !browser.runtime || !browser.runtime.sendMessage) {
             return;
         }
 
         const capturedGen = playerGeneration;
+        const tryIndex = attempt || 0;
 
+        diag("fetchConfiguration: sending getLayer3Config (attempt", tryIndex + 1, ")");
         browser.runtime.sendMessage({ type: "getLayer3Config" }, (response) => {
             if (capturedGen !== playerGeneration && playerGeneration > 0) return;
 
             if (browser.runtime.lastError || !response) {
                 currentConfig = { layer3Enabled: false, reason: "background_unavailable" };
+                diag("fetchConfiguration: FAILED", browser.runtime.lastError && browser.runtime.lastError.message, "response=", response);
+
+                // Safari suspends the MV3 event page aggressively. An unanswered send
+                // (no response AND no lastError) means the background page was down, not
+                // that the user lacks entitlement — sending again wakes it. Without this
+                // the engine latched off for the life of the page and ads played
+                // untouched. Bounded with backoff so a genuinely absent background page
+                // does not cause an unbounded retry loop.
+                if (tryIndex < CONFIG_FETCH_MAX_ATTEMPTS - 1) {
+                    const delayMs = CONFIG_FETCH_BASE_RETRY_MS * Math.pow(2, tryIndex);
+                    setTimeout(() => {
+                        if (capturedGen !== playerGeneration && playerGeneration > 0) return;
+                        fetchConfiguration(onComplete, tryIndex + 1);
+                    }, delayMs);
+                    return; // onComplete runs when an attempt actually resolves
+                }
             } else {
                 currentConfig = response;
+                diag("fetchConfiguration: got config layer3Enabled=", response.layer3Enabled,
+                    "reason=", response.reason,
+                    "hasRules=", !!(response.rules && response.rules.youtube));
             }
 
             if (onComplete) onComplete(currentConfig);
@@ -665,9 +847,13 @@
      * Initializes content script on page load.
      */
     function initialize() {
-        if (!isAuthorizedOrigin()) return false;
+        if (!isAuthorizedOrigin()) {
+            diag("initialize: host not authorized:", typeof window !== "undefined" && window.location ? window.location.hostname : "?");
+            return false;
+        }
         if (isInitialized) return true;
         isInitialized = true;
+        diag("initialize: authorized host, starting engine");
 
         if (typeof window !== "undefined") {
             window.addEventListener("yt-navigate-start", () => onLifecycleEvent("yt-navigate-start"));
@@ -691,7 +877,11 @@
     }
 
     if (typeof window !== "undefined") {
-        initialize();
+        try {
+            initialize();
+        } catch (err) {
+            diag("initialize() THREW:", err && err.message, err && err.stack);
+        }
     }
 
     // Export internal engine for unit testing in Node environment
@@ -726,6 +916,7 @@
             initialize,
             teardownCurrentPlayer,
             mountPlayer,
+            ensureVideoBound,
             resolvePlayerElement,
             evaluateFSM,
             transitionTo,

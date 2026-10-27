@@ -1,5 +1,5 @@
 {
-    "manifest_version": 2,
+    "manifest_version": 3,
     "name": "ADBLX Safari Web Extension",
     "description": "YouTube Ad Blocker and Video Shield for Safari.",
     "version": "1.0",
@@ -20,6 +20,9 @@
     ],
     "permissions": [
         "storage",
+        "nativeMessaging"
+    ],
+    "host_permissions": [
         "*://*.youtube.com/*"
     ]
 }

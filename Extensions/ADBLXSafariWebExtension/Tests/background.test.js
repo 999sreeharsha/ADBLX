@@ -324,3 +324,63 @@ test("Runtime message router handles getLayer3Config", async () => {
     assert.equal(response.generation, 2);
     assert.deepEqual(response.rules, { schemaVersion: 1, routed: true });
 });
+
+// Regression (device-observed, 2026-09-06): mid-session the content script logged
+// "mountPlayer: SKIPPED — layer3Enabled= false" after it had previously been true.
+// Cause: any transient sendNativeMessage failure (versionRes === null) set
+// entitlementState = "unavailable" and persisted it, permanently disabling Layer 3 for
+// the session. The event-page background is suspended and woken constantly, so a single
+// bridge hiccup on wake was enough. A transport failure is not evidence that the user
+// stopped being premium — it carries no entitlement information at all. This is distinct
+// from the bridge successfully REPORTING "unavailable"/"free", which must still fail
+// closed immediately (see the two tests above; ADR-0012).
+test("Bridge transport failure keeps recently-verified premium entitlement within grace", async () => {
+    const env = createMockEnvironment();
+    const now = Date.now();
+    env.setStorageData({
+        [ "adblx_layer3_cache" ]: {
+            generation: 5,
+            generationStatus: "ok",
+            entitlementState: "premiumActive",
+            rules: { schemaVersion: 1, cached: true },
+            checksum: "sha256_5",
+            rulesFetchedAtWallClockMs: now - 60000,
+            lastVersionCheckWallClockMs: now - 16 * 60 * 1000
+        }
+    });
+
+    // Bridge does not answer at all — no entitlement information conveyed.
+    env.queueNativeResponse(null);
+
+    const bg = loadBackgroundWithMock(env);
+    const config = await bg.getLayer3State();
+
+    assert.equal(config.layer3Enabled, true,
+        "a transport failure must not be treated as loss of entitlement");
+});
+
+test("Bridge transport failure past the entitlement grace window disables Layer 3", async () => {
+    const env = createMockEnvironment();
+    const now = Date.now();
+    env.setStorageData({
+        [ "adblx_layer3_cache" ]: {
+            generation: 5,
+            generationStatus: "ok",
+            entitlementState: "premiumActive",
+            rules: { schemaVersion: 1, cached: true },
+            checksum: "sha256_5",
+            rulesFetchedAtWallClockMs: now - 60000,
+            // Last successful verification is older than the 4h grace ceiling.
+            lastVersionCheckWallClockMs: now - (5 * 60 * 60 * 1000)
+        }
+    });
+
+    env.queueNativeResponse(null);
+
+    const bg = loadBackgroundWithMock(env);
+    const config = await bg.getLayer3State();
+
+    assert.equal(config.layer3Enabled, false,
+        "entitlement must not be trusted indefinitely across bridge failures");
+    assert.equal(config.reason, "entitlement_unavailable");
+});
