@@ -29,8 +29,10 @@ jobs:
       - name: Generate Xcode project
         run: xcodegen generate
 
-      - name: Verify no project drift
-        run: git diff --exit-code ADBLX.xcodeproj
+      - name: Verify no generated-file drift
+        # Whole repository, not just the project: XcodeGen also writes the
+        # .entitlements and Info.plist files, which must never be hand-edited.
+        run: git diff --exit-code
 
       - name: Verify AppGroup.swift is byte-identical across all targets
         run: |
