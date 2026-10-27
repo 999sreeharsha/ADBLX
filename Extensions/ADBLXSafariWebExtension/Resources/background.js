@@ -129,7 +129,10 @@ async function getLayer3State(force = false) {
     await hydrateFromStorage();
 
     const nowWallClock = Date.now();
-    const isVersionCheckStale = (nowWallClock - inMemoryState.lastVersionCheckWallClockMs) > FRESHNESS_CEILING_MS;
+    const versionCheckAgeMs = nowWallClock - inMemoryState.lastVersionCheckWallClockMs;
+    // A negative age means the wall clock moved backwards since the last check; treat it
+    // as stale so a future-dated timestamp cannot keep a cached entitlement "fresh".
+    const isVersionCheckStale = versionCheckAgeMs > FRESHNESS_CEILING_MS || versionCheckAgeMs < 0;
 
     // Fast path: cached version check is fresh (<15 min) and we are not forced
     if (!force && !isVersionCheckStale && inMemoryState.lastVersionCheckWallClockMs > 0) {
@@ -167,6 +170,9 @@ async function getLayer3State(force = false) {
                 const entitlementAgeMs = checkTimestamp - priorCheckMs;
                 const withinGrace = inMemoryState.entitlementState === "premiumActive" &&
                     priorCheckMs > 0 &&
+                    // A negative age means the wall clock moved backwards since the last
+                    // verification; the window cannot be measured, so fail closed.
+                    entitlementAgeMs >= 0 &&
                     entitlementAgeMs <= GRACE_PERIOD_CEILING_MS;
 
                 if (!withinGrace) {

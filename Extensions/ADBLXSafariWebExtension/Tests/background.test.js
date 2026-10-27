@@ -384,3 +384,55 @@ test("Bridge transport failure past the entitlement grace window disables Layer 
         "entitlement must not be trusted indefinitely across bridge failures");
     assert.equal(config.reason, "entitlement_unavailable");
 });
+
+test("Bridge transport failure with the device clock set backwards disables Layer 3", async () => {
+    const env = createMockEnvironment();
+    const now = Date.now();
+    env.setStorageData({
+        [ "adblx_layer3_cache" ]: {
+            generation: 5,
+            generationStatus: "ok",
+            entitlementState: "premiumActive",
+            rules: { schemaVersion: 1, cached: true },
+            checksum: "sha256_5",
+            rulesFetchedAtWallClockMs: now - 60000,
+            // Verified "in the future": the clock has since been moved back. The age is
+            // negative, which must not read as "within the grace window".
+            lastVersionCheckWallClockMs: now + (30 * 24 * 60 * 60 * 1000)
+        }
+    });
+
+    env.queueNativeResponse(null);
+
+    const bg = loadBackgroundWithMock(env);
+    const config = await bg.getLayer3State();
+
+    assert.equal(config.layer3Enabled, false,
+        "a negative entitlement age must fail closed, not extend the grace window");
+    assert.equal(config.reason, "entitlement_unavailable");
+});
+
+test("Forced refresh with the clock set backwards and a failing bridge disables Layer 3", async () => {
+    // Isolates the grace-window clause: force skips the freshness fast path, so the
+    // transport-failure branch runs with a negative entitlement age.
+    const env = createMockEnvironment();
+    const now = Date.now();
+    env.setStorageData({
+        [ "adblx_layer3_cache" ]: {
+            generation: 5,
+            generationStatus: "ok",
+            entitlementState: "premiumActive",
+            rules: { schemaVersion: 1, cached: true },
+            checksum: "sha256_5",
+            rulesFetchedAtWallClockMs: now - 60000,
+            lastVersionCheckWallClockMs: now + (30 * 24 * 60 * 60 * 1000)
+        }
+    });
+    env.queueNativeResponse(null);
+
+    const bg = loadBackgroundWithMock(env);
+    const config = await bg.getLayer3State(true);
+
+    assert.equal(config.layer3Enabled, false);
+    assert.equal(config.reason, "entitlement_unavailable");
+});
