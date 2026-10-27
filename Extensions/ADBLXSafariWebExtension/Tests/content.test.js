@@ -1181,3 +1181,74 @@ test("Awaiting-config line is logged when a mount has no config yet", (t) => {
     loadContentWithMock(env);
     assert.match(lines.join("\n"), /awaiting config/);
 });
+
+// MARK: - Navigation / observer instrumentation (temporary, off in shipped builds)
+
+test("Instrumentation ships disabled", () => {
+    const fs = require("node:fs");
+    const path = require("node:path");
+    const source = fs.readFileSync(path.join(__dirname, "..", "Resources", "content.js"), "utf8");
+    assert.match(source, /const DIAG_INSTRUMENTATION = false;/, "DIAG_INSTRUMENTATION must ship as false");
+});
+
+test("Navigation instrumentation logs event names and counts, never URLs", (t) => {
+    t.mock.timers.enable({ apis: ["setInterval"] });
+    const lines = captureConsole(t);
+    const env = createMockDOMEnvironment("m.youtube.com");
+    const navListeners = {};
+    env.mockGlobal.window.navigation = {
+        addEventListener: (name, fn) => { (navListeners[name] = navListeners[name] || []).push(fn); }
+    };
+    const content = loadContentWithMock(env);
+    content.installNavigationInstrumentation();
+
+    // Page events observed in the capture phase, whatever they were dispatched on.
+    for (const name of ["state-navigateend", "yt-navigate-finish", "yt-navigate-finish"]) {
+        for (const h of env.listeners[name] || []) h({ type: name, target: env.mockGlobal.document });
+    }
+    // Navigation API: only the navigationType enum may be logged.
+    for (const h of navListeners.navigate || []) {
+        h({ navigationType: "push", destination: { url: "https://m.youtube.com/watch?v=SECRETVIDEOID" } });
+    }
+    t.mock.timers.tick(60000);
+
+    const text = lines.join("\n");
+    assert.match(text, /nav-event: state-navigateend/);
+    assert.match(text, /nav-event: yt-navigate-finish/);
+    assert.match(text, /nav-api: navigate type=push/);
+    assert.match(text, /nav-event-counts:.*yt-navigate-finish=2/);
+    assert.ok(!text.includes("SECRETVIDEOID") && !text.includes("youtube.com"), text);
+});
+
+test("Navigation instrumentation reports Navigation API availability", (t) => {
+    t.mock.timers.enable({ apis: ["setInterval"] });
+    const lines = captureConsole(t);
+    const env = createMockDOMEnvironment("m.youtube.com");
+    const content = loadContentWithMock(env);
+    content.installNavigationInstrumentation();
+    assert.match(lines.join("\n"), /navigation-api available= false/);
+});
+
+test("Player observer callbacks and mutations are counted and logged once a minute", (t) => {
+    t.mock.timers.enable({ apis: ["setInterval"] });
+    const lines = captureConsole(t);
+    const env = createMockDOMEnvironment("www.youtube.com");
+    const player = env.createElement("div", "movie_player", "html5-video-player");
+    player.appendChild(env.createElement("video"));
+    env.addDocumentElement(player);
+    const content = loadContentWithMock(env);
+    env.respondToConfigQuery(ORDERING_CONFIG);
+    content.installNavigationInstrumentation();
+
+    const observer = env.observers.find((o) => !o.disconnected);
+    observer.trigger([{}, {}, {}]);
+    observer.trigger([{}]);
+    t.mock.timers.tick(60000);
+
+    assert.match(lines.join("\n"), /observer-callbacks last-60s= 2 mutations= 4/);
+
+    // The window resets: a quiet minute reports zero.
+    lines.length = 0;
+    t.mock.timers.tick(60000);
+    assert.match(lines.join("\n"), /observer-callbacks last-60s= 0 mutations= 0/);
+});

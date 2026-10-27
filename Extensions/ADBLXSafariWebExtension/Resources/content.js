@@ -12,8 +12,13 @@
     // DIAG_VERBOSE — extra dumps (FSM trace, signal booleans, media state, page class
     //           names and element ids) used to debug detection on a device. They can
     //           echo page markup, so they ship OFF; a test fails if this is not false.
+    // DIAG_INSTRUMENTATION — temporary navigation/observer measurements for choosing the
+    //           SPA navigation signal on m.youtube.com and sizing the player observer.
+    //           Event names and counts only, never a URL or an argument. Remove with
+    //           installNavigationInstrumentation() once the signal is chosen.
     const DIAG = true;
     const DIAG_VERBOSE = false;
+    const DIAG_INSTRUMENTATION = false;
     function diag(...args) {
         if (DIAG && typeof console !== "undefined") {
             console.log("[ADBLX-L3]", ...args);
@@ -76,6 +81,8 @@
 
     // Diagnostic state (temporary, paired with the DIAG instrumentation above).
     let diagTimeupdateCount = 0;
+    let observerCallbackCount = 0;
+    let observerMutationCount = 0;
     let diagLastPlayerClasses = "";
 
     // Engine Lifecycle State
@@ -714,6 +721,8 @@
 
         if (typeof MutationObserver !== "undefined") {
             activeClassObserver = new MutationObserver((mutations) => {
+                observerCallbackCount++;
+                observerMutationCount += mutations.length;
                 if (gen !== playerGeneration) return;
                 // The <video> child is frequently inserted after the player container
                 // exists, so every mutation is also a chance to bind it if we haven't.
@@ -898,6 +907,63 @@
         });
     }
 
+    // Events that might signal a navigation on www or m.youtube.com. Fixed names only.
+    // Listened for in the capture phase on window, which sees events dispatched on
+    // document or any descendant whether or not they bubble.
+    const NAV_CANDIDATE_EVENTS = [
+        "yt-navigate-start", "yt-navigate-finish", "yt-navigate-cache",
+        "yt-page-data-updated", "yt-page-type-changed", "yt-player-updated",
+        "state-navigatestart", "state-navigateend", "state-navigate",
+        "popstate", "pageshow", "hashchange"
+    ];
+
+    /**
+     * TEMPORARY (see DIAG_INSTRUMENTATION). Observes which navigation signals actually
+     * fire and how hard the player observer works, without changing behaviour.
+     *
+     * history.pushState/replaceState are deliberately NOT wrapped: this script runs in
+     * an isolated world with its own wrapper objects, so replacing them here would never
+     * see the page's calls and would read as "none happened". The Navigation API, whose
+     * events are DOM events and so reach isolated-world listeners, covers that case.
+     */
+    function installNavigationInstrumentation() {
+        if (typeof window === "undefined" || !window.addEventListener) return;
+
+        const eventCounts = {};
+        for (const name of NAV_CANDIDATE_EVENTS) {
+            window.addEventListener(name, (e) => {
+                eventCounts[name] = (eventCounts[name] || 0) + 1;
+                const onDocument = typeof document !== "undefined" && e && e.target === document;
+                diag("nav-event:", name, "target=", onDocument ? "document" : "other");
+            }, true);
+        }
+
+        const nav = window.navigation;
+        diag("navigation-api available=", !!(nav && nav.addEventListener));
+        if (nav && nav.addEventListener) {
+            nav.addEventListener("navigate", (e) => {
+                // navigationType is a fixed enum; the destination URL is never read.
+                diag("nav-api: navigate type=" + ((e && e.navigationType) || "?"));
+            });
+        }
+
+        // <title> changes on every SPA navigation; observing it is a handful of nodes,
+        // unlike a document-wide observer.
+        const titleEl = (typeof document !== "undefined" && document.querySelector)
+            ? document.querySelector("title") : null;
+        if (titleEl && typeof MutationObserver !== "undefined") {
+            new MutationObserver(() => diag("nav-title-changed")).observe(titleEl, { childList: true });
+        }
+
+        setInterval(() => {
+            diag("observer-callbacks last-60s=", observerCallbackCount, "mutations=", observerMutationCount);
+            const summary = Object.keys(eventCounts).map((n) => n + "=" + eventCounts[n]).join(",");
+            if (summary) diag("nav-event-counts:", summary);
+            observerCallbackCount = 0;
+            observerMutationCount = 0;
+        }, 60000);
+    }
+
     /**
      * Initializes content script on page load.
      */
@@ -909,6 +975,7 @@
         if (isInitialized) return true;
         isInitialized = true;
         diag("initialize: authorized host, starting engine");
+        if (DIAG_INSTRUMENTATION) installNavigationInstrumentation();
 
         if (typeof window !== "undefined") {
             window.addEventListener("yt-navigate-start", () => onLifecycleEvent("yt-navigate-start"));
@@ -984,7 +1051,8 @@
             dispatchInterventions,
             onLifecycleEvent,
             scheduleFrame,
-            ensureConfiguration
+            ensureConfiguration,
+            installNavigationInstrumentation
         };
     }
 })();
