@@ -1093,3 +1093,91 @@ test("Config reply with no player present stores config and mounts nothing", () 
     assert.equal((video.eventListeners.timeupdate || []).length, 1);
     assert.equal(env.getConfigQuerySendCount(), 1, "stored config reused, no second query");
 });
+
+// MARK: - Logging policy (docs/Architecture/Logging.md)
+
+// The shipped configuration must never put hostnames, URLs, error text, or page markup
+// (class names, ids) on the console, where anyone with Web Inspector attached can read it.
+// Every sentinel below is something a real page or the platform could hand us.
+function captureConsole(t) {
+    const lines = [];
+    t.mock.method(console, "log", (...args) => lines.push(args.map(String).join(" ")));
+    return lines;
+}
+
+test("Shipped logging configuration never emits verbose diagnostics", () => {
+    const fs = require("node:fs");
+    const path = require("node:path");
+    const source = fs.readFileSync(path.join(__dirname, "..", "Resources", "content.js"), "utf8");
+    assert.match(source, /const DIAG_VERBOSE = false;/, "DIAG_VERBOSE must ship as false");
+});
+
+test("Lifecycle logging carries no hostnames, URLs, error text or page markup", (t) => {
+    const lines = captureConsole(t);
+    const env = createMockDOMEnvironment("www.youtube.com", { readyState: "loading" });
+    const player = env.createElement("div", "movie_player", "html5-video-player ad-showing sentinel-class-zq");
+    const video = env.createElement("video");
+    player.appendChild(video);
+    player.appendChild(env.createElement("div", "ad-sentinel-id", "ytp-ad-sentinel-badge"));
+    env.addDocumentElement(player);
+    env.mockGlobal.browser.runtime.lastError = { message: "https://secret.example/path?q=1" };
+
+    const content = loadContentWithMock(env);
+    env.respondToConfigQuery(undefined); // unanswered + lastError: the FAILED path
+    env.mockGlobal.browser.runtime.lastError = null;
+
+    // A content.js error event whose message could contain anything.
+    for (const h of env.listeners.error || []) {
+        h({ filename: "safari-web-extension://abc/content.js", message: "https://secret.example/boom", lineno: 3, colno: 4 });
+    }
+
+    content.setEngineState({ playerGeneration: 0 });
+    env.respondToConfigQuery({
+        layer3Enabled: true,
+        generation: 1,
+        rules: { youtube: { selectors: { adStateClasses: ["ad-showing"] }, disableMask: {} } }
+    });
+    const gen = content.getEngineState().playerGeneration;
+    content.evaluateFSM(gen);
+    for (const h of video.eventListeners.timeupdate || []) h();
+    player.classList.add("later-sentinel-class");
+    content.evaluateFSM(gen);
+
+    const text = lines.join("\n");
+    assert.ok(lines.length > 0, "lifecycle logging is still present");
+    for (const forbidden of ["youtube.com", "secret.example", "sentinel-class-zq", "ad-sentinel-id",
+        "ytp-ad-sentinel-badge", "later-sentinel-class", "safari-web-extension", "boom"]) {
+        assert.ok(!text.includes(forbidden), `console output must not contain "${forbidden}":\n${text}`);
+    }
+});
+
+test("Hostname of a non-allowlisted page is never logged", (t) => {
+    const lines = captureConsole(t);
+    const env = createMockDOMEnvironment("evil.example.org");
+    const content = loadContentWithMock(env);
+    assert.equal(content.initialize(), false);
+    assert.ok(!lines.join("\n").includes("evil.example"), lines.join("\n"));
+});
+
+test("Lifecycle logging keeps the config request/response lines and a duration", (t) => {
+    const lines = captureConsole(t);
+    const env = createMockDOMEnvironment("www.youtube.com");
+    const player = env.createElement("div", "movie_player", "html5-video-player");
+    player.appendChild(env.createElement("video"));
+    env.addDocumentElement(player);
+    const content = loadContentWithMock(env);
+    env.respondToConfigQuery({ layer3Enabled: true, generation: 1 });
+    assert.equal(content.getEngineState().activePlayerElement, player);
+
+    const text = lines.join("\n");
+    assert.match(text, /sending getLayer3Config/);
+    assert.match(text, /got config .*in \d+ms/, "reply logs elapsed milliseconds");
+    assert.match(text, /player resolved, engine mounting/);
+});
+
+test("Awaiting-config line is logged when a mount has no config yet", (t) => {
+    const lines = captureConsole(t);
+    const env = createMockDOMEnvironment("www.youtube.com", { readyState: "loading" });
+    loadContentWithMock(env);
+    assert.match(lines.join("\n"), /awaiting config/);
+});

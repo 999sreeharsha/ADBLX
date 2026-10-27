@@ -4,9 +4,16 @@
 "use strict";
 
 (function () {
-    // TEMPORARY DIAGNOSTIC INSTRUMENTATION (remove after Layer 3 activation is confirmed).
-    // No page content, URLs, or user data are logged — only engine lifecycle + signal booleans.
+    // DIAGNOSTIC LOGGING. Console output from a content script is readable by anyone with
+    // Web Inspector attached, so docs/Architecture/Logging.md applies here in full.
+    //
+    // diag()  — lifecycle lines. Counts, durations, booleans and fixed state names only:
+    //           never a hostname, URL, error text, or anything read from the page.
+    // DIAG_VERBOSE — extra dumps (FSM trace, signal booleans, media state, page class
+    //           names and element ids) used to debug detection on a device. They can
+    //           echo page markup, so they ship OFF; a test fails if this is not false.
     const DIAG = true;
+    const DIAG_VERBOSE = false;
     function diag(...args) {
         if (DIAG && typeof console !== "undefined") {
             console.log("[ADBLX-L3]", ...args);
@@ -16,16 +23,15 @@
     // First statement to execute. If this line never appears in the console, the content
     // script was never injected at all (manifest/permission problem, not a code problem).
     diag("SCRIPT LOADED at", (typeof document !== "undefined" && document.readyState) || "?",
-        "host:", (typeof location !== "undefined" && location.hostname) || "?",
         "browserAPI:", typeof browser);
 
-    // Surface any exception thrown by this content script specifically, so it can be told
-    // apart from the host page's own errors in a shared console.
-    if (typeof window !== "undefined" && window.addEventListener) {
+    // Surface an exception thrown by this content script, located by line and column only:
+    // the message and stack can quote page text or URLs.
+    if (DIAG_VERBOSE && typeof window !== "undefined" && window.addEventListener) {
         window.addEventListener("error", (e) => {
             const f = (e && e.filename) || "";
             if (f.indexOf("content.js") !== -1) {
-                diag("UNCAUGHT in content.js:", e.message, "@", e.lineno + ":" + e.colno);
+                diag("UNCAUGHT in content.js @", e.lineno + ":" + e.colno);
             }
         });
     }
@@ -80,6 +86,11 @@
     // Config is page-scoped, not generation-scoped: one in-flight request shared by every
     // caller, cleared only when all attempts fail so a later mount can try again.
     let configRequest = null;
+    let configRequestStartedAt = 0;
+
+    function nowMs() {
+        return (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
+    }
 
     // Generation that currently has observers and media handlers attached. Guards against
     // a navigation and a late config reply both mounting the same generation.
@@ -419,7 +430,7 @@
         const disableMask = (currentConfig && currentConfig.rules &&
             currentConfig.rules.youtube && currentConfig.rules.youtube.disableMask) || {};
 
-        diag("dispatchInterventions: AD_CONFIRMED — disableMask=", JSON.stringify(disableMask));
+        if (DIAG_VERBOSE) diag("dispatchInterventions: AD_CONFIRMED — disableMask=", JSON.stringify(disableMask));
 
         // 1. Candidate A: Cosmetic Suppression
         if (!disableMask.cosmeticHidingDisabled) {
@@ -431,7 +442,7 @@
         if (!disableMask.skipClickDisabled) {
             skipDispatched = dispatchCandidateBSkip(player, gen);
         }
-        diag("dispatchInterventions: skipDispatched=", skipDispatched);
+        if (DIAG_VERBOSE) diag("dispatchInterventions: skipDispatched=", skipDispatched);
 
         if (skipDispatched) {
             return;
@@ -442,12 +453,14 @@
         if (!disableMask.accelerationDisabled) {
             accelDispatched = dispatchCandidateCAcceleration(video, gen);
         }
-        diag("ACCEL:", "dispatched=", accelDispatched,
-            "| maskDisabled=", !!disableMask.accelerationDisabled,
-            "| alreadyActive=", isAccelerationActive,
-            "| haveVideo=", !!video,
-            "| rate=", video && video.playbackRate,
-            "| muted=", video && video.muted);
+        if (DIAG_VERBOSE) {
+            diag("ACCEL:", "dispatched=", accelDispatched,
+                "| maskDisabled=", !!disableMask.accelerationDisabled,
+                "| alreadyActive=", isAccelerationActive,
+                "| haveVideo=", !!video,
+                "| rate=", video && video.playbackRate,
+                "| muted=", video && video.muted);
+        }
 
         if (accelDispatched) {
             return;
@@ -464,7 +477,7 @@
         if (gen !== playerGeneration) return;
         if (detectionState === nextState) return;
 
-        diag("transitionTo:", detectionState, "->", nextState, "(gen", gen, ")");
+        if (DIAG_VERBOSE) diag("transitionTo:", detectionState, "->", nextState, "(gen", gen, ")");
         detectionState = nextState;
 
         if (nextState === DetectionState.AD_CONFIRMED) {
@@ -523,69 +536,71 @@
             const sig03 = hasSIG03AdBadge(player);
             const mediaActive = isMediaActive(video);
 
-            // Log the player's class list only when it CHANGES. A static dump cannot
-            // distinguish "class marks an ad is playing now" from "class is always
-            // present" — and treating an always-present class as an ad signal would
-            // false-positive on normal playback, which is the one outcome the Cardinal
-            // Rule forbids. The delta shows exactly which classes toggle at ad onset.
-            const classesNow = player.className || "";
-            if (diagLastPlayerClasses === "") {
-                // Baseline: always print once so the absence of later deltas is meaningful
-                // (it proves the classes are static) rather than ambiguous with "this build
-                // was never installed".
-                diag("CLASS BASELINE @t=", video ? Math.round(video.currentTime) : "?",
-                    "|", classesNow.slice(0, 400));
-            }
-            if (classesNow !== diagLastPlayerClasses) {
-                const before = new Set(diagLastPlayerClasses.split(/\s+/).filter(Boolean));
-                const after = new Set(classesNow.split(/\s+/).filter(Boolean));
-                const added = [...after].filter((c) => !before.has(c));
-                const removed = [...before].filter((c) => !after.has(c));
-                diag("CLASS DELTA @t=", video ? Math.round(video.currentTime) : "?",
-                    "| ADDED:", added.join(",") || "(none)",
-                    "| REMOVED:", removed.join(",") || "(none)");
-                diagLastPlayerClasses = classesNow;
-
-                // At each class change, report which ad-ish elements actually exist in the
-                // DOM. SIG-02/SIG-03 may be missing because their selectors are stale
-                // rather than because no ad is present; this shows the real markup.
-                if (typeof document !== "undefined") {
-                    const probes = [
-                        "[class*='skip']", "[class*='ad-badge']", "[class*='ad-text']",
-                        "[class*='ytp-ad']", "[class*='ytm-ad']", "[id*='ad']"
-                    ];
-                    const found = probes
-                        .map((sel) => {
-                            try {
-                                const els = document.querySelectorAll(sel);
-                                if (!els.length) return null;
-                                const names = [...els].slice(0, 3)
-                                    .map((e) => (e.className || e.id || "?").toString().slice(0, 60));
-                                return sel + "=" + els.length + "[" + names.join(" | ") + "]";
-                            } catch (e) { return null; }
-                        })
-                        .filter(Boolean);
-                    diag("AD DOM PROBE:", found.length ? found.join("  ;  ") : "(nothing matched)");
+            if (DIAG_VERBOSE) {
+                // Log the player's class list only when it CHANGES. A static dump cannot
+                // distinguish "class marks an ad is playing now" from "class is always
+                // present" — and treating an always-present class as an ad signal would
+                // false-positive on normal playback, which is the one outcome the Cardinal
+                // Rule forbids. The delta shows exactly which classes toggle at ad onset.
+                const classesNow = player.className || "";
+                if (diagLastPlayerClasses === "") {
+                    // Baseline: always print once so the absence of later deltas is meaningful
+                    // (it proves the classes are static) rather than ambiguous with "this build
+                    // was never installed".
+                    diag("CLASS BASELINE @t=", video ? Math.round(video.currentTime) : "?",
+                        "|", classesNow.slice(0, 400));
                 }
-            }
+                if (classesNow !== diagLastPlayerClasses) {
+                    const before = new Set(diagLastPlayerClasses.split(/\s+/).filter(Boolean));
+                    const after = new Set(classesNow.split(/\s+/).filter(Boolean));
+                    const added = [...after].filter((c) => !before.has(c));
+                    const removed = [...before].filter((c) => !after.has(c));
+                    diag("CLASS DELTA @t=", video ? Math.round(video.currentTime) : "?",
+                        "| ADDED:", added.join(",") || "(none)",
+                        "| REMOVED:", removed.join(",") || "(none)");
+                    diagLastPlayerClasses = classesNow;
 
-            // mediaActive is a conjunction of three conditions; when timeupdate is firing
-            // but mediaActive reads false, exactly one of them is wrong. Log them apart,
-            // plus whether the bound element is still the page's live <video>.
-            if ((diagTimeupdateCount % 20) === 1) {
-                const live = (typeof document !== "undefined") ? document.querySelector("video") : null;
-                diag("MEDIA STATE: bound?", !!video,
-                    "paused=", video && video.paused,
-                    "ended=", video && video.ended,
-                    "readyState=", video && video.readyState,
-                    "currentTime=", video && Math.round(video.currentTime),
-                    "| boundIsLive=", !!video && video === live,
-                    "| videosOnPage=", (typeof document !== "undefined") ? document.querySelectorAll("video").length : -1);
-            }
+                    // At each class change, report which ad-ish elements actually exist in the
+                    // DOM. SIG-02/SIG-03 may be missing because their selectors are stale
+                    // rather than because no ad is present; this shows the real markup.
+                    if (typeof document !== "undefined") {
+                        const probes = [
+                            "[class*='skip']", "[class*='ad-badge']", "[class*='ad-text']",
+                            "[class*='ytp-ad']", "[class*='ytm-ad']", "[id*='ad']"
+                        ];
+                        const found = probes
+                            .map((sel) => {
+                                try {
+                                    const els = document.querySelectorAll(sel);
+                                    if (!els.length) return null;
+                                    const names = [...els].slice(0, 3)
+                                        .map((e) => (e.className || e.id || "?").toString().slice(0, 60));
+                                    return sel + "=" + els.length + "[" + names.join(" | ") + "]";
+                                } catch (e) { return null; }
+                            })
+                            .filter(Boolean);
+                        diag("AD DOM PROBE:", found.length ? found.join("  ;  ") : "(nothing matched)");
+                    }
+                }
 
-            diag("evaluateFSM: state=", detectionState,
-                "sig01(adClass)=", sig01, "sig02(skipBtn)=", sig02,
-                "sig03(adBadge)=", sig03, "mediaActive=", mediaActive);
+                // mediaActive is a conjunction of three conditions; when timeupdate is firing
+                // but mediaActive reads false, exactly one of them is wrong. Log them apart,
+                // plus whether the bound element is still the page's live <video>.
+                if ((diagTimeupdateCount % 20) === 1) {
+                    const live = (typeof document !== "undefined") ? document.querySelector("video") : null;
+                    diag("MEDIA STATE: bound?", !!video,
+                        "paused=", video && video.paused,
+                        "ended=", video && video.ended,
+                        "readyState=", video && video.readyState,
+                        "currentTime=", video && Math.round(video.currentTime),
+                        "| boundIsLive=", !!video && video === live,
+                        "| videosOnPage=", (typeof document !== "undefined") ? document.querySelectorAll("video").length : -1);
+                }
+
+                diag("evaluateFSM: state=", detectionState,
+                    "sig01(adClass)=", sig01, "sig02(skipBtn)=", sig02,
+                    "sig03(adBadge)=", sig03, "mediaActive=", mediaActive);
+            }
 
             switch (detectionState) {
             case DetectionState.UNKNOWN:
@@ -740,7 +755,7 @@
             boundMediaHandlers = null;
         }
 
-        diag("ensureVideoBound: binding video element (gen", gen, ")");
+        if (DIAG_VERBOSE) diag("ensureVideoBound: binding video element (gen", gen, ")");
         activeVideoElement = video;
         bindMediaEvents(video, gen);
     }
@@ -777,10 +792,12 @@
         if (gen !== playerGeneration) return;
         // timeupdate fires ~4x/sec; log it sparsely so the console stays readable while
         // still proving media events are reaching the engine at all.
-        if (eventName !== "timeupdate") {
-            diag("mediaEvent:", eventName, "(gen", gen, ")");
-        } else if ((diagTimeupdateCount++ % 20) === 0) {
-            diag("mediaEvent: timeupdate #", diagTimeupdateCount, "(gen", gen, ")");
+        if (DIAG_VERBOSE) {
+            if (eventName !== "timeupdate") {
+                diag("mediaEvent:", eventName, "(gen", gen, ")");
+            } else if ((diagTimeupdateCount++ % 20) === 0) {
+                diag("mediaEvent: timeupdate #", diagTimeupdateCount, "(gen", gen, ")");
+            }
         }
         evaluateFSM(gen);
     }
@@ -826,6 +843,7 @@
      */
     function ensureConfiguration() {
         if (!configRequest) {
+            configRequestStartedAt = nowMs();
             configRequest = new Promise((resolve) => fetchConfiguration(resolve, 0));
         }
         return configRequest;
@@ -850,7 +868,8 @@
         browser.runtime.sendMessage({ type: "getLayer3Config" }, (response) => {
             if (browser.runtime.lastError || !response) {
                 currentConfig = { layer3Enabled: false, reason: BACKGROUND_UNAVAILABLE_REASON };
-                diag("fetchConfiguration: FAILED", browser.runtime.lastError && browser.runtime.lastError.message, "response=", response);
+                // Whether each was present, never the lastError text: it can quote URLs.
+                diag("fetchConfiguration: FAILED lastError=", !!browser.runtime.lastError, "response=", !!response);
 
                 // Safari suspends the MV3 event page aggressively. An unanswered send
                 // (no response AND no lastError) means the background page was down, not
@@ -869,7 +888,8 @@
                 currentConfig = response;
                 diag("fetchConfiguration: got config layer3Enabled=", response.layer3Enabled,
                     "reason=", response.reason,
-                    "hasRules=", !!(response.rules && response.rules.youtube));
+                    "hasRules=", !!(response.rules && response.rules.youtube),
+                    "in", Math.round(nowMs() - configRequestStartedAt) + "ms");
                 // Mount synchronously, for whatever generation is current by now.
                 mountPlayer(playerGeneration);
             }
@@ -883,7 +903,7 @@
      */
     function initialize() {
         if (!isAuthorizedOrigin()) {
-            diag("initialize: host not authorized:", typeof window !== "undefined" && window.location ? window.location.hostname : "?");
+            diag("initialize: host not authorized");
             return false;
         }
         if (isInitialized) return true;
@@ -912,7 +932,7 @@
         try {
             initialize();
         } catch (err) {
-            diag("initialize() THREW:", err && err.message, err && err.stack);
+            diag("initialize() THREW:", err && err.name);
         }
     }
 
