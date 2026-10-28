@@ -148,7 +148,7 @@ struct ProtectionStatus: Equatable, Sendable {
 /// What Safari Protection and Advanced Filter Lists need from the backend.
 /// A later sprint's real implementation translates FilterPipeline/FilterManifest
 /// state into these screen-shaped types.
-protocol ProtectionService: Sendable {
+nonisolated protocol ProtectionService: Sendable {
     func fetchStatus() async -> ProtectionStatus
     func setCategory(_ id: FilterCategoryID, enabled: Bool) async
     func setFilterList(_ id: String, enabled: Bool) async

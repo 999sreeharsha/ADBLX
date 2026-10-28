@@ -12,7 +12,7 @@ struct SettingsSnapshot: Equatable {
 }
 
 /// What Settings needs from the backend (FR-08's per-site allowlist).
-protocol SettingsService: Sendable {
+nonisolated protocol SettingsService: Sendable {
     func fetchSnapshot() async -> SettingsSnapshot
     func addAllowlistEntry(domain: String) async
     func removeAllowlistEntry(id: String) async

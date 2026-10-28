@@ -55,7 +55,7 @@ struct HomeStatus: Equatable {
 /// What HomeView/HomeViewModel need from the backend. Never exposes
 /// FilterPipeline or UpdateCoordinator directly (Sprint 4 spec §5) — a later
 /// sprint's real implementation translates their state into a HomeStatus here.
-protocol HomeService: Sendable {
+nonisolated protocol HomeService: Sendable {
     func fetchStatus() async -> HomeStatus
 }
 

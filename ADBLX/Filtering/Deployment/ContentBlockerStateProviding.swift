@@ -28,7 +28,7 @@ struct ContentBlockerDescriptor: Sendable, Equatable {
 }
 
 /// Protocol abstracting `SFContentBlockerManager.getStateOfContentBlocker` queries.
-protocol ContentBlockerStateProviding: Sendable {
+nonisolated protocol ContentBlockerStateProviding: Sendable {
     nonisolated func state(of extensionIdentifier: String) async -> ContentBlockerSettingsState
 }
 
