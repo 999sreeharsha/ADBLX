@@ -216,7 +216,23 @@ public actor StoreKitSubscriptionService: SubscriptionService, EntitlementServic
         await refreshEntitlements()
     }
 
+    /// Cheap, cached read of the last resolved entitlement state.
+    ///
+    /// Callers on a hot or repeated path should use this. Callers that must not observe a
+    /// stale value — notably anything publishing entitlement to another process before the
+    /// async transaction listener has necessarily completed its first refresh — should use
+    /// `resolvedPremiumEntitlement()` instead.
     public func isPremiumEntitled() async -> Bool {
         currentState.hasPremiumAccess
+    }
+
+    /// Forces a fresh StoreKit + trial resolution, then reports premium access.
+    ///
+    /// Exists because `state` is populated lazily by `startTransactionListener()`. At launch
+    /// the Layer 3 bootstrap publishes `entitlement.json` from this value before that
+    /// listener has necessarily finished, and reading the stale `.free` snapshot there left
+    /// trial users with Layer 3 disabled until a second launch.
+    public func resolvedPremiumEntitlement() async -> Bool {
+        await refreshEntitlements().hasPremiumAccess
     }
 }

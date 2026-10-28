@@ -82,7 +82,10 @@ struct ADBLXApp: App {
                         pipeline: pipeline, manifestStore: manifestStore
                     )
                     let subscriptionService = AppCompositionRoot.makeSubscriptionService()
-                    let isPremium = await subscriptionService.isPremiumEntitled()
+                    // Must be the resolved (not cached) value: this publishes entitlement.json
+                    // for the Safari Web Extension, and the cached state is still `.free` this
+                    // early in launch until the transaction listener's first refresh lands.
+                    let isPremium = await subscriptionService.resolvedPremiumEntitlement()
                     WebExtensionBootstrap.ensureInitialWebExtensionRulesInstalled(isPremium: isPremium)
                     _ = AppCompositionRoot.makeWebExtensionEntitlementCoordinator()
                     _ = AppCompositionRoot.makeTrialNotificationScheduler()
