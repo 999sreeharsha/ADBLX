@@ -15,7 +15,13 @@
       "Bash(rtk wc *)",
       "Bash(rtk grep *)",
       "Bash(sort -t: -k1 -n)",
-      "Bash(rtk find *)"
+      "Bash(rtk find *)",
+      "Bash(node --test Tests/manifest.test.js)",
+      "Bash(node --test Tests/)",
+      "Bash(xcodegen generate *)",
+      "Bash(xcodebuild build *)",
+      "Bash(node --test Tests/content.test.js)",
+      "Bash(xcodegen --version)"
     ]
   },
   "hooks": {
