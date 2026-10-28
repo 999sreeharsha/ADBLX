@@ -95,7 +95,7 @@ struct HomeView: View {
         .clipShape(RoundedRectangle(cornerRadius: 32))
         .overlay(
             RoundedRectangle(cornerRadius: 32)
-                .strokeBorder(Color.white.opacity(0.05), lineWidth: 1)
+                .strokeBorder(DesignColors.onSurface.opacity(0.05), lineWidth: 1)
         )
     }
 
@@ -105,10 +105,10 @@ struct HomeView: View {
         }
         .padding(.horizontal, DesignSpacing.gutter)
         .padding(.vertical, DesignSpacing.base * 2)
-        .background(Color.white.opacity(0.05))
+        .background(DesignColors.onSurface.opacity(0.05))
         .clipShape(Capsule())
         .overlay(
-            Capsule().strokeBorder(Color.white.opacity(0.1), lineWidth: 1)
+            Capsule().strokeBorder(DesignColors.onSurface.opacity(0.1), lineWidth: 1)
         )
     }
 
@@ -187,7 +187,7 @@ struct HomeView: View {
         .clipShape(RoundedRectangle(cornerRadius: DesignShape.defaultCornerRadius * 2))
         .overlay(
             RoundedRectangle(cornerRadius: DesignShape.defaultCornerRadius * 2)
-                .strokeBorder(Color.white.opacity(0.05), lineWidth: 1)
+                .strokeBorder(DesignColors.onSurface.opacity(0.05), lineWidth: 1)
         )
         .accessibilityElement(children: .combine)
     }
@@ -232,7 +232,7 @@ struct HomeView: View {
                 .clipShape(RoundedRectangle(cornerRadius: DesignShape.defaultCornerRadius * 2))
                 .overlay(
                     RoundedRectangle(cornerRadius: DesignShape.defaultCornerRadius * 2)
-                        .strokeBorder(Color.white.opacity(0.1), lineWidth: 1)
+                        .strokeBorder(DesignColors.onSurface.opacity(0.1), lineWidth: 1)
                 )
             }
         }
@@ -249,7 +249,7 @@ struct HomeView: View {
                 ForEach(Array(entries.enumerated()), id: \.element.id) { index, entry in
                     activityRow(entry)
                     if index < entries.count - 1 {
-                        Divider().overlay(Color.white.opacity(0.05))
+                        Divider().overlay(DesignColors.onSurface.opacity(0.05))
                     }
                 }
             }
@@ -257,7 +257,7 @@ struct HomeView: View {
             .clipShape(RoundedRectangle(cornerRadius: DesignShape.defaultCornerRadius * 2))
             .overlay(
                 RoundedRectangle(cornerRadius: DesignShape.defaultCornerRadius * 2)
-                    .strokeBorder(Color.white.opacity(0.05), lineWidth: 1)
+                    .strokeBorder(DesignColors.onSurface.opacity(0.05), lineWidth: 1)
             )
         }
     }

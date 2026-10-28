@@ -67,7 +67,7 @@ struct AdvancedFilterListsView: View {
                 ForEach(Array(lists.enumerated()), id: \.element.id) { index, list in
                     filterListRow(list)
                     if index < lists.count - 1 {
-                        Divider().overlay(Color.white.opacity(0.05))
+                        Divider().overlay(DesignColors.onSurface.opacity(0.05))
                     }
                 }
             }
@@ -122,7 +122,7 @@ struct AdvancedFilterListsView: View {
         } label: {
             HStack {
                 if isApplying {
-                    ProgressView().tint(.white)
+                    ProgressView().tint(DesignColors.onPrimaryContainer)
                 } else {
                     Text("protection.action.applyChanges")
                         .font(DesignTypography.bodyLarge)
@@ -130,7 +130,7 @@ struct AdvancedFilterListsView: View {
                     Image(systemName: "arrow.triangle.2.circlepath")
                 }
             }
-            .foregroundStyle(.white)
+            .foregroundStyle(DesignColors.onPrimaryContainer)
             .frame(maxWidth: .infinity)
             .padding(.vertical, DesignSpacing.gutter)
             .background(DesignColors.primaryContainer)

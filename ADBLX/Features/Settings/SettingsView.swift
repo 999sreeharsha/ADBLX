@@ -3,7 +3,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @State var viewModel: SettingsViewModel
-    @Binding var appearance: AppearancePreference
+    @AppStorage(AppearancePreference.storageKey) private var appearance: AppearancePreference = .system
     @State private var newDomain = ""
     @State private var showBrokenSiteReport = false
 
@@ -191,5 +191,5 @@ struct SettingsView: View {
 }
 
 #Preview {
-    SettingsView(viewModel: SettingsViewModel(service: MockSettingsService()), appearance: .constant(.system))
+    SettingsView(viewModel: SettingsViewModel(service: MockSettingsService()))
 }

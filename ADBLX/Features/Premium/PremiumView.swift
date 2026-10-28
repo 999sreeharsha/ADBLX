@@ -132,7 +132,7 @@ struct PremiumView: View {
                 if isBestValue {
                     Text("premium.badge.bestValue")
                         .font(DesignTypography.labelCaps)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(DesignColors.onTertiary)
                         .padding(.horizontal, DesignSpacing.gutter)
                         .padding(.vertical, DesignSpacing.base / 2)
                         .background(DesignColors.tertiary)
@@ -194,7 +194,7 @@ struct PremiumView: View {
         .clipShape(RoundedRectangle(cornerRadius: DesignShape.defaultCornerRadius * 2))
         .overlay(
             RoundedRectangle(cornerRadius: DesignShape.defaultCornerRadius * 2)
-                .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
+                .strokeBorder(DesignColors.onSurface.opacity(0.08), lineWidth: 1)
         )
     }
 
@@ -216,7 +216,7 @@ struct PremiumView: View {
             .clipShape(RoundedRectangle(cornerRadius: DesignShape.defaultCornerRadius * 2))
             .overlay(
                 RoundedRectangle(cornerRadius: DesignShape.defaultCornerRadius * 2)
-                    .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
+                    .strokeBorder(DesignColors.onSurface.opacity(0.08), lineWidth: 1)
             )
         }
     }
@@ -273,7 +273,7 @@ struct PremiumView: View {
                 Text("premium.action.upgradeToPremium")
                     .font(DesignTypography.bodyLarge)
                     .fontWeight(.bold)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(DesignColors.onTertiary)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, DesignSpacing.containerPadding)
                     .background(DesignColors.tertiary)

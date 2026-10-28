@@ -1,56 +1,49 @@
 import SwiftUI
 
-extension Color {
-    init(hex: String) {
-        let cleaned = hex.trimmingCharacters(in: CharacterSet(charactersIn: "#"))
-        var value: UInt64 = 0
-        Scanner(string: cleaned).scanHexInt64(&value)
-        let r = Double((value >> 16) & 0xFF) / 255
-        let g = Double((value >> 8) & 0xFF) / 255
-        let b = Double(value & 0xFF) / 255
-        self.init(red: r, green: g, blue: b)
-    }
-}
-
-/// Color tokens read verbatim from the Stitch project's "Serene Shield Unified"
-/// design system (assets/111a44c302cd40c9b5ccad6501fc52cf), colorMode: DARK —
-/// the corrected, single source of truth after the original "Serene Shield"
-/// theme (light mode) was found to not match any of the actual rendered
-/// screens. Do not adjust these values without first updating the Stitch
-/// design system — Stitch is the design authority (see Sprint 4 spec §2).
+/// Adaptive color tokens backed by asset-catalog colorsets (Assets.xcassets/Colors),
+/// each with Any/Dark and High Contrast variants where text or borders need them.
+/// Dark values are read verbatim from the Stitch project's "Serene Shield Unified"
+/// design system (assets/111a44c302cd40c9b5ccad6501fc52cf), colorMode: DARK, and
+/// must not be adjusted without first updating the Stitch design system — Stitch is
+/// the design authority (see Sprint 4 spec §2). Light values are Material 3 tones
+/// derived from the same palettes (primary hue 272; the dark tokens are tones 80/20/30/60
+/// of those palettes). The *Container fills and their on* pairs are saturated in both
+/// modes, because the UI uses them as filled surfaces carrying light text.
 enum DesignColors {
-    static let primary = Color(hex: "#b4c5ff")
-    static let onPrimary = Color(hex: "#002a78")
-    static let primaryContainer = Color(hex: "#2563eb")
-    static let onPrimaryContainer = Color(hex: "#eeefff")
+    static let primary = Color("primary")
+    static let onPrimary = Color("onPrimary")
+    static let primaryContainer = Color("primaryContainer")
+    static let onPrimaryContainer = Color("onPrimaryContainer")
 
-    static let secondary = Color(hex: "#53e16f")
-    static let onSecondary = Color(hex: "#003911")
-    static let secondaryContainer = Color(hex: "#05b046")
+    static let secondary = Color("secondary")
+    static let onSecondary = Color("onSecondary")
+    static let secondaryContainer = Color("secondaryContainer")
 
-    static let tertiary = Color(hex: "#ddb7ff")
-    static let onTertiary = Color(hex: "#490080")
-    static let tertiaryContainer = Color(hex: "#943fe2")
+    static let tertiary = Color("tertiary")
+    static let onTertiary = Color("onTertiary")
+    static let tertiaryContainer = Color("tertiaryContainer")
 
-    static let error = Color(hex: "#ffb4ab")
-    static let onError = Color(hex: "#690005")
-    static let errorContainer = Color(hex: "#93000a")
-    static let onErrorContainer = Color(hex: "#ffdad6")
+    static let error = Color("error")
+    static let onError = Color("onError")
+    static let errorContainer = Color("errorContainer")
+    static let onErrorContainer = Color("onErrorContainer")
 
-    static let background = Color(hex: "#111317")
-    static let onBackground = Color(hex: "#e2e2e7")
+    static let background = Color("background")
+    static let onBackground = Color("onBackground")
 
-    static let surface = Color(hex: "#111317")
-    static let surfaceDim = Color(hex: "#111317")
-    static let surfaceBright = Color(hex: "#37393d")
-    static let surfaceContainerLowest = Color(hex: "#0c0e12")
-    static let surfaceContainerLow = Color(hex: "#1a1c1f")
-    static let surfaceContainer = Color(hex: "#1e2023")
-    static let surfaceContainerHigh = Color(hex: "#282a2e")
-    static let surfaceContainerHighest = Color(hex: "#333539")
-    static let onSurface = Color(hex: "#e2e2e7")
-    static let onSurfaceVariant = Color(hex: "#c3c6d7")
+    static let surface = Color("surface")
+    static let surfaceDim = Color("surfaceDim")
+    static let surfaceBright = Color("surfaceBright")
+    static let surfaceContainerLowest = Color("surfaceContainerLowest")
+    static let surfaceContainerLow = Color("surfaceContainerLow")
+    static let surfaceContainer = Color("surfaceContainer")
+    static let surfaceContainerHigh = Color("surfaceContainerHigh")
+    static let surfaceContainerHighest = Color("surfaceContainerHighest")
+    static let onSurface = Color("onSurface")
+    static let onSurfaceVariant = Color("onSurfaceVariant")
 
-    static let outline = Color(hex: "#8d90a0")
-    static let outlineVariant = Color(hex: "#434655")
+    static let outline = Color("outline")
+    static let outlineVariant = Color("outlineVariant")
+
+    static let shadow = Color("shadow")
 }

@@ -14,7 +14,7 @@ struct Card<Content: View>: View {
         .padding(DesignSpacing.containerPadding)
         .background(DesignColors.surfaceContainerLowest)
         .clipShape(RoundedRectangle(cornerRadius: DesignShape.cardCornerRadius))
-        .shadow(color: .black.opacity(0.04), radius: 20, x: 0, y: 4)
+        .shadow(color: DesignColors.shadow, radius: 20, x: 0, y: 4)
     }
 }
 

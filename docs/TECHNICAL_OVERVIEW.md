@@ -230,7 +230,7 @@ Row-by-row status (verified against source; several rows are **deliberately half
 
 | Row | Real behavior | Status |
 |---|---|---|
-| **Appearance** | `NavigationLink` → picker; persisted by `AppearancePreferenceStore` (UserDefaults), applied via `.preferredColorScheme` | ✅ Real, device-local |
+| **Appearance** | `NavigationLink` → picker; persisted via `@AppStorage(AppearancePreference.storageKey)` (UserDefaults), applied via `.preferredColorScheme` at the app root; colors are adaptive asset-catalog tokens | ✅ Real, device-local |
 | **Language** | Displays `Locale.current` language name; **no action** | ⚠️ Read-only — cannot change the app's language |
 | **Notifications** | `NavigationLink` → `ComingSoonState` placeholder | ⚠️ Placeholder — no `UNUserNotificationCenter` permission wiring here |
 | **Safari Help** | `NavigationLink` → `ComingSoonState` | ⚠️ Placeholder |

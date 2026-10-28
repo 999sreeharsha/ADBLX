@@ -8,10 +8,9 @@ struct ADBLXApp: App {
     private let filterPipeline: FilterPipeline
     private let updateCoordinator: UpdateCoordinator
     private let uiDependencies: AppCompositionRoot.UIDependencies
-    private let appearanceStore = AppearancePreferenceStore()
     @State private var onboardingStore = OnboardingCompletionStore()
     @State private var hasCompletedOnboarding: Bool
-    @State private var appearance: AppearancePreference
+    @AppStorage(AppearancePreference.storageKey) private var appearance: AppearancePreference = .system
     @State private var trialExpiryRouter = AppCompositionRoot.makeTrialExpiryRouter()
 
     private static var isRunningTests: Bool {
@@ -31,14 +30,13 @@ struct ADBLXApp: App {
             configuration: .mock, store: store, pipeline: pipeline, updateCoordinator: updateCoordinator
         )
         _hasCompletedOnboarding = State(initialValue: OnboardingCompletionStore().hasCompletedOnboarding)
-        _appearance = State(initialValue: appearanceStore.current)
     }
 
     var body: some Scene {
         WindowGroup {
             Group {
                 if hasCompletedOnboarding {
-                    RootTabView(dependencies: uiDependencies, appearance: $appearance)
+                    RootTabView(dependencies: uiDependencies)
                         .fullScreenCover(isPresented: Binding(
                             get: { trialExpiryRouter.currentRoute == .showExpiredDecision },
                             set: { if !$0 { trialExpiryRouter.currentRoute = .none } }

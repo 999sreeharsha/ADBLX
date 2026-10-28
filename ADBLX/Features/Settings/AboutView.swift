@@ -30,7 +30,7 @@ struct AboutView: View {
                     .frame(width: 96, height: 96)
                 Image(systemName: "shield.checkered")
                     .font(.system(size: 40))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(DesignColors.onPrimary)
             }
             Text("about.title.app")
                 .font(DesignTypography.headlineLarge)

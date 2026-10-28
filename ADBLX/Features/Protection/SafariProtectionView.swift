@@ -121,10 +121,10 @@ struct SafariProtectionView: View {
             }
             Text(String(format: String(localized: "protection.safari.stat.threatsBlocked"), 4281.formatted()))
                 .font(DesignTypography.headlineMedium)
-                .foregroundStyle(.white)
+                .foregroundStyle(DesignColors.onSurface)
             Text("protection.safari.stat.period")
                 .font(DesignTypography.bodySmall)
-                .foregroundStyle(.white.opacity(0.6))
+                .foregroundStyle(DesignColors.onSurfaceVariant)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(DesignSpacing.containerPadding)
@@ -300,17 +300,17 @@ struct SafariProtectionView: View {
             VStack(alignment: .leading, spacing: DesignSpacing.base) {
                 Text("premium.badge.upsellLabel")
                     .font(DesignTypography.labelCaps)
-                    .foregroundStyle(.white.opacity(0.8))
+                    .foregroundStyle(DesignColors.onPrimaryContainer.opacity(0.8))
                     .padding(.horizontal, DesignSpacing.gutter)
                     .padding(.vertical, DesignSpacing.base / 2)
-                    .background(.white.opacity(0.2))
+                    .background(DesignColors.onPrimaryContainer.opacity(0.2))
                     .clipShape(Capsule())
                 Text("premium.upsell.title")
                     .font(DesignTypography.headlineMedium)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(DesignColors.onPrimaryContainer)
                 Text("premium.upsell.body")
                     .font(DesignTypography.bodySmall)
-                    .foregroundStyle(.white.opacity(0.8))
+                    .foregroundStyle(DesignColors.onPrimaryContainer.opacity(0.8))
             }
             Spacer()
             NavigationLink("premium.action.upgrade") {
@@ -321,7 +321,7 @@ struct SafariProtectionView: View {
             .foregroundStyle(DesignColors.primaryContainer)
             .padding(.horizontal, DesignSpacing.containerPadding)
             .padding(.vertical, DesignSpacing.base * 2)
-            .background(.white)
+            .background(DesignColors.onPrimaryContainer)
             .clipShape(RoundedRectangle(cornerRadius: DesignShape.defaultCornerRadius))
         }
         .padding(DesignSpacing.sectionGap)
