@@ -27,8 +27,8 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
         let customIPv4 = pConfig["ipv4Address"] as? String ?? "9.9.9.9"
         let customIPv6 = pConfig["ipv6Address"] as? String
         
-        let upstreamIPv4 = "1.1.1.1"
-        let upstreamIPv6: String? = nil
+        let upstreamIPv4 = (resolverOption == .quad9Default) ? "9.9.9.9" : customIPv4
+        let upstreamIPv6 = (resolverOption == .quad9Default) ? "2620:fe::fe" : customIPv6
         
         // 2. Configure Scoped DNS Routing & Route Exclusions (Loop Prevention)
         let fakeDNSServer = "198.51.100.1"
