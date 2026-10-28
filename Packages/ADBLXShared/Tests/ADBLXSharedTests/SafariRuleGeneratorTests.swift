@@ -64,4 +64,64 @@ final class SafariRuleGeneratorTests: XCTestCase {
         XCTAssertEqual(rules[0].action.type, "ignore-previous-rules")
         XCTAssertEqual(rules[0].trigger.urlFilter, "^https?://([a-zA-Z0-9-]+\\.)*allowed\\.com")
     }
+
+    // MARK: - Pattern-less catch-all block rules (Fix A)
+
+    /// A pattern-less network rule (empty URL pattern, scoped only by ABP modifiers such
+    /// as `$ping,third-party`) must NOT be emitted as an unrestricted `.*` block rule.
+    /// EasyPrivacy line `$ping,third-party` was compiling into
+    /// `{"trigger":{"url-filter":".*","resource-type":["raw"]},"action":{"type":"block"}}`,
+    /// which blocks all third-party XHR/fetch/WebSocket on every site (YouTube black screen).
+    func testPatternlessNetworkBlockRuleIsRejected() {
+        let net = ValidatedNetworkRule(
+            pattern: .wildcard(""),
+            isException: false,
+            loadType: .thirdParty,
+            resourceTypes: [.raw]
+        )
+        let rules = SafariRuleGenerator.generate(from: .network(net))
+        XCTAssertEqual(rules, [], "Pattern-less block rule must produce zero Safari rules")
+    }
+
+    /// A pattern-less rule whose wildcard is explicitly the universal pattern is likewise rejected.
+    func testExplicitUniversalWildcardBlockRuleIsRejected() {
+        let net = ValidatedNetworkRule(
+            pattern: .wildcard(".*"),
+            isException: false,
+            resourceTypes: [.raw]
+        )
+        let rules = SafariRuleGenerator.generate(from: .network(net))
+        XCTAssertEqual(rules, [], "Universal-wildcard block rule must produce zero Safari rules")
+    }
+
+    /// A real, patterned rule that happens to also carry `$ping,third-party` still compiles
+    /// normally — the rejection is specific to pattern-less rules, not to the modifiers.
+    func testPatternedRuleWithPingThirdPartyStillCompiles() {
+        let net = ValidatedNetworkRule(
+            pattern: .domainAnchor("tracker.example/collect"),
+            isException: false,
+            loadType: .thirdParty,
+            resourceTypes: [.raw]
+        )
+        let rules = SafariRuleGenerator.generate(from: .network(net))
+        XCTAssertEqual(rules.count, 1)
+        XCTAssertEqual(rules[0].action.type, "block")
+        XCTAssertEqual(rules[0].trigger.urlFilter, "^https?://([a-zA-Z0-9-]+\\.)*tracker\\.example/collect")
+        XCTAssertNotEqual(rules[0].trigger.urlFilter, ".*")
+    }
+
+    /// A catch-all `.*` is legitimate for a domain-scoped `ignore-previous-rules` (allowlist)
+    /// and for cosmetic hiding — only unscoped `block` is forbidden.
+    func testDomainScopedCatchAllExceptionIsAllowed() {
+        let net = ValidatedNetworkRule(
+            pattern: .wildcard(""),
+            isException: true,
+            ifDomains: ["*example.com"]
+        )
+        let rules = SafariRuleGenerator.generate(from: .network(net))
+        XCTAssertEqual(rules.count, 1)
+        XCTAssertEqual(rules[0].action.type, "ignore-previous-rules")
+        XCTAssertEqual(rules[0].trigger.urlFilter, ".*")
+        XCTAssertEqual(rules[0].trigger.ifDomain, ["*example.com"])
+    }
 }

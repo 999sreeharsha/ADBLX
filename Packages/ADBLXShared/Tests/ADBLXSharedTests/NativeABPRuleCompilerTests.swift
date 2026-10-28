@@ -31,6 +31,57 @@ final class NativeABPRuleCompilerTests: XCTestCase {
         XCTAssertGreaterThan(report.compilationDurationSeconds, 0)
     }
     
+    // MARK: - $ping,third-party regression (Fix A + Fix C)
+
+    /// The EasyPrivacy line `$ping,third-party` (pattern-less, scoped only by modifiers)
+    /// must not compile into any Safari rule. Before the fix it produced an unscoped
+    /// `{"url-filter":".*","resource-type":["raw"]}` block rule that blocked all
+    /// third-party XHR/fetch/WebSocket on every website (YouTube black screen).
+    func testPingThirdPartyPatternlessRuleCompilesToNothing() throws {
+        let sample = """
+        ! Block ping
+        $ping,third-party
+        """
+        let data = Data(sample.utf8)
+        let (rules, report) = try NativeABPRuleCompiler.compile(source: data, group: "privacy")
+
+        XCTAssertEqual(rules.count, 0, "Pattern-less $ping,third-party must compile to zero rules")
+        XCTAssertEqual(report.compiledRuleCount, 0)
+    }
+
+    /// Defense-in-depth guard: if any future generator path emits a `block` action with a
+    /// catch-all `url-filter` and no `if-domain` scoping, compilation must fail loudly
+    /// rather than ship a rule that blocks the entire web.
+    func testCompilerRejectsUnrestrictedCatchAllBlockRule() {
+        let offending = SafariContentBlockerRule(
+            trigger: .init(urlFilter: ".*", resourceType: ["raw"]),
+            action: .init(type: "block")
+        )
+        XCTAssertThrowsError(
+            try NativeABPRuleCompiler.assertNoUnrestrictedBlockRules([offending])
+        ) { error in
+            guard case NativeABPRuleCompiler.CompilerError.unrestrictedBlockRule = error else {
+                return XCTFail("Expected .unrestrictedBlockRule, got \(error)")
+            }
+        }
+    }
+
+    /// The guard must NOT trip on legitimate catch-all rules: domain-scoped
+    /// `ignore-previous-rules` (allowlist) and cosmetic `css-display-none`.
+    func testCompilerGuardAllowsLegitimateCatchAllRules() throws {
+        let allowlist = SafariContentBlockerRule(
+            trigger: .init(urlFilter: ".*", ifDomain: ["*example.com"]),
+            action: .init(type: "ignore-previous-rules")
+        )
+        let cosmetic = SafariContentBlockerRule(
+            trigger: .init(urlFilter: ".*", ifDomain: ["*example.com"]),
+            action: .init(type: "css-display-none", selector: ".ad")
+        )
+        XCTAssertNoThrow(
+            try NativeABPRuleCompiler.assertNoUnrestrictedBlockRules([allowlist, cosmetic])
+        )
+    }
+
     func testCompileToJSONProducesValidUTF8() throws {
         let sample = """
         ||ads.com^

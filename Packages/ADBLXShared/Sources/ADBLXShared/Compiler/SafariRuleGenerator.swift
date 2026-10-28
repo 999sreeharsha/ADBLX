@@ -64,7 +64,18 @@ public enum SafariRuleGenerator: Sendable {
         
         let ifDomains = sanitizeDomains(net.ifDomains)
         let unlessDomains = sanitizeDomains(net.unlessDomains)
-        
+
+        // Fix A: reject pattern-less catch-all BLOCK rules. An ABP rule with an empty URL
+        // pattern is scoped entirely by modifiers (e.g. `$ping,third-party`). WebKit's
+        // declarative content blocker cannot reproduce that scoping faithfully, so such a
+        // rule compiles to `url-filter: ".*"` + a `block` action and blocks the entire web
+        // (this is what black-screened YouTube: all third-party XHR/fetch blocked). A
+        // catch-all is only safe when domain-scoped or when it is an `ignore-previous-rules`
+        // exception; an unscoped catch-all block is never intentional.
+        if !net.isException && isCatchAllURLFilter(urlFilter) && ifDomains == nil {
+            return []
+        }
+
         let trigger = SafariContentBlockerRule.Trigger(
             urlFilter: urlFilter,
             ifDomain: ifDomains,
@@ -72,13 +83,26 @@ public enum SafariRuleGenerator: Sendable {
             resourceType: resourceTypeStrings,
             loadType: loadTypeStrings
         )
-        
+
         let actionType = net.isException ? "ignore-previous-rules" : "block"
         let action = SafariContentBlockerRule.Action(type: actionType)
-        
+
         return [SafariContentBlockerRule(trigger: trigger, action: action)]
     }
-    
+
+    /// True when a `url-filter` regex imposes no real URL constraint — it matches every URL.
+    /// Covers the compiler's own empty-pattern fallback (`.*`) and the common hand-written
+    /// equivalents that anchor nothing (`^.*`, `^https?://.*`, `.*$`, etc.).
+    static func isCatchAllURLFilter(_ urlFilter: String) -> Bool {
+        let trimmed = urlFilter.trimmingCharacters(in: .whitespacesAndNewlines)
+        let catchAlls: Set<String> = [
+            ".*", "^.*", ".*$", "^.*$",
+            "^https?://.*", "^https?://.*$",
+            "https?://.*", "^http.*",
+        ]
+        return catchAlls.contains(trimmed)
+    }
+
     private static func isUnsupportedDFARegex(_ regex: String) -> Bool {
         // WebKit Content Blocker DFA engine does not support arbitrary repetitions {n,m} or disjunctions |
         if regex.contains("{") && regex.contains("}") {

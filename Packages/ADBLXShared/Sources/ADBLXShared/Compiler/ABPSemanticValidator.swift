@@ -92,6 +92,16 @@ public enum ABPSemanticValidator: Sendable {
                 continue
             }
             
+            // Fix B: `$ping` (hyperlink auditing / navigator.sendBeacon) has no dedicated
+            // WebKit content-blocker resource type. It was previously folded into `raw`,
+            // which also covers all XHR/fetch/WebSocket — turning a narrow "block beacons"
+            // rule into a broad "block network I/O" rule. WebKit cannot express `ping`
+            // precisely, so treat it as an unsupported modifier (skipped + counted) rather
+            // than silently over-blocking.
+            if key == "ping" || key == "~ping" {
+                return .unsupportedSemantic(reason: "Unsupported modifier: $ping (no WebKit equivalent)", modifier: "ping")
+            }
+
             // Positive resource types
             if let pos = mapPositiveResourceType(key) {
                 positiveResourceTypes.formUnion(pos)
@@ -161,7 +171,7 @@ public enum ABPSemanticValidator: Sendable {
             return [.image]
         case "stylesheet", "css":
             return [.styleSheet]
-        case "xmlhttprequest", "xhr", "ping", "websocket", "other":
+        case "xmlhttprequest", "xhr", "websocket", "other":
             return [.raw]
         case "subdocument":
             return [.document, .svgDocument]

@@ -4,13 +4,30 @@ public enum NativeABPRuleCompiler: Sendable {
     public enum CompilerError: Error, LocalizedError {
         case invalidUTF8Input
         case encodingFailed(String)
-        
+        case unrestrictedBlockRule(urlFilter: String)
+
         public var errorDescription: String? {
             switch self {
             case .invalidUTF8Input:
                 return "The filter list input data is not valid UTF-8 text."
             case .encodingFailed(let reason):
                 return "Failed to encode compiled rules to JSON: \(reason)"
+            case .unrestrictedBlockRule(let urlFilter):
+                return "Compiler produced an unrestricted catch-all block rule (url-filter: \(urlFilter)). "
+                    + "Such a rule blocks all matching traffic on every site and must never ship."
+            }
+        }
+    }
+
+    /// Defense-in-depth guard (Fix C). Fails compilation if any rule would `block` with a
+    /// catch-all `url-filter` and no `if-domain` scoping — the failure mode that black-screened
+    /// YouTube (`$ping,third-party` -> `{"url-filter":".*"}` block). `ignore-previous-rules`
+    /// and `css-display-none` catch-alls are legitimate and are not flagged.
+    static func assertNoUnrestrictedBlockRules(_ rules: [SafariContentBlockerRule]) throws {
+        for rule in rules where rule.action.type == "block" {
+            let hasDomainScope = !(rule.trigger.ifDomain ?? []).isEmpty
+            if SafariRuleGenerator.isCatchAllURLFilter(rule.trigger.urlFilter) && !hasDomainScope {
+                throw CompilerError.unrestrictedBlockRule(urlFilter: rule.trigger.urlFilter)
             }
         }
     }
@@ -126,9 +143,12 @@ public enum NativeABPRuleCompiler: Sendable {
             }
         }
         
+        // Fix C: fail loudly rather than ship a catch-all block rule.
+        try assertNoUnrestrictedBlockRules(compiledRules)
+
         let elapsed = CFAbsoluteTimeGetCurrent() - startTime
         report.compilationDurationSeconds = elapsed
-        
+
         return (compiledRules, report)
     }
     
