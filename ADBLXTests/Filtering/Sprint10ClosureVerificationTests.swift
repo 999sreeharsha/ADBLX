@@ -384,6 +384,7 @@ final class Sprint10ClosureVerificationTests: XCTestCase {
             let filterStore = AppCompositionRoot.makeFilterStore()
             let pipeline = AppCompositionRoot.makeFilterPipeline(store: filterStore)
             let updateCoordinator = AppCompositionRoot.makeUpdateCoordinator(pipeline: pipeline, store: filterStore)
+            let appearanceStore = AppearancePreferenceStore()
             let onboardingStore = OnboardingCompletionStore()
             let trialRouter = AppCompositionRoot.makeTrialExpiryRouter()
             let uiDependencies = AppCompositionRoot.makeUIDependencies(
@@ -393,8 +394,9 @@ final class Sprint10ClosureVerificationTests: XCTestCase {
                 updateCoordinator: updateCoordinator
             )
             
-            // 2. Evaluate Onboarding state
+            // 2. Evaluate Onboarding & Appearance state
             _ = onboardingStore.hasCompletedOnboarding
+            _ = appearanceStore.current
             await trialRouter.evaluateRoute()
             
             // 3. Verify Bootstrap Gate (non-blocking fast path)
