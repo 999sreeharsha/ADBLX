@@ -1,6 +1,10 @@
 # Agent Notes — SHIELD (ADBLX)
 
-iOS/iPadOS ad blocker. Full spec: [docs/adblock-prd-v1.1.md](docs/adblock-prd-v1.1.md).
+iOS/iPadOS/macOS/visionOS ad blocker.
+
+> **Start here:** [`docs/TECHNICAL_OVERVIEW.md`](docs/TECHNICAL_OVERVIEW.md) is the single source of truth — every target, screen, extension, pipeline, the backend, CI/CD, and the backlog. The "Current repo state" section further down this file is frozen at Sprint 2 and is **historical only**; trust `TECHNICAL_OVERVIEW.md` where they disagree.
+
+Full product spec: [docs/adblock-prd-v1.1.md](docs/adblock-prd-v1.1.md) (treat §9 monetization and §12 sprint plan as superseded — see [`docs/Architecture/PD-01-monetization-and-trial.md`](docs/Architecture/PD-01-monetization-and-trial.md)).
 
 **Note:** the Xcode project as scaffolded also targets native macOS and visionOS (`supportedDestinations: [iOS, macOS, visionOS]`), not Mac via Catalyst as this line previously stated. That scope was inherited from Xcode's default multiplatform template and deliberately preserved, not decided, during Sprint 0's XcodeGen migration — see [`docs/Architecture/TargetTopology.md`](docs/Architecture/TargetTopology.md#multiplatform-scope). Treat the PRD's "iOS/iPadOS/Mac(Catalyst)" framing as the product intent pending a future Platform Strategy ADR, not as a description of the current build's platform scope.
 

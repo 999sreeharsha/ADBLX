@@ -1,6 +1,12 @@
 # ADBLX
 
-iOS/iPadOS/macOS/visionOS ad blocker. See [agent.md](agent.md) and [docs/adblock-prd-v1.1.md](docs/adblock-prd-v1.1.md) for full context.
+iOS/iPadOS/macOS/visionOS ad blocker.
+
+**📖 [docs/TECHNICAL_OVERVIEW.md](docs/TECHNICAL_OVERVIEW.md) — the single source of truth.** Every target, screen, extension, pipeline, the backend, CI/CD, and the backlog. Read that first.
+
+See also [agent.md](agent.md) and [docs/adblock-prd-v1.1.md](docs/adblock-prd-v1.1.md) for product context.
+
+> ⚠️ The per-sprint status sections below are **frozen at Sprint 2** and kept only as history. The project is at Sprint 11+. `TECHNICAL_OVERVIEW.md` is authoritative.
 
 ## Getting started
 
