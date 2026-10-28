@@ -3,7 +3,6 @@ import SwiftUI
 
 struct SettingsView: View {
     @State var viewModel: SettingsViewModel
-    @Binding var appearance: AppearancePreference
     @State private var newDomain = ""
     @State private var showBrokenSiteReport = false
 
@@ -103,16 +102,6 @@ struct SettingsView: View {
 
             Card {
                 VStack(spacing: 0) {
-                    NavigationLink {
-                        appearancePicker
-                    } label: {
-                        generalRow(
-                            titleKey: "settings.row.appearance",
-                            systemImage: "circle.lefthalf.filled",
-                            detail: appearance.displayNameKey
-                        )
-                    }
-                    Divider().overlay(DesignColors.outlineVariant.opacity(0.2))
                     generalRow(
                         titleKey: "settings.row.language", systemImage: "character.bubble",
                         detail: Text(
@@ -169,27 +158,8 @@ struct SettingsView: View {
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
     }
-
-    private var appearancePicker: some View {
-        List(AppearancePreference.allCases, id: \.self) { preference in
-            Button {
-                appearance = preference
-            } label: {
-                HStack {
-                    Text(preference.displayNameKey)
-                        .foregroundStyle(DesignColors.onSurface)
-                    Spacer()
-                    if preference == appearance {
-                        Image(systemName: "checkmark")
-                            .foregroundStyle(DesignColors.primary)
-                    }
-                }
-            }
-        }
-        .navigationTitle(Text("settings.row.appearance"))
-    }
 }
 
 #Preview {
-    SettingsView(viewModel: SettingsViewModel(service: MockSettingsService()), appearance: .constant(.system))
+    SettingsView(viewModel: SettingsViewModel(service: MockSettingsService()))
 }

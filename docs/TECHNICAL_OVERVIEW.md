@@ -230,7 +230,7 @@ Row-by-row status (verified against source; several rows are **deliberately half
 
 | Row | Real behavior | Status |
 |---|---|---|
-| **Appearance** | `NavigationLink` → picker; persisted by `AppearancePreferenceStore` (UserDefaults), applied via `.preferredColorScheme` | ✅ Real, device-local |
+| **Appearance** | Removed — the app is dark-only (`UIUserInterfaceStyle: Dark` via `INFOPLIST_KEY_UIUserInterfaceStyle`, plus `.preferredColorScheme(.dark)` at the root for macOS) | n/a |
 | **Language** | Displays `Locale.current` language name; **no action** | ⚠️ Read-only — cannot change the app's language |
 | **Notifications** | `NavigationLink` → `ComingSoonState` placeholder | ⚠️ Placeholder — no `UNUserNotificationCenter` permission wiring here |
 | **Safari Help** | `NavigationLink` → `ComingSoonState` | ⚠️ Placeholder |
