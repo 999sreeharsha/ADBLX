@@ -66,7 +66,8 @@ actor FilterPipeline {
                 installedVersion: source.version,
                 checksumSHA256: source.checksumSHA256,
                 lastUpdated: Date(),
-                ruleCount: 0
+                ruleCount: 0,
+                premium: source.premium
             )
         }
         return try await installGroup(
@@ -256,7 +257,8 @@ actor FilterPipeline {
                 installedVersion: source.installedVersion,
                 checksumSHA256: source.checksumSHA256,
                 lastUpdated: compiled.statistics.lastUpdated,
-                ruleCount: compiled.ruleCount
+                ruleCount: compiled.ruleCount,
+                premium: entry.premium
             )
         }
         for entry in upsertsByID.values {
@@ -266,7 +268,8 @@ actor FilterPipeline {
                 installedVersion: entry.installedVersion,
                 checksumSHA256: entry.checksumSHA256,
                 lastUpdated: compiled.statistics.lastUpdated,
-                ruleCount: compiled.ruleCount
+                ruleCount: compiled.ruleCount,
+                premium: source.premium
             ))
         }
         let installedFiltersData = try JSONEncoder().encode(existingFilters)

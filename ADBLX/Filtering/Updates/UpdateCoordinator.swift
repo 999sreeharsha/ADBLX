@@ -161,7 +161,8 @@ actor UpdateCoordinator {
         do {
             // One group composed and installed at a time — keeps at most one group's
             // decoded sources resident in memory (Sprint 3A design doc's <200MB target).
-            for (group, _) in installGroups {
+            for (group, entries) in installGroups {
+                let premiumByID = Dictionary(uniqueKeysWithValues: entries.map { ($0.id, $0.premium) })
                 let downloaded = downloadedByGroup[group] ?? []
                 var sources: [FilterSource] = []
                 for filter in downloaded {
@@ -172,7 +173,8 @@ actor UpdateCoordinator {
                         filterID: filter.filterID,
                         version: filter.version,
                         checksumSHA256: filter.expectedChecksum,
-                        data: data
+                        data: data,
+                        premium: premiumByID[filter.filterID] ?? false
                     ))
                 }
                 let composition = GroupComposition(group: group, sources: sources)

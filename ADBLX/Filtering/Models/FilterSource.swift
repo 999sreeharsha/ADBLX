@@ -10,4 +10,7 @@ struct FilterSource: Equatable {
     let version: String
     let checksumSHA256: String
     let data: Data
+    /// Carried through to `InstalledFilter.premium` so entitlement enforcement never has to
+    /// guess which installed filters are gated.
+    var premium: Bool = false
 }
