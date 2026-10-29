@@ -19,6 +19,19 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
     override func startTunnel(options: [String: NSObject]?, completionHandler: @escaping (Error?) -> Void) {
         let startSignpost = signposter.beginInterval("TunnelStart")
         logger.notice("Starting production Layer 2 DNS Protection tunnel")
+
+        // Backstop for entitlement loss while the app wasn't running: refuse to start once
+        // the published validUntil has passed (single read + date comparison).
+        if TunnelEntitlementGuard.check() == .deniedExpired {
+            logger.notice("Tunnel start refused: premium entitlement window has passed")
+            signposter.endInterval("TunnelStart", startSignpost)
+            completionHandler(NSError(
+                domain: "com.ADBLX.ADBLX.PacketTunnel",
+                code: -403,
+                userInfo: [NSLocalizedDescriptionKey: "DNS Protection requires an active ADBLX Premium plan."]
+            ))
+            return
+        }
         
         // 1. Parse Provider Configuration
         let pConfig = (protocolConfiguration as? NETunnelProviderProtocol)?.providerConfiguration ?? [:]

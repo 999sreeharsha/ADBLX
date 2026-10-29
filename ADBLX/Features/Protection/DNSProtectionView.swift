@@ -20,9 +20,32 @@ struct DNSProtectionView: View {
         _viewModel = State(initialValue: viewModel ?? DNSProtectionViewModel(entitlementService: entitlement))
     }
     
+    /// Shown whenever Premium access is absent, so a tunnel stopped by entitlement loss is
+    /// explained rather than silently off.
+    private var premiumRequiredNotice: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("dns.premiumRequired.title")
+                .font(.headline)
+            Text("dns.premiumRequired.body")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            Button("dns.premiumRequired.button") {
+                viewModel.showPaywallSheet = true
+            }
+            .buttonStyle(.borderedProminent)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .accessibilityElement(children: .contain)
+    }
+
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
+                if !viewModel.isPremium {
+                    premiumRequiredNotice
+                }
                 masterProtectionCard
                 resolverSelectionCard
                 allowlistManagerCard

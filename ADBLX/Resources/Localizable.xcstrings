@@ -556,6 +556,39 @@
         }
       }
     },
+    "dns.premiumRequired.body" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "DNS Protection is part of ADBLX Premium, and your Premium access has ended. System-wide blocking is off. Safari ad and tracker blocking still works."
+          }
+        }
+      }
+    },
+    "dns.premiumRequired.button" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "See Premium plans"
+          }
+        }
+      }
+    },
+    "dns.premiumRequired.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "DNS Protection is paused"
+          }
+        }
+      }
+    },
     "home.stat.dns.detail" : {
       "localizations" : {
         "en" : {
