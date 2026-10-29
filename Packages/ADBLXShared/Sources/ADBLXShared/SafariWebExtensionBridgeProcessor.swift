@@ -2,9 +2,11 @@ import Foundation
 
 public final class SafariWebExtensionBridgeProcessor {
     private let fileManager: FileManager
-    
-    public init(fileManager: FileManager = .default) {
+    private let now: @Sendable () -> Date
+
+    public init(fileManager: FileManager = .default, now: @escaping @Sendable () -> Date = { Date() }) {
         self.fileManager = fileManager
+        self.now = now
     }
     
     /// Processes a native message dictionary received from JavaScript and produces the structured response dictionary.
@@ -54,13 +56,15 @@ public final class SafariWebExtensionBridgeProcessor {
         
         // 2. Independent evaluation of entitlement state
         var entitlementState: WebExtensionEntitlementState = .unavailable
+        var validUntil: TimeInterval?
         
         if let entitlementURL = WebExtensionAppGroupPaths.entitlementFileURL(base: baseURL),
            let entData = try? Data(contentsOf: entitlementURL),
            let entRecord = try? JSONDecoder().decode(WebExtensionPersistedEntitlement.self, from: entData) {
+            validUntil = entRecord.validUntil
             switch entRecord.state {
             case .premiumActive:
-                entitlementState = .premiumActive
+                entitlementState = entRecord.isExpired(at: now()) ? .free : .premiumActive
             case .free:
                 entitlementState = .free
             }
@@ -70,7 +74,8 @@ public final class SafariWebExtensionBridgeProcessor {
             generation: activeGenNumber,
             generationStatus: genStatus,
             entitlementState: entitlementState,
-            checkedAt: Date().timeIntervalSince1970
+            checkedAt: now().timeIntervalSince1970,
+            validUntil: validUntil
         )
         return response.toDictionary()
     }

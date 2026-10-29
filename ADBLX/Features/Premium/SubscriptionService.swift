@@ -46,6 +46,22 @@ public extension EntitlementState {
         self != .free
     }
 
+    /// Slack added to a subscription's StoreKit expiry before out-of-process readers (web
+    /// extension, packet tunnel) stop honouring it, so a paying user who simply hasn't
+    /// opened the app is never cut off by them. The app itself enforces the exact cutoff.
+    static let subscriptionExtensionSlack: TimeInterval = 7 * 86400
+
+    /// Wall-clock instant after which readers that cannot run the app must treat this
+    /// entitlement as lapsed. `nil` = no expiry (lifetime) or no entitlement (free).
+    var validUntil: Date? {
+        switch self {
+        case .free, .lifetime: return nil
+        case .trial(let expiresAt): return expiresAt
+        case .monthly(let expiresAt), .annual(let expiresAt):
+            return expiresAt.addingTimeInterval(Self.subscriptionExtensionSlack)
+        }
+    }
+
     var precedence: Int {
         switch self {
         case .lifetime: return 4

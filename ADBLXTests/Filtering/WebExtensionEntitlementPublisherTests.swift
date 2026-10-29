@@ -31,6 +31,15 @@ final class WebExtensionEntitlementPublisherTests: XCTestCase {
         XCTAssertGreaterThan(record.updatedAt, 0)
     }
     
+    func testPublishWritesValidUntil() throws {
+        let publisher = WebExtensionEntitlementPublisher()
+        let until = Date(timeIntervalSince1970: 2_000_000_000)
+        try publisher.publish(isPremium: true, validUntil: until, baseAppGroupURL: tempAppGroupURL)
+        let url = WebExtensionAppGroupPaths.entitlementFileURL(base: tempAppGroupURL)!
+        let record = try JSONDecoder().decode(WebExtensionPersistedEntitlement.self, from: Data(contentsOf: url))
+        XCTAssertEqual(record.validUntil, 2_000_000_000)
+    }
+
     func testPublishFree() throws {
         let publisher = WebExtensionEntitlementPublisher()
         try publisher.publish(isPremium: false, baseAppGroupURL: tempAppGroupURL)

@@ -17,9 +17,11 @@ public final class WebExtensionEntitlementPublisher {
     ///
     /// - Parameters:
     ///   - isPremium: Authoritative StoreKit subscription status.
+    ///   - validUntil: Instant after which readers outside the app treat premium as lapsed (nil = never).
     ///   - baseAppGroupURL: Optional base App Group URL override (for testing).
     public func publish(
         isPremium: Bool,
+        validUntil: Date? = nil,
         baseAppGroupURL: URL? = WebExtensionAppGroupPaths.appGroupContainerURL()
     ) throws {
         guard let baseURL = baseAppGroupURL else {
@@ -35,7 +37,11 @@ public final class WebExtensionEntitlementPublisher {
         try fileManager.createDirectory(at: rootDir, withIntermediateDirectories: true)
         
         let state: WebExtensionPersistedEntitlementState = isPremium ? .premiumActive : .free
-        let record = WebExtensionPersistedEntitlement(state: state, updatedAt: Date().timeIntervalSince1970)
+        let record = WebExtensionPersistedEntitlement(
+            state: state,
+            updatedAt: Date().timeIntervalSince1970,
+            validUntil: isPremium ? validUntil?.timeIntervalSince1970 : nil
+        )
         
         let jsonEncoder = JSONEncoder()
         jsonEncoder.outputFormatting = .sortedKeys

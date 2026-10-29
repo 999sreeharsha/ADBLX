@@ -25,10 +25,25 @@ public enum WebExtensionPersistedEntitlementState: String, Codable, Equatable, S
 public struct WebExtensionPersistedEntitlement: Codable, Equatable, Sendable {
     public let state: WebExtensionPersistedEntitlementState
     public let updatedAt: TimeInterval
-    
-    public init(state: WebExtensionPersistedEntitlementState, updatedAt: TimeInterval = Date().timeIntervalSince1970) {
+    /// Epoch seconds after which `premiumActive` must be treated as `free` by readers that
+    /// cannot rely on the app running (web extension, packet tunnel). `nil` = no expiry
+    /// (lifetime, or a legacy record written before this field existed).
+    public let validUntil: TimeInterval?
+
+    public init(
+        state: WebExtensionPersistedEntitlementState,
+        updatedAt: TimeInterval = Date().timeIntervalSince1970,
+        validUntil: TimeInterval? = nil
+    ) {
         self.state = state
         self.updatedAt = updatedAt
+        self.validUntil = validUntil
+    }
+
+    /// Single date comparison — safe to call from size-constrained extensions.
+    public func isExpired(at date: Date) -> Bool {
+        guard let validUntil else { return false }
+        return date.timeIntervalSince1970 >= validUntil
     }
 }
 
@@ -44,13 +59,17 @@ public struct WebExtensionCheckVersionResponse: Codable, Equatable, Sendable {
     public let generationStatus: WebExtensionGenerationStatus
     public let entitlementState: WebExtensionEntitlementState
     public let checkedAt: TimeInterval // Diagnostic/logging only
-    
+    /// Epoch seconds after which the extension must itself treat `premiumActive` as `free`.
+    public let validUntil: TimeInterval?
+
     public init(
         generation: UInt64,
         generationStatus: WebExtensionGenerationStatus,
         entitlementState: WebExtensionEntitlementState,
-        checkedAt: TimeInterval = Date().timeIntervalSince1970
+        checkedAt: TimeInterval = Date().timeIntervalSince1970,
+        validUntil: TimeInterval? = nil
     ) {
+        self.validUntil = validUntil
         self.generation = generation
         self.generationStatus = generationStatus
         self.entitlementState = entitlementState
@@ -58,12 +77,16 @@ public struct WebExtensionCheckVersionResponse: Codable, Equatable, Sendable {
     }
     
     public func toDictionary() -> [String: Any] {
-        [
+        var dict: [String: Any] = [
             "generation": Int(generation),
             "generationStatus": generationStatus.rawValue,
             "entitlementState": entitlementState.rawValue,
             "checkedAt": checkedAt
         ]
+        if let validUntil {
+            dict["validUntilMs"] = Int(validUntil * 1000)
+        }
+        return dict
     }
 }
 

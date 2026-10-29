@@ -436,3 +436,82 @@ test("Forced refresh with the clock set backwards and a failing bridge disables 
     assert.equal(config.layer3Enabled, false);
     assert.equal(config.reason, "entitlement_unavailable");
 });
+
+test("validUntil: cached premium is disabled once validUntilMs has passed, even inside the freshness window", async () => {
+    const env = createMockEnvironment();
+    const now = Date.now();
+    env.setStorageData({
+        adblx_layer3_cache: {
+            generation: 5,
+            generationStatus: "ok",
+            entitlementState: "premiumActive",
+            validUntilMs: now - 1,
+            rules: { schemaVersion: 1, cached: true },
+            checksum: "c",
+            rulesFetchedAtWallClockMs: now - 1000,
+            lastVersionCheckWallClockMs: now - 1000
+        }
+    });
+    const bg = loadBackgroundWithMock(env);
+    const config = await bg.getLayer3State();
+    assert.equal(config.layer3Enabled, false);
+    assert.equal(config.reason, "entitlement_expired");
+    assert.equal(env.getNativeMessagesSent().length, 0);
+});
+
+test("validUntil: cached premium stays enabled while validUntilMs is in the future", async () => {
+    const env = createMockEnvironment();
+    const now = Date.now();
+    env.setStorageData({
+        adblx_layer3_cache: {
+            generation: 5,
+            generationStatus: "ok",
+            entitlementState: "premiumActive",
+            validUntilMs: now + 60000,
+            rules: { schemaVersion: 1, cached: true },
+            checksum: "c",
+            rulesFetchedAtWallClockMs: now - 1000,
+            lastVersionCheckWallClockMs: now - 1000
+        }
+    });
+    const bg = loadBackgroundWithMock(env);
+    const config = await bg.getLayer3State();
+    assert.equal(config.layer3Enabled, true);
+});
+
+test("validUntil: absent validUntilMs (lifetime / legacy) never expires", async () => {
+    const env = createMockEnvironment();
+    const now = Date.now();
+    env.setStorageData({
+        adblx_layer3_cache: {
+            generation: 5,
+            generationStatus: "ok",
+            entitlementState: "premiumActive",
+            rules: { schemaVersion: 1, cached: true },
+            checksum: "c",
+            rulesFetchedAtWallClockMs: now - 1000,
+            lastVersionCheckWallClockMs: now - 1000
+        }
+    });
+    const bg = loadBackgroundWithMock(env);
+    const config = await bg.getLayer3State();
+    assert.equal(config.layer3Enabled, true);
+});
+
+test("validUntil: bridge-reported validUntilMs is persisted and enforced on the next fast-path read", async () => {
+    const env = createMockEnvironment();
+    env.queueNativeResponse({
+        generation: 1,
+        generationStatus: "ok",
+        entitlementState: "premiumActive",
+        validUntilMs: Date.now() + 60000,
+        checkedAt: 1
+    });
+    env.queueNativeResponse({
+        generation: 1, generationStatus: "ok", rules: { schemaVersion: 1 }, checksum: "c"
+    });
+    const bg = loadBackgroundWithMock(env);
+    await bg.getLayer3State();
+    const stored = env.getStorageData()[bg.STORAGE_KEY];
+    assert.ok(stored.validUntilMs > Date.now());
+});

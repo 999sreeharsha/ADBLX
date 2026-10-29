@@ -11,6 +11,7 @@ public actor WebExtensionEntitlementCoordinator {
     private let publisher: WebExtensionEntitlementPublisher
     private let baseAppGroupURL: URL?
     private var lastPublishedCapability: Bool?
+    private var lastPublishedValidUntil: Date?
     private var observationTask: Task<Void, Never>?
     private static let logger = Logger(
         subsystem: Bundle.main.bundleIdentifier ?? "com.ADBLX.ADBLX",
@@ -54,8 +55,10 @@ public actor WebExtensionEntitlementCoordinator {
     private func handleEntitlementChange(_ state: EntitlementState) async {
         let isPremium = state.hasPremiumAccess
 
-        // Deduplication: Only write to disk when effective premium capability changes
-        if lastPublishedCapability == isPremium {
+        let validUntil = isPremium ? state.validUntil : nil
+
+        // Deduplication: only write when the effective capability or its expiry changes
+        if lastPublishedCapability == isPremium && lastPublishedValidUntil == validUntil {
             return
         }
 
@@ -64,10 +67,11 @@ public actor WebExtensionEntitlementCoordinator {
         defer { Self.signposter.endInterval("webExtension.entitlementSync", interval) }
 
         do {
-            try publisher.publish(isPremium: isPremium, baseAppGroupURL: baseAppGroupURL)
+            try publisher.publish(isPremium: isPremium, validUntil: validUntil, baseAppGroupURL: baseAppGroupURL)
             lastPublishedCapability = isPremium
+            lastPublishedValidUntil = validUntil
             Self.logger.info(
-                "Synchronized WebExtension entitlement: isPremium=\(isPremium) (\(String(describing: state)))"
+                "Synchronized WebExtension entitlement: isPremium=\(isPremium) hasExpiry=\(validUntil != nil)"
             )
         } catch {
             Self.logger.error("Failed to publish Web Extension entitlement: \(error.localizedDescription)")

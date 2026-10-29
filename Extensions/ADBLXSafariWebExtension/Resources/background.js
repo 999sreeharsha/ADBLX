@@ -13,6 +13,8 @@ let inMemoryState = {
     generation: 0,
     generationStatus: "unavailable",
     entitlementState: "unavailable",
+    // Epoch ms after which premiumActive must be treated as expired; 0 = no expiry.
+    validUntilMs: 0,
     rules: null,
     checksum: null,
     rulesFetchedAtWallClockMs: 0,
@@ -34,6 +36,7 @@ async function hydrateFromStorage() {
             inMemoryState.generation = data.generation || 0;
             inMemoryState.generationStatus = data.generationStatus || "unavailable";
             inMemoryState.entitlementState = data.entitlementState || "unavailable";
+            inMemoryState.validUntilMs = data.validUntilMs || 0;
             inMemoryState.rules = data.rules || null;
             inMemoryState.checksum = data.checksum || null;
             inMemoryState.rulesFetchedAtWallClockMs = data.rulesFetchedAtWallClockMs || 0;
@@ -55,6 +58,7 @@ async function persistToStorage() {
             generation: inMemoryState.generation,
             generationStatus: inMemoryState.generationStatus,
             entitlementState: inMemoryState.entitlementState,
+            validUntilMs: inMemoryState.validUntilMs,
             rules: inMemoryState.rules,
             checksum: inMemoryState.checksum,
             rulesFetchedAtWallClockMs: inMemoryState.rulesFetchedAtWallClockMs,
@@ -94,6 +98,17 @@ function evaluateEffectiveConfig(nowWallClock) {
         return {
             layer3Enabled: false,
             reason: inMemoryState.entitlementState === "free" ? "free_tier" : "entitlement_unavailable",
+            generation: inMemoryState.generation,
+            rules: null
+        };
+    }
+
+    // 1b. Expiry: the app may not run again before validUntil, so the extension enforces it
+    // itself with a single comparison. Fail closed.
+    if (inMemoryState.validUntilMs > 0 && nowWallClock >= inMemoryState.validUntilMs) {
+        return {
+            layer3Enabled: false,
+            reason: "entitlement_expired",
             generation: inMemoryState.generation,
             rules: null
         };
@@ -193,6 +208,7 @@ async function getLayer3State(force = false) {
 
             inMemoryState.generationStatus = remoteGenStatus;
             inMemoryState.entitlementState = remoteEntState;
+            inMemoryState.validUntilMs = Number(versionRes.validUntilMs) > 0 ? Number(versionRes.validUntilMs) : 0;
 
             // If not premium, persist and return fail-closed config immediately
             if (remoteEntState !== "premiumActive") {

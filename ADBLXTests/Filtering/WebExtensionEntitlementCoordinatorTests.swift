@@ -59,17 +59,39 @@ struct WebExtensionEntitlementCoordinatorTests {
         try await Task.sleep(nanoseconds: 50_000_000)
         #expect(readPersistedEntitlement(base: tempBase)?.state == .premiumActive)
 
-        // 2. .trial -> .monthly (Capability remains premiumActive -> deduplicated)
+        #expect(readPersistedEntitlement(base: tempBase)?.validUntil == trialExpiry.timeIntervalSince1970)
+
+        // 2. .trial -> .monthly (still premiumActive, but validUntil differs -> republished)
         let monthExpiry = Date().addingTimeInterval(30 * 86400)
-        let beforeTime = readPersistedEntitlement(base: tempBase)?.updatedAt
         mockEntitlement.updateState(.monthly(expiresAt: monthExpiry))
         try await Task.sleep(nanoseconds: 50_000_000)
-        let afterTime = readPersistedEntitlement(base: tempBase)?.updatedAt
-        #expect(afterTime == beforeTime) // No extra write because capability didn't change
+        #expect(readPersistedEntitlement(base: tempBase)?.state == .premiumActive)
+        #expect(readPersistedEntitlement(base: tempBase)?.validUntil
+            == monthExpiry.addingTimeInterval(7 * 86400).timeIntervalSince1970)
+
+        // 2b. Identical (isPremium, validUntil) is deduplicated -> no extra write.
+        let beforeTime = readPersistedEntitlement(base: tempBase)?.updatedAt
+        await coordinator.syncCurrentState()
+        #expect(readPersistedEntitlement(base: tempBase)?.updatedAt == beforeTime)
 
         // 3. .monthly -> .free (Capability downgraded -> writes free)
         mockEntitlement.updateState(.free)
         try await Task.sleep(nanoseconds: 50_000_000)
         #expect(readPersistedEntitlement(base: tempBase)?.state == .free)
+        #expect(readPersistedEntitlement(base: tempBase)?.validUntil == nil)
+    }
+
+    @Test("Lifetime publishes premiumActive with no validUntil")
+    func lifetimeHasNoExpiry() async throws {
+        let tempBase = createTempDirectory()
+        defer { try? FileManager.default.removeItem(at: tempBase) }
+        let coordinator = WebExtensionEntitlementCoordinator(
+            entitlementService: MockSubscriptionService(state: .lifetime),
+            baseAppGroupURL: tempBase
+        )
+        await coordinator.syncCurrentState()
+        let persisted = readPersistedEntitlement(base: tempBase)
+        #expect(persisted?.state == .premiumActive)
+        #expect(persisted?.validUntil == nil)
     }
 }
