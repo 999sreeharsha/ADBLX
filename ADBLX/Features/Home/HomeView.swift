@@ -20,33 +20,25 @@ struct HomeView: View {
             .padding(.top, DesignSpacing.sectionGap)
         }
         .background(DesignColors.background)
-        .safeAreaInset(edge: .top) { topBar }
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                HStack(spacing: DesignSpacing.gutter / 2) {
+                    Image(systemName: "lock.shield.fill")
+                        .foregroundStyle(DesignColors.primary)
+                    Text("home.title.app")
+                        .font(DesignTypography.headlineMedium)
+                        .foregroundStyle(DesignColors.primary)
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityAddTraits(.isHeader)
+            }
+        }
         .task { await viewModel.loadWithBootstrapRetry() }
         .refreshable { await viewModel.load() }
         .sheet(isPresented: $isShowingUpdateProgress) {
             UpdateProgressSheet(model: UpdateProgressModel(), coordinator: updateCoordinator)
         }
-    }
-
-    private var topBar: some View {
-        HStack {
-            Spacer()
-            HStack(spacing: DesignSpacing.gutter / 2) {
-                Image(systemName: "lock.shield.fill")
-                    .foregroundStyle(DesignColors.primary)
-                Text("home.title.app")
-                    .font(DesignTypography.headlineMedium)
-                    .foregroundStyle(DesignColors.primary)
-            }
-            Spacer()
-        }
-        .overlay(alignment: .trailing) {
-            Image(systemName: "person.crop.circle")
-                .foregroundStyle(DesignColors.onSurfaceVariant)
-                .padding(.trailing, DesignSpacing.containerPadding)
-        }
-        .padding(.vertical, DesignSpacing.gutter)
-        .background(.ultraThinMaterial)
     }
 
     private func heroCard(for status: HomeStatus) -> some View {

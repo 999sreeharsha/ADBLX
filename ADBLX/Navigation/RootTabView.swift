@@ -7,10 +7,9 @@ struct RootTabView: View {
     var body: some View {
         TabView {
             ForEach(AppTab.allCases, id: \.self) { tab in
-                placeholder(for: tab)
-                    .tabItem {
-                        Label(tab.title, systemImage: tab.systemImage)
-                    }
+                Tab(tab.title, systemImage: tab.systemImage) {
+                    placeholder(for: tab)
+                }
             }
         }
         .tint(DesignColors.primary)
@@ -20,7 +19,12 @@ struct RootTabView: View {
     private func placeholder(for tab: AppTab) -> some View {
         switch tab {
         case .home:
-            HomeView(viewModel: HomeViewModel(service: dependencies.homeService), updateCoordinator: dependencies.updateCoordinator)
+            NavigationStack {
+                HomeView(
+                    viewModel: HomeViewModel(service: dependencies.homeService),
+                    updateCoordinator: dependencies.updateCoordinator
+                )
+            }
         case .protection:
             NavigationStack {
                 SafariProtectionView(

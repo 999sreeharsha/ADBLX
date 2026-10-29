@@ -24,11 +24,10 @@ struct AdvancedFilterListsView: View {
                 }
             }
             .padding(DesignSpacing.containerPadding)
-            .padding(.bottom, 96)
         }
         .background(DesignColors.background)
         .task { await viewModel.load() }
-        .safeAreaInset(edge: .bottom) { applyChangesButton }
+        .safeAreaBar(edge: .bottom) { applyChangesButton }
     }
 
     private var header: some View {
@@ -122,23 +121,20 @@ struct AdvancedFilterListsView: View {
         } label: {
             HStack {
                 if isApplying {
-                    ProgressView().tint(DesignColors.onPrimaryContainer)
+                    ProgressView()
                 } else {
                     Text("protection.action.applyChanges")
-                        .font(DesignTypography.bodyLarge)
                         .fontWeight(.semibold)
                     Image(systemName: "arrow.triangle.2.circlepath")
                 }
             }
-            .foregroundStyle(DesignColors.onPrimaryContainer)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, DesignSpacing.gutter)
-            .background(DesignColors.primaryContainer)
-            .clipShape(RoundedRectangle(cornerRadius: DesignShape.defaultCornerRadius))
         }
+        .applyChangesButtonStyle()
+        .tint(DesignColors.primaryContainer)
+        .controlSize(.large)
         .disabled(isApplying)
-        .padding(DesignSpacing.containerPadding)
-        .background(.ultraThinMaterial)
+        .padding(.horizontal, DesignSpacing.containerPadding)
     }
 }
 
@@ -155,4 +151,16 @@ private extension FilterCategoryID {
 
 #Preview {
     AdvancedFilterListsView(viewModel: ProtectionViewModel(service: MockProtectionService()))
+}
+
+private extension View {
+    /// `.glassProminent` is unavailable on visionOS, which has its own glass material.
+    @ViewBuilder
+    func applyChangesButtonStyle() -> some View {
+        #if os(visionOS)
+        buttonStyle(.borderedProminent)
+        #else
+        buttonStyle(.glassProminent)
+        #endif
+    }
 }
