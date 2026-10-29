@@ -1,6 +1,7 @@
 # PRD — SHIELD: iOS Ad Blocker
 **Version:** 1.1 · **Status:** Draft · **Owner:** Harsha · **Date:** 2026-07-10
 **Changelog v1.1:** merged research note (reference architectures, Indian ad-network list) as Appendices B–C; added NG6 (on-device ML blocking); resolved Open Question 3 direction.
+**Changelog (2026-10-29):** §9 confirmed as a 15-day universal free trial (final; supersedes the earlier 7-day figure, see PD-01). Premium downgrade on entitlement loss and plan-state UI specified in `docs/superpowers/specs/2026-10-29-plan-state-and-downgrade-design.md`.
 **Working title:** SHIELD (rename before launch)
 
 ---

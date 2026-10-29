@@ -247,37 +247,68 @@ assuming it's still broken.
 
 Found in: `docs/superpowers/plans/2026-07-27-sprint-8.0-foundation-completion.md`, Task 12, 2026-07-28
 
-## Entitlement gating (Sprint 8.0) only blocks a NEW premium install — it never revokes an already-installed premium filter after entitlement lapses
+## Entitlement gating: `UpdatePlanner` only gates downloads — revocation lives in `PremiumEntitlementReconciler`
 
-`UpdatePlanner.plan`'s entitlement check (`else if entry.premium &&
-!isPremiumEntitled`, in `ADBLX/Filtering/Updates/UpdatePlan.swift`) only runs
-for a manifest entry that has NO matching `InstalledFilter` yet — i.e. it gates
-whether a premium filter gets installed for the first time. It does nothing
-for a filter that is already installed and whose owning user's entitlement
-subsequently lapses (subscription expires, refund, etc.): on every later
-`UpdateCoordinator.run()`, that filter's manifest entry hits the `existing`
-branch above the entitlement check, so it keeps producing `.keep` (unchanged
-version/checksum) or even `.install` (on a version bump) regardless of
-`isPremiumEntitled` — the entitlement check is never reached for it. A user
-whose premium subscription has lapsed keeps that filter blocking content,
-consuming update bandwidth, and staying installed indefinitely, with no code
-path that ever removes or disables it.
+**Status (2026-10-29): closed for content blockers.** `UpdatePlanner.plan`
+checks `entry.premium && !isPremiumEntitled` *before* the installed-filter
+lookup, so for a not-entitled user an already-installed premium entry yields
+`.skipPremium` (never `.keep`/`.install`), which `UpdateCoordinator` ignores.
+That prevents re-downloads but does **not** remove what is already on disk.
+Removal is the job of `PremiumEntitlementReconciler`, which is level-triggered
+(compares installed filters against entitlement on every run — launch,
+foreground, entitlement change, before `UpdateCoordinator.run()` — with no
+"last reconciled" state) and covers trial expiry, subscription lapse and
+refund/revocation identically, because all of them surface as the
+`EntitlementService` reporting no premium access.
 
-This was an explicit, human-approved product-scope decision for Sprint 8.0 —
-gate new installs only, do not build revocation-on-lapse. Task 13's review
-confirmed the gating logic matched its documented scope at the time.
+Things to remember when touching this:
+- `InstalledFilter.premium` is `Bool?`; `nil` means a legacy record and is
+  resolved from the cached manifest, then `BundledPremiumCatalog`, then
+  persisted. Do not default it to `false`.
+- A `304` manifest returns from `UpdateCoordinator.run()` before planning, so
+  enforcement must never depend on `run()`. Likewise re-entitlement clears the
+  cached ETag, otherwise a premium list the user lacks is never fetched.
+- Mutating transactions share one `Previous/` rollback directory; anything that
+  snapshots must run inside `FilterTransactionGate.shared`.
+- Content-blocker JSON is static, so Annoyances/Regional keep blocking until
+  the next launch/foreground reconcile. The web extension and tunnel enforce
+  `validUntil` themselves (subscription expiry + 7 days; trial exact).
+- Open product input: Apple's Billing Grace Period (enable in App Store
+  Connect if lapse leniency is wanted) and Family Sharing are product
+  decisions, not code.
 
-**Status update (Sprint 8.05, 2026-07-28): promoted from deferred to
-required before the Sprint 8.1 Release Candidate.** Premium filter lists
-remaining installed after entitlement expiry is acceptable for the
-Safari-only MVP, but this policy must be implemented before the DNS Packet
-Tunnel ships — once a second enforcement surface (DNS) exists, premium
-access would otherwise continue indefinitely after subscription expiry,
-refund, or Family Sharing revocation, with no code path that ever removes or
-disables the affected filter. Product input is still needed on the desired
-behavior across subscription expiry, grace periods, refunds, and Family
-Sharing/lifetime-purchase edge cases, before touching `UpdatePlanner` to add
-a `.remove` (or new dedicated action case) for an already-installed premium
-filter whose entitlement has lapsed.
+Found in: final whole-branch review of `docs/superpowers/plans/2026-07-27-sprint-8.0-foundation-completion.md`, 2026-07-28. Promoted to a release blocker in Sprint 8.05; closed by `docs/superpowers/plans/2026-10-29-plan-state-and-downgrade.md`, 2026-10-29.
 
-Found in: final whole-branch review of `docs/superpowers/plans/2026-07-27-sprint-8.0-foundation-completion.md`, 2026-07-28. Promoted to a release blocker in `docs/superpowers/specs/2026-07-28-sprint-8.05-foundation-closure-design.md`, Task 4, 2026-07-28.
+## Trial is Keychain-only with no IAP record — App Store Guideline 3.1.1 review risk (accepted for now)
+
+The 15-day trial (`TrialManager` / `TrialKeychainStore`) has no StoreKit record
+behind it: `Configuration.storekit` has `introductoryOffer: null` on every
+plan, and `StoreKitSubscriptionService.refreshEntitlements()` merges the
+Keychain trial with `Transaction.currentEntitlements` by precedence. A
+Keychain-only trial may draw a Guideline 3.1.1 objection at review. This is an
+explicit, accepted decision (`docs/Architecture/PD-01-monetization-and-trial.md`
+§2 — no StoreKit-managed trial), not an oversight. It is also only partly
+clock-tamper resistant (`lastObservedDate` guards against moving the clock
+backwards between observations, not against a reinstall-then-wipe).
+
+Candidate fix if review pushes back: a zero-price non-consumable "15-Day
+Premium Trial". If migrated, existing `TrialRecord`s must be grandfathered
+(honour the remaining days) rather than reset. Keep trial access behind the
+`TrialSource` protocol (Plan State work) so that swap touches one type.
+
+Found in: Plan State + Downgrade planning, 2026-10-29
+
+## New premium lists must be added to `BundledPremiumCatalog`
+
+`BundledPremiumCatalog` (`ADBLX/Filtering/Models/BundledPremiumCatalog.swift`) is
+the app's offline knowledge of which filter IDs are Premium-gated and bundled.
+Two things depend on it: classifying legacy `InstalledFilter` records that have
+no `premium` flag when no cached manifest exists, and deciding what an entitled
+user should have installed from the bundle. Adding a premium list (a new bundled
+`.txt`, or a new `premium: true` manifest entry that should work offline) means
+updating the catalog **and** `installBundledPremiumSnapshot`. A test
+(`BundledPremiumCatalogTests`) asserts the catalog IDs exactly equal the
+premium lists the bundled snapshot installs, so a forgotten update fails CI
+rather than silently leaving a lapsed user with the rules installed.
+
+Found in: Plan State + Downgrade Phase 2 review, 2026-10-29

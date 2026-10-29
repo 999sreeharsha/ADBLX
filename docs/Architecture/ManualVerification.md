@@ -104,3 +104,29 @@ App Group rule path: `Compiled/Regional.json`.
 
 | Date | Result | Notes |
 |---|---|---|
+
+
+## Premium downgrade and re-upgrade (FR-17)
+
+Prerequisite: a device or simulator with the Annoyances extension enabled in Safari. Use the StoreKit local configuration or an expired trial (move the device clock forward past day 15 only for the *trial* check; the app never trusts a clock moved backwards).
+
+### After entitlement is lost (trial expired, subscription lapsed, or purchase refunded)
+
+1. Foreground the app (or relaunch). Do not open Safari Settings.
+2. Open a cookie-banner test page in Safari. **Expect the cookie banner to be shown again.**
+3. Open a YouTube video in Safari. **Expect pre-roll ads to return** (the web extension treats the entitlement as lapsed once `validUntil` passes).
+4. Open the free ads test page. **Expect it to still be blocked** (Ads and Privacy are untouched).
+5. In Safari → Settings → Extensions, **Annoyances stays enabled** — it now serves an empty rule list; do not turn it off.
+6. Open Settings → DNS Protection. **Expect "DNS Protection is paused"** with a "See Premium plans" button, and the VPN toggle in iOS Settings off. Relaunch: it stays off.
+7. Confirm the allowlist is unchanged.
+
+### After purchase / re-entitlement
+
+1. Foreground the app. Without visiting Safari Settings, reload the cookie-banner page: **banner blocked again**.
+2. YouTube pre-roll blocked again (web extension picks up the new `validUntil` on its next check, within ~15 minutes or on next navigation).
+
+### Last verified
+
+| Date | Result | Notes |
+|---|---|---|
+| — | not yet run on device | Automated coverage: `PremiumEntitlementReconcilerTests`. |
