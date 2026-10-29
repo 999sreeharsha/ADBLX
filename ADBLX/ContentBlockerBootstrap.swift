@@ -20,7 +20,8 @@ enum ContentBlockerBootstrap {
     @discardableResult
     nonisolated static func ensureInitialRulesInstalled(
         pipeline: FilterPipeline,
-        manifestStore: ManifestStore
+        manifestStore: ManifestStore,
+        isPremiumEntitled: Bool = false
     ) async -> Bool {
         do {
             if let _ = try await manifestStore.load() {
@@ -38,7 +39,7 @@ enum ContentBlockerBootstrap {
         }
 
         do {
-            let results = try await pipeline.installBundledSnapshotIfNeeded()
+            let results = try await pipeline.installBundledSnapshotIfNeeded(includePremium: isPremiumEntitled)
             var logLines = ["=== SHIELD BLOCKING BASELINE ==="]
             var totalRules = 0
             for result in results {

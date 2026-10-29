@@ -52,6 +52,44 @@ struct FilterPipelineTests {
         #expect(FileManager.default.fileExists(atPath: metadataDir.appendingPathComponent("statistics.json").path))
     }
 
+    @Test("bundled snapshot is free-only unless premium is requested")
+    func bundledSnapshotIsFreeOnlyByDefault() async throws {
+        let (pipeline, store, temp) = makeIsolatedPipeline()
+        defer { try? FileManager.default.removeItem(at: temp) }
+
+        let results = try await pipeline.installBundledSnapshotIfNeeded()
+        #expect(results.contains { $0.group == .ads })
+        #expect(results.contains { $0.group == .privacy })
+        #expect(!results.contains { $0.group == .annoyances })
+        #expect(!results.contains { $0.group == .regional })
+
+        let compiledDir = try await store.directoryURL(.compiled)
+        #expect(!FileManager.default.fileExists(atPath: compiledDir.appendingPathComponent("Annoyances.json").path))
+        #expect(!FileManager.default.fileExists(atPath: compiledDir.appendingPathComponent("Regional.json").path))
+
+        let installed = try JSONDecoder().decode(
+            [InstalledFilter].self, from: try await store.read("installed_filters.json", in: .metadata)
+        )
+        #expect(installed.allSatisfy { $0.group == .ads || $0.group == .privacy })
+        #expect(installed.allSatisfy { $0.premium == false || $0.premium == nil })
+    }
+
+    @Test("entitled bundled snapshot additionally installs Annoyances, flagged premium")
+    func bundledSnapshotIncludesPremiumWhenEntitled() async throws {
+        let (pipeline, store, temp) = makeIsolatedPipeline()
+        defer { try? FileManager.default.removeItem(at: temp) }
+
+        let results = try await pipeline.installBundledSnapshotIfNeeded(includePremium: true)
+        #expect(results.contains { $0.group == .annoyances })
+
+        let installed = try JSONDecoder().decode(
+            [InstalledFilter].self, from: try await store.read("installed_filters.json", in: .metadata)
+        )
+        let annoyances = try #require(installed.first { $0.id == "fanboy-annoyances" })
+        #expect(annoyances.group == .annoyances)
+        #expect(annoyances.premium == true)
+    }
+
     @Test("throws when a source fails validation")
     func throwsWhenSourceFailsValidation() async throws {
         let (pipeline, _, temp) = makeIsolatedPipeline()

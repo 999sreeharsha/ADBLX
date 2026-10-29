@@ -20,7 +20,8 @@ struct ContentBlockerBootstrapTests {
         let compiledDir = try await store.directoryURL(.compiled)
         #expect(FileManager.default.fileExists(atPath: compiledDir.appendingPathComponent("Ads.json").path))
         #expect(FileManager.default.fileExists(atPath: compiledDir.appendingPathComponent("Privacy.json").path))
-        #expect(FileManager.default.fileExists(atPath: compiledDir.appendingPathComponent("Annoyances.json").path))
+        // Annoyances is premium: the free bootstrap must not install it (see
+        // FilterPipelineTests "bundled snapshot is free-only unless premium is requested").
     }
 
     @Test("skips bundled snapshot install when a manifest is already cached")

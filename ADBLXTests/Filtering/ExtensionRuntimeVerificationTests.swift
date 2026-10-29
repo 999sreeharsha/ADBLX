@@ -84,8 +84,9 @@ final class ExtensionRuntimeVerificationTests: XCTestCase {
             XCTAssertTrue(result.success, "Extension \(result.extensionIdentifier) reload failed: \(String(describing: result.error))")
         }
 
-        // 3. Forceful restoration of the clean production bundled baseline
-        let restoreResults = try await pipeline.installBundledSnapshotIfNeeded()
+        // 3. Forceful restoration of the clean production bundled baseline for an entitled
+        // install (Annoyances is premium and is bundled-installed only when entitled).
+        let restoreResults = try await pipeline.installBundledSnapshotIfNeeded(includePremium: true)
         XCTAssertFalse(restoreResults.isEmpty, "Restoration must install production bundled groups")
 
         // 4. Post-Restore Verification Assertions (confirming production corpus on disk)

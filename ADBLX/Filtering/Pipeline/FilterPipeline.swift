@@ -320,7 +320,7 @@ actor FilterPipeline {
     /// Ads (EasyList -> fallback blockerList fixture), Privacy (EasyPrivacy), Annoyances (Fanboy Annoyances).
     ///
     /// Per-group isolation: failure in one filter list does not prevent remaining groups from installing.
-    func installBundledSnapshotIfNeeded() async throws -> [PipelineResult] {
+    func installBundledSnapshotIfNeeded(includePremium: Bool = false) async throws -> [PipelineResult] {
         var results: [PipelineResult] = []
         var atLeastOneInstalled = false
 
@@ -330,6 +330,15 @@ actor FilterPipeline {
                 let adsData = try Data(contentsOf: adsURL)
                 let adsComp = GroupComposition(
                     group: .ads,
+    private func loadInstalledFilters() async throws -> [InstalledFilter] {
+        let data = try await store.read("installed_filters.json", in: .metadata)
+        return try JSONDecoder().decode([InstalledFilter].self, from: data)
+    }
+}
+
+// MARK: - Bundled snapshots
+
+extension FilterPipeline {
                     sources: [FilterSource(
                         filterID: "easylist",
                         version: "bundled-baseline",
@@ -384,25 +393,12 @@ actor FilterPipeline {
             }
         }
 
-        // 3. Annoyances Group (Fanboy Annoyances)
-        if let annoyancesURL = bundledURL(forResource: "fanboy-annoyances", withExtension: "txt") {
-            do {
-                let annoyancesData = try Data(contentsOf: annoyancesURL)
-                let annoyancesComp = GroupComposition(
-                    group: .annoyances,
-                    sources: [FilterSource(
-                        filterID: "fanboy-annoyances",
-                        version: "bundled-baseline",
-                        checksumSHA256: Checksum.sha256Hex(of: annoyancesData),
-                        data: annoyancesData
-                    )]
-                )
-                let result = try await install(annoyancesComp, reloadStrategy: .immediate)
-                results.append(result)
-                atLeastOneInstalled = true
-            } catch {
-                Self.logger.error("Failed to install bundled Fanboy Annoyances: \(error, privacy: .public)")
-            }
+        // 3. Premium groups are bundled but installed only for entitled users: a fresh
+        // free/expired install must never receive Annoyances rules.
+        if includePremium {
+            let premiumResults = await installBundledPremiumSnapshot()
+            results.append(contentsOf: premiumResults)
+            atLeastOneInstalled = atLeastOneInstalled || !premiumResults.isEmpty
         }
 
         guard atLeastOneInstalled else {
@@ -412,9 +408,30 @@ actor FilterPipeline {
         return results
     }
 
-    private func loadInstalledFilters() async throws -> [InstalledFilter] {
-        let data = try await store.read("installed_filters.json", in: .metadata)
-        return try JSONDecoder().decode([InstalledFilter].self, from: data)
+    /// Installs the bundled premium lists (today: Fanboy Annoyances) as the offline baseline
+    /// for an entitled user. Callers must have verified entitlement. Failures are logged and
+    /// yield no result for that list; the normal update path will install it from the network.
+    func installBundledPremiumSnapshot(reloadStrategy: ReloadStrategy = .immediate) async -> [PipelineResult] {
+        guard let annoyancesURL = bundledURL(forResource: "fanboy-annoyances", withExtension: "txt") else {
+            return []
+        }
+        do {
+            let annoyancesData = try Data(contentsOf: annoyancesURL)
+            let composition = GroupComposition(
+                group: .annoyances,
+                sources: [FilterSource(
+                    filterID: BundledPremiumCatalog.annoyancesFilterID,
+                    version: "bundled-baseline",
+                    checksumSHA256: Checksum.sha256Hex(of: annoyancesData),
+                    data: annoyancesData,
+                    premium: true
+                )]
+            )
+            return [try await install(composition, reloadStrategy: reloadStrategy)]
+        } catch {
+            Self.logger.error("Failed to install bundled premium snapshot: \(error, privacy: .public)")
+            return []
+        }
     }
 }
 
