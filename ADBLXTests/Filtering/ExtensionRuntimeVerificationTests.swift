@@ -43,7 +43,20 @@ final class ExtensionRuntimeVerificationTests: XCTestCase {
         ]
     }
 
+    private static var isSimulator: Bool {
+        #if targetEnvironment(simulator)
+        return true
+        #else
+        return false
+        #endif
+    }
+
     func testAllFourExtensionsAppGroupRoundTripAndReload() async throws {
+        try XCTSkipIf(
+            Self.isSimulator,
+            "Skipped: SafariServices' ContentBlockerLoader service is not available on the iOS Simulator, so " +
+            "SFContentBlockerManager reloads cannot succeed. Run on a physical device."
+        )
         guard let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: AppGroup.identifier) else {
             XCTFail("App Group container unavailable")
             return

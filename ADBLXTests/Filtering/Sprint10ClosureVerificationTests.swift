@@ -266,7 +266,20 @@ final class Sprint10ClosureVerificationTests: XCTestCase {
         XCTAssertLessThan(transientMemoryMB, 200.0, "Peak transient memory delta must remain < 200.0 MB")
     }
     
+    private static var isSimulator: Bool {
+        #if targetEnvironment(simulator)
+        return true
+        #else
+        return false
+        #endif
+    }
+
     func testOnDeviceReloadCoordinatorWallClockDuration() async throws {
+        try XCTSkipIf(
+            Self.isSimulator,
+            "Skipped: SafariServices' ContentBlockerLoader service is not available on the iOS Simulator, so " +
+            "SFContentBlockerManager reloads cannot succeed. Run on a physical device."
+        )
         print("\n================ ON-DEVICE RELOADCOORDINATOR MULTI-TRIAL AUDIT ================")
         let store = AppCompositionRoot.makeFilterStore()
         let pipeline = AppCompositionRoot.makeFilterPipeline(store: store)
