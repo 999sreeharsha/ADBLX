@@ -14,6 +14,7 @@ struct ADBLXApp: App {
     @State private var hasCompletedOnboarding: Bool
     @AppStorage(AppearancePreference.storageKey) private var appearance: AppearancePreference = .system
     @State private var trialExpiryRouter = AppCompositionRoot.makeTrialExpiryRouter()
+    @State private var planStateModel = AppCompositionRoot.makePlanStateModel()
 
     private static var isRunningTests: Bool {
         ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil ||
@@ -71,13 +72,19 @@ struct ADBLXApp: App {
                 }
             }
             .preferredColorScheme(appearance.colorScheme)
+            .environment(planStateModel)
             .onChange(of: scenePhase) { _, phase in
                 guard phase == .active, !Self.isRunningTests else { return }
+                Task { await planStateModel.refresh() }
                 let reconciler = entitlementReconciler
                 Task.detached(priority: .utility) { await reconciler.reconcile() }
             }
             .task {
                 guard !Self.isRunningTests else { return }
+                // Not awaited: derivation hops to PlanStateProvider (an actor), and nothing here
+                // may delay the first frame.
+                planStateModel.startObserving()
+                Task { await planStateModel.refresh() }
                 await trialExpiryRouter.evaluateRoute()
                 let pipeline = filterPipeline
                 let coordinator = updateCoordinator

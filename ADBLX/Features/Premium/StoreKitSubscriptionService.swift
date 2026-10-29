@@ -235,4 +235,30 @@ public actor StoreKitSubscriptionService: SubscriptionService, EntitlementServic
     public func resolvedPremiumEntitlement() async -> Bool {
         await refreshEntitlements().hasPremiumAccess
     }
+
+    // MARK: - Plan state support
+
+    nonisolated static func premiumKind(forProductID productID: String) -> PremiumKind? {
+        switch productID {
+        case monthlyProductID, annualProductID: return .subscription
+        case lifetimeProductID: return .lifetime
+        default: return nil
+        }
+    }
+
+    /// The paid (non-trial) Premium the user holds right now, straight from
+    /// `Transaction.currentEntitlements` (revoked and expired transactions are excluded by
+    /// StoreKit). Lifetime outranks a subscription for display.
+    func activePremiumKind() async -> PremiumKind? {
+        var found: PremiumKind?
+        for await result in Transaction.currentEntitlements {
+            guard case .verified(let transaction) = result,
+                  let kind = Self.premiumKind(forProductID: transaction.productID) else { continue }
+            if kind == .lifetime { return .lifetime }
+            found = .subscription
+        }
+        return found
+    }
 }
+
+extension StoreKitSubscriptionService: PaidEntitlementSource {}

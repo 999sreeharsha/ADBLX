@@ -132,6 +132,22 @@ public enum AppCompositionRoot {
         UpdateThrottle(store: store, interval: updateThrottleInterval)
     }
 
+    /// The single `PlanStateModel` instance shared app-wide (owned here, injected into the
+    /// view hierarchy by `ADBLXApp`; never accessed as a global by views).
+    @MainActor
+    private static let sharedPlanStateModel = PlanStateModel(
+        provider: PlanStateProvider(
+            trial: KeychainTrialSource(manager: sharedTrialManager, store: sharedTrialKeychainStore),
+            paid: sharedSubscriptionService
+        ),
+        entitlementService: sharedSubscriptionService
+    )
+
+    @MainActor
+    static func makePlanStateModel() -> PlanStateModel {
+        sharedPlanStateModel
+    }
+
     /// Level-triggered reconciler between installed premium filters and current entitlement.
     static func makePremiumEntitlementReconciler(
         pipeline: FilterPipeline,
