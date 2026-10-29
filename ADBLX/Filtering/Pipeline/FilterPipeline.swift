@@ -88,8 +88,19 @@ actor FilterPipeline {
         group: FilterGroup,
         reloadStrategy: ReloadStrategy = .immediate
     ) async throws -> PipelineResult {
+        try await remove(filterIDs: [filterID], group: group, reloadStrategy: reloadStrategy)
+    }
+
+    /// Removes several filters from one `group` in a single recompose: one compile, one
+    /// atomic write, one metadata update. Used by entitlement downgrade, where every premium
+    /// filter in a group goes at once (an emptied group compiles to `[]`).
+    func remove(
+        filterIDs: Set<String>,
+        group: FilterGroup,
+        reloadStrategy: ReloadStrategy = .immediate
+    ) async throws -> PipelineResult {
         let existingFilters = (try? await loadInstalledFilters()) ?? []
-        let remaining = existingFilters.filter { $0.group == group && $0.id != filterID }
+        let remaining = existingFilters.filter { $0.group == group && !filterIDs.contains($0.id) }
 
         var sources: [FilterSource] = []
         for filter in remaining {
@@ -98,7 +109,8 @@ actor FilterPipeline {
                 filterID: filter.id,
                 version: filter.installedVersion,
                 checksumSHA256: filter.checksumSHA256,
-                data: data
+                data: data,
+                premium: filter.premium ?? false
             ))
         }
 
@@ -106,10 +118,12 @@ actor FilterPipeline {
         let result = try await installGroup(
             composition,
             upsertingFilterEntries: [],
-            removingFilterIDs: [filterID],
+            removingFilterIDs: filterIDs,
             reloadStrategy: reloadStrategy
         )
-        try? await store.removeFilterPayload(filterID: filterID)
+        for filterID in filterIDs {
+            try? await store.removeFilterPayload(filterID: filterID)
+        }
         return result
     }
 
@@ -258,7 +272,7 @@ actor FilterPipeline {
                 checksumSHA256: source.checksumSHA256,
                 lastUpdated: compiled.statistics.lastUpdated,
                 ruleCount: compiled.ruleCount,
-                premium: entry.premium
+                premium: source.premium
             )
         }
         for entry in upsertsByID.values {
@@ -269,7 +283,7 @@ actor FilterPipeline {
                 checksumSHA256: entry.checksumSHA256,
                 lastUpdated: compiled.statistics.lastUpdated,
                 ruleCount: compiled.ruleCount,
-                premium: source.premium
+                premium: entry.premium
             ))
         }
         let installedFiltersData = try JSONEncoder().encode(existingFilters)
@@ -316,6 +330,15 @@ actor FilterPipeline {
         return nil
     }
 
+    private func loadInstalledFilters() async throws -> [InstalledFilter] {
+        let data = try await store.read("installed_filters.json", in: .metadata)
+        return try JSONDecoder().decode([InstalledFilter].self, from: data)
+    }
+}
+
+// MARK: - Bundled snapshots
+
+extension FilterPipeline {
     /// Installs the bundled snapshot baseline for each configured filter group independently:
     /// Ads (EasyList -> fallback blockerList fixture), Privacy (EasyPrivacy), Annoyances (Fanboy Annoyances).
     ///
@@ -330,15 +353,6 @@ actor FilterPipeline {
                 let adsData = try Data(contentsOf: adsURL)
                 let adsComp = GroupComposition(
                     group: .ads,
-    private func loadInstalledFilters() async throws -> [InstalledFilter] {
-        let data = try await store.read("installed_filters.json", in: .metadata)
-        return try JSONDecoder().decode([InstalledFilter].self, from: data)
-    }
-}
-
-// MARK: - Bundled snapshots
-
-extension FilterPipeline {
                     sources: [FilterSource(
                         filterID: "easylist",
                         version: "bundled-baseline",

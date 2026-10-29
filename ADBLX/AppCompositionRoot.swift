@@ -132,6 +132,21 @@ public enum AppCompositionRoot {
         UpdateThrottle(store: store, interval: updateThrottleInterval)
     }
 
+    /// Level-triggered reconciler between installed premium filters and current entitlement.
+    static func makePremiumEntitlementReconciler(
+        pipeline: FilterPipeline,
+        store: FilterStore
+    ) -> PremiumEntitlementReconciler {
+        PremiumEntitlementReconciler(
+            store: store,
+            pipeline: pipeline,
+            manifestStore: ManifestStore(filterStore: store),
+            reloader: ReloadCoordinator(),
+            extensionIdentifiers: extensionIdentifiers,
+            entitlementService: makeSubscriptionService()
+        )
+    }
+
     static func makeUpdateCoordinator(pipeline: FilterPipeline, store: FilterStore) -> UpdateCoordinator {
         let session = makeHTTPSession()
         let endpointProvider: ManifestEndpointProvider = AppManifestEndpointProvider()

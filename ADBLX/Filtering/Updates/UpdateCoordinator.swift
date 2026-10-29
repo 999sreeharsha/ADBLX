@@ -73,7 +73,9 @@ actor UpdateCoordinator {
         }
         inFlightGeneration += 1
         let myGeneration = inFlightGeneration
-        let task = Task { try await runTransaction(onPhaseChange: onPhaseChange) }
+        let task = Task {
+            try await FilterTransactionGate.shared.run { try await runTransaction(onPhaseChange: onPhaseChange) }
+        }
         inFlightTask = task
         defer {
             // Only reset if `inFlightTask` still refers to the task THIS invocation
