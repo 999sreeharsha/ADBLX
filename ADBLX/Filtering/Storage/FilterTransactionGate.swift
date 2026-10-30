@@ -18,6 +18,9 @@ actor FilterTransactionGate {
     private var isLocked = false
     private var waiters: [CheckedContinuation<Void, Never>] = []
 
+    /// Callers currently queued behind the holder. Lets tests observe "queued" without timing.
+    var waiterCount: Int { waiters.count }
+
     func run<T>(_ body: () async throws -> T) async rethrows -> T {
         await acquire()
         defer { release() }

@@ -28,7 +28,7 @@ struct UpdateProgressModelTests {
 
     @Test("start(coordinator:) reaches .complete for a real up-to-date result")
     func startReachesComplete() async throws {
-        let store = FilterStore(appGroupIdentifier: AppGroup.identifier)
+        let store = FilterStore.temporary()
         let metadataDir = try await store.directoryURL(.metadata)
         try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("manifest.json"))
         try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("installed_filters.json"))
@@ -62,7 +62,7 @@ struct UpdateProgressModelTests {
 
     @Test("start(coordinator:) reaches .failed when the coordinator throws")
     func startReachesFailedOnThrow() async throws {
-        let store = FilterStore(appGroupIdentifier: AppGroup.identifier)
+        let store = FilterStore.temporary()
         let session = MockHTTPSession(responses: [:])  // no registered response — throws UnregisteredURL
         let pipeline = FilterPipeline(
             validator: FilterValidator(), compiler: PassthroughRuleCompiler(),

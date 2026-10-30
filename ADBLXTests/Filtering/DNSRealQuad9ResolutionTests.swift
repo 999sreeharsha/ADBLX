@@ -89,6 +89,7 @@ final class DNSRealQuad9ResolutionTests: XCTestCase {
 
     /// Tests starting the VPN tunnel on physical hardware and observing NEVPNStatus transition.
     func testStartVPNTunnelLifecycleOnDevice() async throws {
+        try XCTSkipUnless(DeviceHarness.isEnabled, DeviceHarness.skipMessage)
         print("======== NEPACKETTUNNELPROVIDER LIFECYCLE TEST ========")
         let managers: [NETunnelProviderManager]
         do {
@@ -161,6 +162,7 @@ final class DNSRealQuad9ResolutionTests: XCTestCase {
     /// 4. Confirms blocked domain fails to resolve (NXDOMAIN / EAI_NONAME) while allowed domain (example.com) succeeds.
     /// 5. Cleanly terminates tunnel.
     func testSystemWideDNSInterceptionWithActiveTunnelOnDevice() async throws {
+        try XCTSkipUnless(DeviceHarness.isEnabled, DeviceHarness.skipMessage)
         print("======== SYSTEM-WIDE DNS INTERCEPTION HARDWARE TEST ========")
         guard let appGroupURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.ADBLX.shared") else {
             throw XCTSkip("Skipped: App Group container unavailable in test runner environment.")

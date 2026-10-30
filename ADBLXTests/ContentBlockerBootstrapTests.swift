@@ -6,10 +6,8 @@ import Foundation
 struct ContentBlockerBootstrapTests {
     @Test("installs the bundled snapshot via the pipeline and reports success")
     func installsBundledSnapshot() async throws {
-        let store = AppCompositionRoot.makeFilterStore()
+        let store = FilterStore.temporary()
         let manifestStore = ManifestStore(filterStore: store)
-        let metadataDir = try await store.directoryURL(.metadata)
-        try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("manifest.json"))
 
         let pipeline = AppCompositionRoot.makeFilterPipeline(store: store)
         let result = await ContentBlockerBootstrap.ensureInitialRulesInstalled(
@@ -26,19 +24,17 @@ struct ContentBlockerBootstrapTests {
 
     @Test("skips bundled snapshot install when a manifest is already cached")
     func skipsInstallWhenManifestCached() async throws {
-        let store = AppCompositionRoot.makeFilterStore()
+        let store = FilterStore.temporary()
         let manifestStore = ManifestStore(filterStore: store)
         let manifest = FilterManifest(manifestVersion: "1", entries: [])
         try await manifestStore.save(manifest, etag: "\"etag-1\"")
 
         let compiledDir = try await store.directoryURL(.compiled)
         let adsCompiledFile = compiledDir.appendingPathComponent("Ads.json")
-        // Ensure Ads.json exists and contains >10k bytes
-        if !FileManager.default.fileExists(atPath: adsCompiledFile.path) || ((try? Data(contentsOf: adsCompiledFile))?.count ?? 0) <= 10_000 {
-            let sampleRules = Array(repeating: ["trigger": ["url-filter": ".*"], "action": ["type": "block"]], count: 300)
-            let sampleData = try JSONSerialization.data(withJSONObject: sampleRules)
-            try sampleData.write(to: adsCompiledFile, options: .atomic)
-        }
+        // A real-looking Ads.json (>10k bytes) so the bootstrap's "already installed" gate applies.
+        let sampleRules = Array(repeating: ["trigger": ["url-filter": ".*"], "action": ["type": "block"]], count: 300)
+        let sampleData = try JSONSerialization.data(withJSONObject: sampleRules)
+        try sampleData.write(to: adsCompiledFile, options: .atomic)
 
         let pipeline = AppCompositionRoot.makeFilterPipeline(store: store)
         let result = await ContentBlockerBootstrap.ensureInitialRulesInstalled(
@@ -46,9 +42,6 @@ struct ContentBlockerBootstrapTests {
         )
 
         #expect(result == false)
-
-        let metadataDir = try await store.directoryURL(.metadata)
-        try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("manifest.json"))
     }
 }
 

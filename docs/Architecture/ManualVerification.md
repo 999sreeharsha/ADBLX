@@ -2,6 +2,21 @@
 
 Manual checklists for behavior that isn't automated in CI — either because it requires Safari/extension registration (not scriptable in CI) or because automating it now would cost more than it proves at this stage of the project. Update in place as new manual-only surfaces appear.
 
+## On-device harness tests (opt-in)
+
+Tests never touch the real App Group by default: they use `FilterStore.temporary()`. The
+few harnesses that must write it (because the Safari extensions or the DNS tunnel read it)
+are skipped unless opted in: `ExtensionRuntimeVerificationTests` (all three, including the
+synthetic-rule deploy and the production-baseline restore), the reload wall-clock test in
+`Sprint10ClosureVerificationTests`, and the tunnel tests in `DNSRealQuad9ResolutionTests`.
+
+```sh
+TEST_RUNNER_ADBLX_DEVICE_HARNESS=1 xcodebuild test -project ADBLX.xcodeproj -scheme ADBLX \
+  -destination 'id=<device UDID>' -only-testing:ADBLXTests/ExtensionRuntimeVerificationTests
+```
+
+These overwrite the rules your installed app is using. Run the restore test afterwards.
+
 ## `ADBLXAdsBlocker` Content Blocker pipeline
 
 Verifies each stage of the App Group → Content Blocker → Safari pipeline independently, not just the end result.

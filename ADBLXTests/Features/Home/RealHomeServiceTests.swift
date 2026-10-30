@@ -6,7 +6,7 @@ import Foundation
 @Suite("RealHomeService", .serialized)
 struct RealHomeServiceTests {
     private func makeStore() async throws -> FilterStore {
-        let store = FilterStore(appGroupIdentifier: AppGroup.identifier)
+        let store = FilterStore.temporary()
         let metadataDir = try await store.directoryURL(.metadata)
         try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("installed_filters.json"))
         return store

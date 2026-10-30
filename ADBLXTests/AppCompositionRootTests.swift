@@ -5,19 +5,16 @@ import Testing
 
 @Suite("AppCompositionRoot")
 struct AppCompositionRootTests {
-    @Test("makeFilterStore returns a FilterStore configured with the shared App Group identifier")
-    func makeFilterStoreUsesAppGroupIdentifier() async throws {
-        let store = AppCompositionRoot.makeFilterStore()
-
-        // Round-trip through the store to confirm it resolves the real App Group
-        // container rather than throwing .appGroupContainerUnavailable.
-        let url = try await store.directoryURL(.metadata)
-        #expect(url.path.contains("Metadata"))
+    @Test("the shared App Group container is provisioned for this target")
+    func appGroupContainerIsProvisioned() {
+        // Read-only: confirms the entitlement resolves, without creating or writing anything in
+        // the real container (tests use FilterStore.temporary()).
+        #expect(FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: AppGroup.identifier) != nil)
     }
 
     @Test("makeUpdateCoordinator constructs a coordinator wired to the given pipeline and store")
     func makeUpdateCoordinatorWiresDependencies() async throws {
-        let store = AppCompositionRoot.makeFilterStore()
+        let store = FilterStore.temporary()
         let pipeline = AppCompositionRoot.makeFilterPipeline(store: store)
 
         let coordinator = AppCompositionRoot.makeUpdateCoordinator(pipeline: pipeline, store: store)

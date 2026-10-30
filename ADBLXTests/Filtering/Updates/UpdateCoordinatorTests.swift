@@ -68,7 +68,7 @@ struct UpdateCoordinatorTests {
 
     @Test("304 short-circuits to .upToDate with no downloads or installs")
     func notModifiedShortCircuits() async throws {
-        let store = FilterStore(appGroupIdentifier: AppGroup.identifier)
+        let store = FilterStore.temporary()
         let manifestStore = ManifestStore(filterStore: store)
         let manifest = FilterManifest(manifestVersion: "1", entries: [manifestEntry(checksum: "irrelevant")])
         try await manifestStore.save(manifest, etag: "\"cached-etag\"")
@@ -97,7 +97,7 @@ struct UpdateCoordinatorTests {
 
     @Test("successful single-filter update installs, commits the manifest, and reloads once")
     func successfulUpdateInstallsAndReloadsOnce() async throws {
-        let store = FilterStore(appGroupIdentifier: AppGroup.identifier)
+        let store = FilterStore.temporary()
         let metadataDir = try await store.directoryURL(.metadata)
         try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("manifest.json"))
         try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("installed_filters.json"))
@@ -140,7 +140,7 @@ struct UpdateCoordinatorTests {
 
     @Test("checksum mismatch aborts before any write and leaves prior state untouched")
     func checksumMismatchAbortsBeforeWrite() async throws {
-        let store = FilterStore(appGroupIdentifier: AppGroup.identifier)
+        let store = FilterStore.temporary()
         let compiledDir = try await store.directoryURL(.compiled)
         let compiledFile = compiledDir.appendingPathComponent("Ads.json")
         try Data("[\"prior\"]".utf8).write(to: compiledFile, options: .atomic)
@@ -178,7 +178,7 @@ struct UpdateCoordinatorTests {
             }
         }
 
-        let store = FilterStore(appGroupIdentifier: AppGroup.identifier)
+        let store = FilterStore.temporary()
         let compiledDir = try await store.directoryURL(.compiled)
         let metadataDir = try await store.directoryURL(.metadata)
         let compiledFile = compiledDir.appendingPathComponent("Ads.json")
@@ -225,7 +225,7 @@ struct UpdateCoordinatorTests {
         // manifest hasn't changed and the server never sends a 304. This test proves
         // convergence through the planner path, independent of ETag/304 behavior — the
         // mock manifest response is a 200 both times, not a 304.
-        let store = FilterStore(appGroupIdentifier: AppGroup.identifier)
+        let store = FilterStore.temporary()
         let metadataDir = try await store.directoryURL(.metadata)
         try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("manifest.json"))
         try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("installed_filters.json"))
@@ -287,7 +287,7 @@ struct UpdateCoordinatorTests {
         }
 
         let failingFileManager = FailingOnMetadataFileManager()
-        let store = FilterStore(appGroupIdentifier: AppGroup.identifier, fileManager: failingFileManager)
+        let store = FilterStore.temporary(fileManager: failingFileManager)
         let compiledDir = try await store.directoryURL(.compiled)
         let metadataDir = try await store.directoryURL(.metadata)
         try Data("[\"prior-compiled\"]".utf8).write(to: compiledDir.appendingPathComponent("Ads.json"), options: .atomic)
@@ -332,7 +332,7 @@ struct UpdateCoordinatorTests {
 
     @Test("manifest spanning all four groups installs each group once and reloads each affected extension once")
     func manifestAcrossAllGroupsInstallsEachGroupOnce() async throws {
-        let store = FilterStore(appGroupIdentifier: AppGroup.identifier)
+        let store = FilterStore.temporary()
         let metadataDir = try await store.directoryURL(.metadata)
         let compiledDir = try await store.directoryURL(.compiled)
         for filename in ["manifest.json", "installed_filters.json"] {
@@ -448,7 +448,7 @@ struct UpdateCoordinatorTests {
             }
         }
 
-        let store = FilterStore(appGroupIdentifier: AppGroup.identifier)
+        let store = FilterStore.temporary()
         let metadataDir = try await store.directoryURL(.metadata)
         let compiledDir = try await store.directoryURL(.compiled)
         try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("manifest.json"))
@@ -526,7 +526,7 @@ struct UpdateCoordinatorTests {
 
     @Test("concurrent run() calls collapse into one transaction — only one install occurs")
     func concurrentRunCallsCollapseIntoOneTransaction() async throws {
-        let store = FilterStore(appGroupIdentifier: AppGroup.identifier)
+        let store = FilterStore.temporary()
         let metadataDir = try await store.directoryURL(.metadata)
         try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("manifest.json"))
         try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("installed_filters.json"))
@@ -580,7 +580,7 @@ struct UpdateCoordinatorTests {
     // exactly one install, not three re-applied installs.
     @Test("three or more overlapping concurrent run() calls collapse into exactly one transaction")
     func threeConcurrentRunCallsCollapseIntoOneTransaction() async throws {
-        let store = FilterStore(appGroupIdentifier: AppGroup.identifier)
+        let store = FilterStore.temporary()
         let metadataDir = try await store.directoryURL(.metadata)
         try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("manifest.json"))
         try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("installed_filters.json"))
@@ -644,7 +644,7 @@ struct UpdateCoordinatorTests {
 
     @Test("a filter absent from a new manifest is removed via the pipeline, not silently dropped")
     func manifestRemovalDispatchesRemoveToPipeline() async throws {
-        let store = FilterStore(appGroupIdentifier: AppGroup.identifier)
+        let store = FilterStore.temporary()
         let metadataDir = try await store.directoryURL(.metadata)
         try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("manifest.json"))
         try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("installed_filters.json"))
@@ -689,7 +689,7 @@ struct UpdateCoordinatorTests {
 
     @Test("a failed transaction containing a removal rolls back and restores the removed filter")
     func failedTransactionWithRemovalRollsBackFully() async throws {
-        let store = FilterStore(appGroupIdentifier: AppGroup.identifier)
+        let store = FilterStore.temporary()
         let metadataDir = try await store.directoryURL(.metadata)
         try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("manifest.json"))
         try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("installed_filters.json"))
@@ -750,7 +750,7 @@ struct UpdateCoordinatorTests {
 
     @Test("successful run leaves the download workspace empty")
     func successfulRunLeavesWorkspaceEmpty() async throws {
-        let store = FilterStore(appGroupIdentifier: AppGroup.identifier)
+        let store = FilterStore.temporary()
         let metadataDir = try await store.directoryURL(.metadata)
         try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("manifest.json"))
         try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("installed_filters.json"))
@@ -783,7 +783,7 @@ struct UpdateCoordinatorTests {
 
     @Test("a failed run still leaves the download workspace empty")
     func failedRunLeavesWorkspaceEmpty() async throws {
-        let store = FilterStore(appGroupIdentifier: AppGroup.identifier)
+        let store = FilterStore.temporary()
         let metadataDir = try await store.directoryURL(.metadata)
         try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("manifest.json"))
         try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("installed_filters.json"))
@@ -818,7 +818,7 @@ struct UpdateCoordinatorTests {
 
     @Test("an entitled premium manifest entry installs instead of being skipped")
     func entitledPremiumEntryInstalls() async throws {
-        let store = FilterStore(appGroupIdentifier: AppGroup.identifier)
+        let store = FilterStore.temporary()
         let metadataDir = try await store.directoryURL(.metadata)
         try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("manifest.json"))
         try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("installed_filters.json"))

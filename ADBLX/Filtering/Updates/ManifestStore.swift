@@ -14,7 +14,7 @@ struct CachedManifest: Codable, Equatable {
 actor ManifestStore {
     private static let filename = "manifest.json"
 
-    private let filterStore: FilterStore
+    let filterStore: FilterStore
 
     init(filterStore: FilterStore) {
         self.filterStore = filterStore

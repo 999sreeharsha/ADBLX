@@ -13,23 +13,21 @@ struct LiveOTAUpdateIntegrationTests {
     private let extensionIdentifiers = AppCompositionRoot.extensionIdentifiers
 
     init() {
-        let st = FilterStore(appGroupIdentifier: AppGroup.identifier)
+        let st = FilterStore.temporary()
         self.store = st
         self.reloader = ReloadCoordinator()
         self.pipeline = AppCompositionRoot.makeFilterPipeline(store: st)
         self.manifestStore = ManifestStore(filterStore: st)
     }
 
-    private func containerURL() throws -> URL {
-        guard let url = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: AppGroup.identifier) else {
-            throw FilterStoreError.appGroupContainerUnavailable
-        }
-        return url
+    /// The temporary store's root (the stand-in for the App Group container).
+    private func containerURL() async throws -> URL {
+        try await store.directoryURL(.compiled).deletingLastPathComponent()
     }
 
     @Test("Double Failure Rollback Integrity (Checksum Mismatch + WebKit DFA Rejection)")
     func doubleFailureRollbackIntegrity() async throws {
-        let appGroupURL = try containerURL()
+        let appGroupURL = try await containerURL()
         let previousDirURL = appGroupURL.appendingPathComponent("Previous")
         try await store.discardRollbackSnapshot()
 

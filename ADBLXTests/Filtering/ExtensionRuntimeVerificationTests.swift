@@ -12,6 +12,7 @@ final class ExtensionRuntimeVerificationTests: XCTestCase {
 
     override func setUp() async throws {
         try await super.setUp()
+        // The one place tests write the real App Group: every test here is DeviceHarness-gated.
         store = FilterStore(appGroupIdentifier: AppGroup.identifier)
         reloader = ReloadCoordinator()
         pipeline = AppCompositionRoot.makeFilterPipeline(store: store)
@@ -52,6 +53,7 @@ final class ExtensionRuntimeVerificationTests: XCTestCase {
     }
 
     func testAllFourExtensionsAppGroupRoundTripAndReload() async throws {
+        try XCTSkipUnless(DeviceHarness.isEnabled, DeviceHarness.skipMessage)
         try XCTSkipIf(
             Self.isSimulator,
             "Skipped: SafariServices' ContentBlockerLoader service is not available on the iOS Simulator, so " +
@@ -117,6 +119,7 @@ final class ExtensionRuntimeVerificationTests: XCTestCase {
     }
 
     func testDeployReachableSyntheticRulesForManualSafariVerification() async throws {
+        try XCTSkipUnless(DeviceHarness.isEnabled, DeviceHarness.skipMessage)
         for (group, filterID, content) in reachableTestCompositions {
             let source = FilterSource(
                 filterID: filterID,
@@ -138,6 +141,7 @@ final class ExtensionRuntimeVerificationTests: XCTestCase {
     }
 
     func testRestoreProductionBaselineAfterManualVerification() async throws {
+        try XCTSkipUnless(DeviceHarness.isEnabled, DeviceHarness.skipMessage)
         _ = try await pipeline.installBundledSnapshotIfNeeded()
     }
 }

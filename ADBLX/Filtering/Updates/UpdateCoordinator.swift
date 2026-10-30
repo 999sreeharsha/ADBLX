@@ -22,6 +22,7 @@ actor UpdateCoordinator {
     private let reloader: ReloadCoordinator
     private let extensionIdentifiers: GroupExtensionIdentifiers
     private let entitlementService: EntitlementService
+    private let gate: FilterTransactionGate
     private var inFlightTask: Task<UpdateRunResult, Error>?
     // Bumped each time a NEW transaction task is created. `Task` is a struct with no
     // identity comparison, so this generation counter is what lets the creator of a
@@ -38,7 +39,8 @@ actor UpdateCoordinator {
         store: FilterStore,
         reloader: ReloadCoordinator,
         extensionIdentifiers: GroupExtensionIdentifiers,
-        entitlementService: EntitlementService
+        entitlementService: EntitlementService,
+        gate: FilterTransactionGate = .shared
     ) {
         self.manifestClient = manifestClient
         self.manifestStore = manifestStore
@@ -48,6 +50,7 @@ actor UpdateCoordinator {
         self.reloader = reloader
         self.extensionIdentifiers = extensionIdentifiers
         self.entitlementService = entitlementService
+        self.gate = gate
     }
 
     /// `onPhaseChange` is additive — defaults to a no-op so existing callers (and
@@ -74,7 +77,7 @@ actor UpdateCoordinator {
         inFlightGeneration += 1
         let myGeneration = inFlightGeneration
         let task = Task {
-            try await FilterTransactionGate.shared.run { try await runTransaction(onPhaseChange: onPhaseChange) }
+            try await gate.run { try await runTransaction(onPhaseChange: onPhaseChange) }
         }
         inFlightTask = task
         defer {

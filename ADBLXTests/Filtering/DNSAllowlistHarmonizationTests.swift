@@ -15,7 +15,7 @@ final class DNSAllowlistHarmonizationTests: XCTestCase {
         tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         
-        store = FilterStore(appGroupIdentifier: AppGroup.identifier)
+        store = FilterStore.temporary()
         allowlistStore = AllowlistStore(store: store)
         let defaults = UserDefaults(suiteName: "test.dns.harmonization.\(UUID().uuidString)")!
         dnsSettingsStore = DNSProtectionSettingsStore(userDefaults: defaults)

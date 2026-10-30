@@ -25,13 +25,10 @@ enum ContentBlockerBootstrap {
     ) async -> Bool {
         do {
             if let _ = try await manifestStore.load() {
-                if let appGroupURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: AppGroup.identifier) {
-                    let adsCompiled = appGroupURL.appendingPathComponent("Compiled/Ads.json")
-                    if FileManager.default.fileExists(atPath: adsCompiled.path),
-                       let data = try? Data(contentsOf: adsCompiled), data.count > 10_000 {
-                        logger.info("Cached manifest and valid compiled rules present — skipping bundled snapshot bootstrap")
-                        return false
-                    }
+                // Through the same store the manifest came from, never the raw container.
+                if let data = try? await manifestStore.filterStore.read("Ads.json", in: .compiled), data.count > 10_000 {
+                    logger.info("Cached manifest and valid compiled rules present — skipping bundled snapshot bootstrap")
+                    return false
                 }
             }
         } catch {

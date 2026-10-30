@@ -7,7 +7,7 @@ import Foundation
 struct UpdateThrottleTests {
     @Test("shouldRun is true when no timestamp has ever been recorded")
     func shouldRunTrueWithNoPriorRecord() async throws {
-        let store = FilterStore(appGroupIdentifier: AppGroup.identifier)
+        let store = FilterStore.temporary()
         let metadataDir = try await store.directoryURL(.metadata)
         try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("update_throttle.json"))
 
@@ -17,7 +17,7 @@ struct UpdateThrottleTests {
 
     @Test("shouldRun is false immediately after recordSuccess, within the interval")
     func shouldRunFalseWithinInterval() async throws {
-        let store = FilterStore(appGroupIdentifier: AppGroup.identifier)
+        let store = FilterStore.temporary()
         let metadataDir = try await store.directoryURL(.metadata)
         try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("update_throttle.json"))
 
@@ -32,7 +32,7 @@ struct UpdateThrottleTests {
 
     @Test("shouldRun is true again once the interval has elapsed")
     func shouldRunTrueAfterIntervalElapses() async throws {
-        let store = FilterStore(appGroupIdentifier: AppGroup.identifier)
+        let store = FilterStore.temporary()
         let metadataDir = try await store.directoryURL(.metadata)
         try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("update_throttle.json"))
 

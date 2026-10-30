@@ -16,7 +16,7 @@ struct UpdateCoordinatorProgressTests {
 
     @Test("run() with no callback behaves exactly as before (default no-op)")
     func defaultParameterIsBackwardCompatible() async throws {
-        let store = FilterStore(appGroupIdentifier: AppGroup.identifier)
+        let store = FilterStore.temporary()
         let metadataDir = try await store.directoryURL(.metadata)
         try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("manifest.json"))
         try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("installed_filters.json"))
@@ -54,7 +54,7 @@ struct UpdateCoordinatorProgressTests {
 
     @Test("run() reports .checking then .complete for an up-to-date result")
     func reportsCheckingThenComplete() async throws {
-        let store = FilterStore(appGroupIdentifier: AppGroup.identifier)
+        let store = FilterStore.temporary()
         let metadataDir = try await store.directoryURL(.metadata)
         try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("manifest.json"))
         try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("installed_filters.json"))

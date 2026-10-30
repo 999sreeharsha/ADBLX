@@ -37,6 +37,7 @@ actor PremiumEntitlementReconciler {
     private let reloader: ReloadCoordinator
     private let extensionIdentifiers: GroupExtensionIdentifiers
     private let entitlementService: EntitlementService
+    private let gate: FilterTransactionGate
 
     private var observationTask: Task<Void, Never>?
 
@@ -49,7 +50,8 @@ actor PremiumEntitlementReconciler {
         manifestStore: ManifestStore,
         reloader: ReloadCoordinator,
         extensionIdentifiers: GroupExtensionIdentifiers,
-        entitlementService: EntitlementService
+        entitlementService: EntitlementService,
+        gate: FilterTransactionGate = .shared
     ) {
         self.store = store
         self.pipeline = pipeline
@@ -57,6 +59,7 @@ actor PremiumEntitlementReconciler {
         self.reloader = reloader
         self.extensionIdentifiers = extensionIdentifiers
         self.entitlementService = entitlementService
+        self.gate = gate
     }
 
     /// Reconciles on every `EntitlementService` state change (purchase, lapse, a refund while
@@ -83,7 +86,7 @@ actor PremiumEntitlementReconciler {
         // Refresh first so a lapse or refund the app hasn't seen yet is not missed.
         let state = await entitlementService.refreshEntitlements()
         // Waits for any in-flight update/downgrade (see FilterTransactionGate) rather than skipping.
-        let outcome = await FilterTransactionGate.shared.run {
+        let outcome = await gate.run {
             #if DEBUG
             // This is an actor, so its work must never land on the main thread (NFR-05).
             dispatchPrecondition(condition: .notOnQueue(.main))

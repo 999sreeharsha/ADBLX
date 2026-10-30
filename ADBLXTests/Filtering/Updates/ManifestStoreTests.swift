@@ -16,7 +16,7 @@ struct ManifestStoreTests {
 
     @Test("load returns nil when nothing has been saved yet")
     func loadReturnsNilInitially() async throws {
-        let filterStore = FilterStore(appGroupIdentifier: AppGroup.identifier)
+        let filterStore = FilterStore.temporary()
         let manifestStore = ManifestStore(filterStore: filterStore)
 
         // Ensure a clean slate: remove any manifest.json left by a previous run.
@@ -29,7 +29,7 @@ struct ManifestStoreTests {
 
     @Test("save then load round-trips the manifest and ETag byte-for-byte")
     func saveThenLoadRoundTrips() async throws {
-        let filterStore = FilterStore(appGroupIdentifier: AppGroup.identifier)
+        let filterStore = FilterStore.temporary()
         let manifestStore = ManifestStore(filterStore: filterStore)
         let manifest = sampleManifest()
 
@@ -44,7 +44,7 @@ struct ManifestStoreTests {
 
     @Test("save with a nil ETag round-trips a nil ETag")
     func saveWithNilETagRoundTrips() async throws {
-        let filterStore = FilterStore(appGroupIdentifier: AppGroup.identifier)
+        let filterStore = FilterStore.temporary()
         let manifestStore = ManifestStore(filterStore: filterStore)
         let manifest = sampleManifest()
 

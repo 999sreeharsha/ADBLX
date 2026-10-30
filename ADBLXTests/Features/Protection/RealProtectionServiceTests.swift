@@ -6,7 +6,7 @@ import Foundation
 @Suite("RealProtectionService", .serialized)
 struct RealProtectionServiceTests {
     private func makeStores() async throws -> (FilterStore, FilterPreferencesStore) {
-        let filterStore = FilterStore(appGroupIdentifier: AppGroup.identifier)
+        let filterStore = FilterStore.temporary()
         let metadataDir = try await filterStore.directoryURL(.metadata)
         try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("installed_filters.json"))
         try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("filter_preferences.json"))
