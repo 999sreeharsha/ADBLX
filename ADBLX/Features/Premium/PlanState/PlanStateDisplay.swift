@@ -19,4 +19,23 @@ nonisolated enum PlanStateDisplay {
             return String(localized: "settings.plan.free")
         }
     }
+
+    /// The one-line plan status at the top of the Premium screen.
+    static func premiumHeaderText(
+        for state: PlanState,
+        formatDate: (Date) -> String = { $0.formatted(date: .long, time: .omitted) }
+    ) -> String {
+        switch state {
+        case .trial(_, let endsAt):
+            return String(format: String(localized: "premium.header.trialEnds"), formatDate(endsAt))
+        case .trialExpired(let endedAt):
+            return String(format: String(localized: "premium.header.trialEnded"), formatDate(endedAt))
+        case .premium(.subscription):
+            return String(localized: "premium.header.subscription")
+        case .premium(.lifetime):
+            return String(localized: "premium.header.lifetime")
+        case .free:
+            return String(localized: "premium.header.free")
+        }
+    }
 }

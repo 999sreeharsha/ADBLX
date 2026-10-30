@@ -3,14 +3,23 @@ import Observation
 
 @Observable
 final class PremiumViewModel {
+    enum RestoreOutcome: Equatable {
+        case restored
+        case nothingToRestore
+    }
+
     private let service: SubscriptionService
 
+    /// The locked feature that opened this paywall, if any.
+    let focus: PremiumFeature?
     var status: SubscriptionStatus?
     var isLoading = false
     var purchaseError: Error?
+    var restoreOutcome: RestoreOutcome?
 
-    init(service: SubscriptionService) {
+    init(service: SubscriptionService, focus: PremiumFeature? = nil) {
         self.service = service
+        self.focus = focus
     }
 
     func load() async {
@@ -32,9 +41,11 @@ final class PremiumViewModel {
     func restore() async {
         isLoading = true
         purchaseError = nil
+        restoreOutcome = nil
         do {
             try await service.restorePurchases()
             status = await service.fetchStatus()
+            restoreOutcome = status?.isPremium == true ? .restored : .nothingToRestore
         } catch {
             purchaseError = error
         }

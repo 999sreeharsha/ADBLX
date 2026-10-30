@@ -76,39 +76,47 @@ public struct TrialExpiredDecisionView: View {
                         )
                     }
                 }
-
-                // 50/50 Equal Weight Action Buttons
-                VStack(spacing: DesignSpacing.stackGap) {
-                    PrimaryButton(titleKey: "trial.expired.button.viewPlans") {
-                        viewModel.viewPremiumPlans()
-                    }
-                    .disabled(viewModel.isProcessing)
-
-                    Button {
-                        Task {
-                            await viewModel.continueWithFree()
-                        }
-                    } label: {
-                        Text("trial.expired.button.continueFree")
-                            .font(DesignTypography.headlineMedium)
-                            .foregroundStyle(DesignColors.onSurface)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, DesignSpacing.gutter)
-                            .background(DesignColors.surfaceContainer)
-                            .clipShape(RoundedRectangle(cornerRadius: DesignShape.defaultCornerRadius))
-                    }
-                    .disabled(viewModel.isProcessing)
-                }
             }
             .padding(DesignSpacing.containerPadding)
         }
         .background(DesignColors.background)
+        // Both choices stay on screen at every text size and scroll position: "Continue free"
+        // is never below the fold or visually secondary to the paid option.
+        .safeAreaInset(edge: .bottom) { decisionButtons }
         .interactiveDismissDisabled(true)
         .sheet(isPresented: $viewModel.showPaywallSheet) {
             NavigationStack {
                 PremiumView(viewModel: PremiumViewModel(service: subscriptionService))
             }
         }
+    }
+
+    /// Equal weight: same size, font and shape; only the fill differs.
+    private var decisionButtons: some View {
+        VStack(spacing: DesignSpacing.stackGap) {
+            PrimaryButton(titleKey: "trial.expired.button.viewPlans") {
+                viewModel.viewPremiumPlans()
+            }
+            .disabled(viewModel.isProcessing)
+
+            Button {
+                Task { await viewModel.continueWithFree() }
+            } label: {
+                Text("trial.expired.button.continueFree")
+                    .font(DesignTypography.bodyLarge)
+                    .foregroundStyle(DesignColors.primary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, DesignSpacing.base * 1.5)
+            }
+            .overlay(
+                RoundedRectangle(cornerRadius: DesignShape.buttonCornerRadius)
+                    .strokeBorder(DesignColors.primary, lineWidth: 1.5)
+            )
+            .disabled(viewModel.isProcessing)
+        }
+        .padding(.horizontal, DesignSpacing.containerPadding)
+        .padding(.vertical, DesignSpacing.gutter)
+        .background(DesignColors.background)
     }
 
     private func featureRow(

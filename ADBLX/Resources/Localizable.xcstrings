@@ -1133,6 +1133,26 @@
         }
       }
     },
+    "premium.feature.filterLists.description" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hide cookie banners, pop-ups and other page clutter in Safari."
+          }
+        }
+      }
+    },
+    "premium.feature.filterLists.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Annoyance Filters"
+          }
+        }
+      }
+    },
     "premium.feature.youtube.description" : {
       "localizations" : {
         "en" : {
@@ -1149,6 +1169,66 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "YouTube Safari Enhancements"
+          }
+        }
+      }
+    },
+    "premium.focus.label" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Included with Premium"
+          }
+        }
+      }
+    },
+    "premium.header.free" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You're on the free plan"
+          }
+        }
+      }
+    },
+    "premium.header.lifetime" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You have Premium for life"
+          }
+        }
+      }
+    },
+    "premium.header.subscription" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You're on Premium"
+          }
+        }
+      }
+    },
+    "premium.header.trialEnded" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your trial ended %@"
+          }
+        }
+      }
+    },
+    "premium.header.trialEnds" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your trial ends %@"
           }
         }
       }
@@ -1202,6 +1282,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "per year"
+          }
+        }
+      }
+    },
+    "premium.restore.nothing" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No purchases were found to restore for this Apple Account."
+          }
+        }
+      }
+    },
+    "premium.restore.restored" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Purchases restored. Premium is active."
           }
         }
       }

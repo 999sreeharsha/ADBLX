@@ -3,11 +3,18 @@ import SwiftUI
 
 struct PremiumView: View {
     @State var viewModel: PremiumViewModel
+    @Environment(PlanStateModel.self) private var planStateModel: PlanStateModel?
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: DesignSpacing.sectionGap) {
-                hero
+                planHeader
+
+                if let focus = viewModel.focus {
+                    focusBanner(focus)
+                } else {
+                    hero
+                }
 
                 if let plans = viewModel.status?.plans {
                     pricingSection(plans: plans)
@@ -22,12 +29,19 @@ struct PremiumView: View {
                         .foregroundStyle(DesignColors.error)
                 }
 
+                if let outcome = viewModel.restoreOutcome {
+                    Text(outcome == .restored ? "premium.restore.restored" : "premium.restore.nothing")
+                        .font(DesignTypography.bodySmall)
+                        .foregroundStyle(DesignColors.onSurfaceVariant)
+                }
+
                 actionButtons
             }
             .padding(DesignSpacing.containerPadding)
         }
         .background(DesignColors.background)
         .task { await viewModel.load() }
+        .onChange(of: viewModel.status) { Task { await planStateModel?.refresh() } }
     }
 
     private var hero: some View {
@@ -155,23 +169,28 @@ struct PremiumView: View {
                 .foregroundStyle(DesignColors.outline)
                 .textCase(.uppercase)
 
-            featureCard(
-                icon: "network", iconColor: DesignColors.primary,
-                titleKey: "premium.feature.dns.title", descriptionKey: "premium.feature.dns.description"
-            )
-            featureCard(
-                icon: "arrow.triangle.2.circlepath", iconColor: DesignColors.tertiary,
-                titleKey: "premium.feature.backgroundUpdates.title",
-                descriptionKey: "premium.feature.backgroundUpdates.description"
-            )
-            featureCard(
-                icon: "play.tv.fill", iconColor: DesignColors.secondary,
-                titleKey: "premium.feature.youtube.title", descriptionKey: "premium.feature.youtube.description"
-            )
+            ForEach(PremiumFeature.displayOrder(focus: viewModel.focus), id: \.self) { feature in
+                featureCard(
+                    icon: feature.icon, iconColor: featureColor(feature),
+                    titleKey: feature.titleKey, descriptionKey: feature.descriptionKey,
+                    isFocused: feature == viewModel.focus
+                )
+            }
         }
     }
 
-    private func featureCard(icon: String, iconColor: Color, titleKey: LocalizedStringKey, descriptionKey: LocalizedStringKey) -> some View {
+    private func featureColor(_ feature: PremiumFeature) -> Color {
+        switch feature {
+        case .dnsProtection: return DesignColors.primary
+        case .premiumFilterLists, .backgroundUpdates: return DesignColors.tertiary
+        case .youtube: return DesignColors.secondary
+        }
+    }
+
+    private func featureCard(
+        icon: String, iconColor: Color, titleKey: LocalizedStringKey, descriptionKey: LocalizedStringKey,
+        isFocused: Bool = false
+    ) -> some View {
         HStack(alignment: .top, spacing: DesignSpacing.containerPadding) {
             Image(systemName: icon)
                 .foregroundStyle(iconColor)
@@ -194,7 +213,10 @@ struct PremiumView: View {
         .clipShape(RoundedRectangle(cornerRadius: DesignShape.defaultCornerRadius * 2))
         .overlay(
             RoundedRectangle(cornerRadius: DesignShape.defaultCornerRadius * 2)
-                .strokeBorder(DesignColors.onSurface.opacity(0.08), lineWidth: 1)
+                .strokeBorder(
+                    isFocused ? DesignColors.tertiary.opacity(0.5) : DesignColors.onSurface.opacity(0.08),
+                    lineWidth: isFocused ? 2 : 1
+                )
         )
     }
 
@@ -284,6 +306,7 @@ struct PremiumView: View {
                 Button("premium.action.restore") {
                     Task { await viewModel.restore() }
                 }
+                    .disabled(viewModel.isLoading)
                     .frame(maxWidth: .infinity)
                 Button("premium.action.manage") {}
                     .frame(maxWidth: .infinity)
@@ -305,6 +328,63 @@ struct PremiumView: View {
                 .padding(.top, DesignSpacing.base)
         }
         .padding(.top, DesignSpacing.gutter)
+    }
+}
+
+// MARK: - Plan header and focus (Phase 4a)
+
+extension PremiumView {
+    /// Current plan, from the same `PlanState` as Settings and Home. Hidden until resolved so a
+    /// paying user never sees a "free plan" flash.
+    @ViewBuilder
+    private var planHeader: some View {
+        if let model = planStateModel, model.isResolved {
+            HStack(spacing: DesignSpacing.gutter) {
+                Image(systemName: model.state.isEntitled ? "crown.fill" : "hourglass")
+                    .foregroundStyle(DesignColors.tertiary)
+                Text(verbatim: PlanStateDisplay.premiumHeaderText(for: model.state))
+                    .font(DesignTypography.bodyLarge)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(DesignColors.onSurface)
+                Spacer(minLength: 0)
+            }
+            .padding(DesignSpacing.containerPadding)
+            .background(DesignColors.surfaceContainer)
+            .clipShape(RoundedRectangle(cornerRadius: DesignShape.defaultCornerRadius * 2))
+            .accessibilityElement(children: .combine)
+        }
+    }
+
+    /// Replaces the generic hero when a locked control opened the paywall.
+    private func focusBanner(_ feature: PremiumFeature) -> some View {
+        VStack(alignment: .leading, spacing: DesignSpacing.gutter) {
+            Text("premium.focus.label")
+                .font(DesignTypography.labelCaps)
+                .foregroundStyle(DesignColors.tertiary)
+                .textCase(.uppercase)
+            HStack(alignment: .top, spacing: DesignSpacing.containerPadding) {
+                Image(systemName: feature.icon)
+                    .font(.system(size: 28))
+                    .foregroundStyle(DesignColors.tertiary)
+                VStack(alignment: .leading, spacing: DesignSpacing.base) {
+                    Text(feature.titleKey)
+                        .font(DesignTypography.headlineLarge)
+                        .foregroundStyle(DesignColors.onSurface)
+                    Text(feature.descriptionKey)
+                        .font(DesignTypography.bodyLarge)
+                        .foregroundStyle(DesignColors.onSurfaceVariant)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(DesignSpacing.containerPadding)
+        .background(DesignColors.tertiary.opacity(0.08))
+        .clipShape(RoundedRectangle(cornerRadius: DesignShape.defaultCornerRadius * 2))
+        .overlay(
+            RoundedRectangle(cornerRadius: DesignShape.defaultCornerRadius * 2)
+                .strokeBorder(DesignColors.tertiary.opacity(0.5), lineWidth: 2)
+        )
+        .accessibilityElement(children: .combine)
     }
 }
 

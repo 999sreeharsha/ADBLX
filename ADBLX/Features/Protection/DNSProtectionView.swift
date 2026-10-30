@@ -61,7 +61,7 @@ struct DNSProtectionView: View {
         }
         .sheet(isPresented: $viewModel.showPaywallSheet) {
             NavigationStack {
-                PremiumView(viewModel: PremiumViewModel(service: subscriptionService))
+                PremiumView(viewModel: PremiumViewModel(service: subscriptionService, focus: .dnsProtection))
             }
         }
         .alert("DNS Protection Error", isPresented: $viewModel.showErrorAlert) {

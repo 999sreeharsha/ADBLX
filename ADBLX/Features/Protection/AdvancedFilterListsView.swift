@@ -4,6 +4,8 @@ import SwiftUI
 struct AdvancedFilterListsView: View {
     @State var viewModel: ProtectionViewModel
     @State private var isApplying = false
+    @State private var paywallFocus: PremiumFeature?
+    @Environment(PlanStateModel.self) private var planStateModel: PlanStateModel?
 
     var body: some View {
         ScrollView {
@@ -28,6 +30,20 @@ struct AdvancedFilterListsView: View {
         .background(DesignColors.background)
         .task { await viewModel.load() }
         .safeAreaBar(edge: .bottom) { applyChangesButton }
+        .sheet(isPresented: Binding(get: { paywallFocus != nil }, set: { if !$0 { paywallFocus = nil } })) {
+            NavigationStack {
+                PremiumView(viewModel: PremiumViewModel(
+                    service: AppCompositionRoot.makeSubscriptionService(), focus: paywallFocus
+                ))
+            }
+        }
+    }
+
+    /// Unknown plan state (no model, or not yet resolved) leaves the toggle working, so a
+    /// paying user is never shown the paywall by mistake; enforcement is not done here.
+    private func lockedFeature(for list: FilterListEntry) -> PremiumFeature? {
+        guard let model = planStateModel, model.isResolved else { return nil }
+        return PremiumFeature.lockedFeature(for: list, isEntitled: model.state.isEntitled)
     }
 
     private var header: some View {
@@ -94,12 +110,21 @@ struct AdvancedFilterListsView: View {
                     .foregroundStyle(DesignColors.primary.opacity(0.6))
             }
             Spacer()
-            Toggle("", isOn: Binding(
-                get: { list.isEnabled },
-                set: { _ in Task { await viewModel.toggleFilterList(list.id) } }
-            ))
-            .labelsHidden()
-            .tint(DesignColors.primaryContainer)
+            if let feature = lockedFeature(for: list) {
+                Button { paywallFocus = feature } label: {
+                    Image(systemName: "lock.circle.fill")
+                        .font(.title2)
+                        .foregroundStyle(DesignColors.tertiary)
+                }
+                .accessibilityLabel(Text("premium.focus.label"))
+            } else {
+                Toggle("", isOn: Binding(
+                    get: { list.isEnabled },
+                    set: { _ in Task { await viewModel.toggleFilterList(list.id) } }
+                ))
+                .labelsHidden()
+                .tint(DesignColors.primaryContainer)
+            }
         }
         .padding(DesignSpacing.containerPadding)
         .accessibilityElement(children: .combine)
