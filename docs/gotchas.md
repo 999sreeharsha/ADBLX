@@ -312,3 +312,19 @@ premium lists the bundled snapshot installs, so a forgotten update fails CI
 rather than silently leaving a lapsed user with the rules installed.
 
 Found in: Plan State + Downgrade Phase 2 review, 2026-10-29
+
+## A test type conforming to a `nonisolated` protocol must itself be `nonisolated` — or the compiler blames a different file
+
+Both targets build with `SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor`. A test double
+declared as plain `final class Foo: SomeNonisolatedProtocol` is therefore
+MainActor-isolated, and its conformance to a `nonisolated protocol` is invalid. On
+this toolchain the compiler does **not** report that against the offending file:
+it reports `'nonisolated' modifier cannot be applied to this declaration` on
+`actor MockContentBlockerStateProvider` in
+`ADBLXTests/Filtering/Deployment/ContentBlockerStateProvidingTests.swift`, a file
+nobody touched. Incremental builds sometimes hide it, so it looks flaky. Fix: mark
+the new test double `nonisolated final class` (the same way production conformers
+such as `SystemContentBlockerStateProvider` are declared). When that error appears,
+look at test types added since the last green build, not at the file named in it.
+
+Found in: entitlement purchase-bug fix (`FakeStoreEntitlementSource`), bisected 2026-10-30
