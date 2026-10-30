@@ -1286,6 +1286,16 @@
         }
       }
     },
+    "premium.restore.inProgress" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restoring purchases…"
+          }
+        }
+      }
+    },
     "premium.restore.nothing" : {
       "localizations" : {
         "en" : {
@@ -1302,6 +1312,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Purchases restored. Premium is active."
+          }
+        }
+      }
+    },
+    "premium.restore.stillWaiting" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Taking longer than expected — your purchase will appear automatically if found."
           }
         }
       }

@@ -29,8 +29,15 @@ struct PremiumView: View {
                         .foregroundStyle(DesignColors.error)
                 }
 
-                if let outcome = viewModel.restoreOutcome {
-                    Text(outcome == .restored ? "premium.restore.restored" : "premium.restore.nothing")
+                if viewModel.isRestoring {
+                    HStack(spacing: DesignSpacing.stackGap) {
+                        ProgressView()
+                        Text("premium.restore.inProgress")
+                    }
+                    .font(DesignTypography.bodySmall)
+                    .foregroundStyle(DesignColors.onSurfaceVariant)
+                } else if let outcome = viewModel.restoreOutcome {
+                    Text(restoreOutcomeKey(outcome))
                         .font(DesignTypography.bodySmall)
                         .foregroundStyle(DesignColors.onSurfaceVariant)
                 }
@@ -306,7 +313,7 @@ struct PremiumView: View {
                 Button("premium.action.restore") {
                     Task { await viewModel.restore() }
                 }
-                    .disabled(viewModel.isLoading)
+                    .disabled(viewModel.isLoading || viewModel.isRestoring)
                     .frame(maxWidth: .infinity)
                 Button("premium.action.manage") {}
                     .frame(maxWidth: .infinity)
@@ -334,6 +341,14 @@ struct PremiumView: View {
 // MARK: - Plan header and focus (Phase 4a)
 
 extension PremiumView {
+    private func restoreOutcomeKey(_ outcome: PremiumViewModel.RestoreOutcome) -> LocalizedStringKey {
+        switch outcome {
+        case .restored: return "premium.restore.restored"
+        case .nothingToRestore: return "premium.restore.nothing"
+        case .stillWaiting: return "premium.restore.stillWaiting"
+        }
+    }
+
     /// Current plan, from the same `PlanState` as Settings and Home. Hidden until resolved so a
     /// paying user never sees a "free plan" flash.
     @ViewBuilder
