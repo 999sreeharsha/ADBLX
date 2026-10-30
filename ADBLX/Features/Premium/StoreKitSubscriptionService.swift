@@ -15,13 +15,43 @@ public actor StoreKitSubscriptionService: SubscriptionService, EntitlementServic
     private static let signposter = OSSignposter(subsystem: "com.ADBLX.ADBLX", category: "StoreKitSubscriptionService")
 
     private let trialManager: TrialManagerProtocol
+    private let entitlementSource: StoreEntitlementSource
+    private let acceptsXcodeUnverified: Bool
     private var state: EntitlementState = .free
+    private var resolvedSnapshot = EntitlementSnapshot()
+    private var refreshChain: Task<EntitlementState, Never>?
     private var continuations: [UUID: AsyncStream<EntitlementState>.Continuation] = [:]
     private var transactionUpdatesTask: Task<Void, Never>?
     private var foregroundObserver: (any NSObjectProtocol)?
 
-    public init(trialManager: TrialManagerProtocol = TrialManager()) {
+    /// DEBUG builds running under Xcode's local StoreKit configuration may receive transactions
+    /// StoreKit reports as unverified (the local test certificate chain is not always trusted
+    /// on a device). Those are honoured ONLY when `Transaction.environment == .xcode`; a
+    /// release build never honours an unverified transaction.
+    static var defaultAcceptsXcodeUnverified: Bool {
+        #if DEBUG
+        return true
+        #else
+        return false
+        #endif
+    }
+
+    public convenience init(trialManager: TrialManagerProtocol = TrialManager()) {
+        self.init(
+            trialManager: trialManager,
+            entitlementSource: StoreKitEntitlementSource(),
+            acceptsXcodeUnverified: Self.defaultAcceptsXcodeUnverified
+        )
+    }
+
+    init(
+        trialManager: TrialManagerProtocol,
+        entitlementSource: StoreEntitlementSource,
+        acceptsXcodeUnverified: Bool
+    ) {
         self.trialManager = trialManager
+        self.entitlementSource = entitlementSource
+        self.acceptsXcodeUnverified = acceptsXcodeUnverified
         startTransactionListener()
         setupForegroundObserver()
     }
@@ -67,41 +97,64 @@ public actor StoreKitSubscriptionService: SubscriptionService, EntitlementServic
     }
 
     private func startTransactionListener() {
+        let source = entitlementSource
         transactionUpdatesTask = Task.detached(priority: .background) { [weak self] in
             await self?.refreshEntitlements()
 
-            for await update in Transaction.updates {
+            for await update in source.updates() {
                 guard let self else { break }
                 let spID = Self.signposter.makeSignpostID()
                 let updateInterval = Self.signposter.beginInterval("entitlement.transactionUpdate", id: spID)
-                if case .verified(let transaction) = update {
-                    await transaction.finish()
-                    await self.refreshEntitlements()
+                if await self.isAcceptable(update) {
+                    await source.finish(update)
                 }
+                await self.refreshEntitlements()
                 Self.signposter.endInterval("entitlement.transactionUpdate", updateInterval)
             }
         }
     }
 
+    private func isAcceptable(_ entitlement: StoreEntitlement) -> Bool {
+        switch entitlement.verification {
+        case .verified: return true
+        case .unverified: return acceptsXcodeUnverified && entitlement.isXcodeEnvironment
+        }
+    }
+
+    /// Refreshes run strictly one after another. `refreshEntitlements` awaits StoreKit while
+    /// iterating, and actors are re-entrant, so without this a refresh that began before a
+    /// purchase could finish after it and overwrite the newer entitled state with `.free`.
     @discardableResult
     public func refreshEntitlements() async -> EntitlementState {
+        let previous = refreshChain
+        let task = Task { () -> EntitlementState in
+            _ = await previous?.value
+            return await self.performRefresh()
+        }
+        refreshChain = task
+        return await task.value
+    }
+
+    private func performRefresh() async -> EntitlementState {
         let spID = Self.signposter.makeSignpostID()
         let refreshInterval = Self.signposter.beginInterval("entitlement.refresh", id: spID)
         defer { Self.signposter.endInterval("entitlement.refresh", refreshInterval) }
 
-        var highestState: EntitlementState = .free
-
-        for await result in Transaction.currentEntitlements {
-            guard case .verified(let transaction) = result else { continue }
-            let candidateState = mapTransactionToEntitlement(transaction)
-            if candidateState.precedence > highestState.precedence {
-                highestState = candidateState
-            }
-        }
-
+        let entitlements = await entitlementSource.currentEntitlements()
         let trialCandidate = await trialManager.currentEntitlement(at: Date())
-        if trialCandidate.precedence > highestState.precedence {
-            highestState = trialCandidate
+        let resolved = Self.resolve(
+            entitlements: entitlements, trialCandidate: trialCandidate, acceptsXcodeUnverified: acceptsXcodeUnverified
+        )
+
+        // The snapshot is committed before the state is published, so a consumer woken by
+        // `stateUpdates()` always reads the entitlement that caused the wake-up.
+        resolvedSnapshot = resolved
+        let highestState = resolved.state
+
+        if resolved.unverifiedErrors.isEmpty == false {
+            Self.logger.notice(
+                "unverified entitlements=\(resolved.unverifiedErrors.count) accepted=\(resolved.acceptedUnverifiedCount)"
+            )
         }
 
         if highestState != self.state {
@@ -123,18 +176,59 @@ public actor StoreKitSubscriptionService: SubscriptionService, EntitlementServic
         return highestState
     }
 
-    private func mapTransactionToEntitlement(_ transaction: Transaction) -> EntitlementState {
-        if transaction.productID == Self.lifetimeProductID {
-            return .lifetime
-        } else if transaction.productID == Self.annualProductID {
-            let expDate = transaction.expirationDate ?? Date().addingTimeInterval(365 * 86400)
-            return .annual(expiresAt: expDate)
-        } else if transaction.productID == Self.monthlyProductID {
-            let expDate = transaction.expirationDate ?? Date().addingTimeInterval(30 * 86400)
-            return .monthly(expiresAt: expDate)
+    /// Pure resolution rules. Paid always outranks the trial by `precedence`; an expired trial
+    /// and the "continue free" choice contribute nothing here (they are `.free`).
+    static func resolve(
+        entitlements: [StoreEntitlement],
+        trialCandidate: EntitlementState,
+        acceptsXcodeUnverified: Bool
+    ) -> EntitlementSnapshot {
+        var snapshot = EntitlementSnapshot(hasResolved: true)
+        var best: EntitlementState = .free
+        var bestProductID: String?
+
+        for entitlement in entitlements where entitlement.revocationDate == nil {
+            switch entitlement.verification {
+            case .verified:
+                snapshot.verifiedCount += 1
+            case .unverified(let name):
+                snapshot.unverifiedErrors.append(name)
+                guard acceptsXcodeUnverified && entitlement.isXcodeEnvironment else { continue }
+                snapshot.acceptedUnverifiedCount += 1
+            }
+            let candidate = state(for: entitlement)
+            if candidate.precedence > best.precedence {
+                best = candidate
+                bestProductID = entitlement.productID
+            }
         }
-        return .free
+
+        if best.precedence >= 2 {
+            snapshot.paidProductID = bestProductID
+            snapshot.paidKind = bestProductID.flatMap { premiumKind(forProductID: $0) }
+        }
+        if trialCandidate.precedence > best.precedence {
+            best = trialCandidate
+        }
+        snapshot.state = best
+        return snapshot
     }
+
+    private static func state(for entitlement: StoreEntitlement) -> EntitlementState {
+        switch entitlement.productID {
+        case lifetimeProductID:
+            return .lifetime
+        case annualProductID:
+            return .annual(expiresAt: entitlement.expirationDate ?? .distantFuture)
+        case monthlyProductID:
+            return .monthly(expiresAt: entitlement.expirationDate ?? .distantFuture)
+        default:
+            return .free
+        }
+    }
+
+    /// What the last refresh resolved, including verification counts for diagnostics.
+    func snapshot() -> EntitlementSnapshot { resolvedSnapshot }
 
     public func fetchStatus() async -> SubscriptionStatus {
         let isEntitled = currentState.hasPremiumAccess
@@ -189,30 +283,27 @@ public actor StoreKitSubscriptionService: SubscriptionService, EntitlementServic
         default: return false
         }
 
-        guard let product = try await Product.products(for: [productID]).first else {
-            return false
-        }
-
-        let result = try await product.purchase()
-        switch result {
-        case .success(let verification):
-            switch verification {
-            case .verified(let transaction):
-                await transaction.finish()
-                await refreshEntitlements()
-                return true
-            case .unverified:
+        switch try await entitlementSource.purchase(productID: productID) {
+        case .success(let entitlement):
+            guard isAcceptable(entitlement) else {
+                // Do NOT finish it: an unverified transaction must not be consumed, and the
+                // user must be told rather than left looking at an unchanged paywall.
+                if case .unverified(let name) = entitlement.verification {
+                    Self.logger.error("purchase returned an unverified transaction: \(name, privacy: .public)")
+                    throw SubscriptionPurchaseError.unverifiedTransaction(name)
+                }
                 return false
             }
-        case .userCancelled, .pending:
-            return false
-        @unknown default:
+            await entitlementSource.finish(entitlement)
+            await refreshEntitlements()
+            return true
+        case .cancelled, .pending, .unknownProduct:
             return false
         }
     }
 
     public func restorePurchases() async throws {
-        try await AppStore.sync()
+        try await entitlementSource.sync()
         await refreshEntitlements()
     }
 
@@ -246,18 +337,12 @@ public actor StoreKitSubscriptionService: SubscriptionService, EntitlementServic
         }
     }
 
-    /// The paid (non-trial) Premium the user holds right now, straight from
-    /// `Transaction.currentEntitlements` (revoked and expired transactions are excluded by
-    /// StoreKit). Lifetime outranks a subscription for display.
+    /// The paid (non-trial) Premium from the SAME resolution that `currentState` came from —
+    /// never a second StoreKit query, so the DNS gate, the plan state and the reconciler cannot
+    /// disagree.
     func activePremiumKind() async -> PremiumKind? {
-        var found: PremiumKind?
-        for await result in Transaction.currentEntitlements {
-            guard case .verified(let transaction) = result,
-                  let kind = Self.premiumKind(forProductID: transaction.productID) else { continue }
-            if kind == .lifetime { return .lifetime }
-            found = .subscription
-        }
-        return found
+        if !resolvedSnapshot.hasResolved { await refreshEntitlements() }
+        return resolvedSnapshot.paidKind
     }
 }
 
