@@ -134,10 +134,16 @@ public enum AppCompositionRoot {
 
     /// The single `PlanStateModel` instance shared app-wide (owned here, injected into the
     /// view hierarchy by `ADBLXApp`; never accessed as a global by views).
+    private static let sharedTrialSource = KeychainTrialSource(manager: sharedTrialManager, store: sharedTrialKeychainStore)
+
+    static func makeTrialSource() -> TrialSource {
+        sharedTrialSource
+    }
+
     @MainActor
     private static let sharedPlanStateModel = PlanStateModel(
         provider: PlanStateProvider(
-            trial: KeychainTrialSource(manager: sharedTrialManager, store: sharedTrialKeychainStore),
+            trial: sharedTrialSource,
             paid: sharedSubscriptionService
         ),
         entitlementService: sharedSubscriptionService

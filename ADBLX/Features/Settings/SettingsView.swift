@@ -6,6 +6,7 @@ struct SettingsView: View {
     @AppStorage(AppearancePreference.storageKey) private var appearance: AppearancePreference = .system
     @State private var newDomain = ""
     @State private var showBrokenSiteReport = false
+    @Environment(PlanStateModel.self) private var planStateModel: PlanStateModel?
 
     var body: some View {
         ScrollView {
@@ -13,6 +14,8 @@ struct SettingsView: View {
                 Text("settings.title")
                     .font(DesignTypography.headlineLarge)
                     .foregroundStyle(DesignColors.onBackground)
+
+                planRow
 
                 generalSection
 
@@ -92,6 +95,32 @@ struct SettingsView: View {
         }
         .background(DesignColors.background)
         .task { await viewModel.load() }
+    }
+
+    /// Top-of-screen "Plan" row. Shows nothing plan-specific until the model has resolved,
+    /// so the first frame never flashes "Free" for a paying user.
+    private var planRow: some View {
+        Card {
+            NavigationLink {
+                PremiumView(viewModel: PremiumViewModel(service: AppCompositionRoot.makeSubscriptionService()))
+            } label: {
+                generalRow(
+                    titleKey: "settings.row.plan",
+                    systemImage: "crown.fill",
+                    detail: Text(verbatim: planStateModel.flatMap { $0.isResolved ? PlanStateDisplay.planRowText(for: $0.state) : nil } ?? "")
+                )
+            }
+            .buttonStyle(.plain)
+            #if DEBUG
+            Divider().overlay(DesignColors.outlineVariant.opacity(0.2))
+            NavigationLink {
+                DeveloperDiagnosticsView()
+            } label: {
+                SettingsRow(titleKey: "settings.row.developer", systemImage: "hammer.fill")
+            }
+            .buttonStyle(.plain)
+            #endif
+        }
     }
 
     private var generalSection: some View {

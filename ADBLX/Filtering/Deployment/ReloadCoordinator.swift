@@ -38,6 +38,14 @@ actor ReloadCoordinator {
     /// "enable in Settings"-style messaging per FR-06's UI requirement. Never hangs past
     /// `timeoutSeconds`, even if SFContentBlockerManager's completion handler never fires.
     func reload(extensionIdentifier: String) async -> ReloadResult {
+        let result = await performReload(extensionIdentifier: extensionIdentifier)
+        ReloadResultLog.shared.record(
+            extensionIdentifier: extensionIdentifier, success: result.success, error: result.error
+        )
+        return result
+    }
+
+    private func performReload(extensionIdentifier: String) async -> ReloadResult {
         let start = Date()
         let timeoutSeconds = self.timeoutSeconds
 

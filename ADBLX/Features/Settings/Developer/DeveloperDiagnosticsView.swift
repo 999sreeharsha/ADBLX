@@ -1,0 +1,73 @@
+#if DEBUG
+import SwiftUI
+
+/// DEBUG-only screen for device testing of entitlement and filter state. Not localized and
+/// not shipped: it is compiled out of release builds.
+struct DeveloperDiagnosticsView: View {
+    @Environment(PlanStateModel.self) private var planStateModel: PlanStateModel?
+    @State private var diagnostics: DeveloperDiagnostics?
+
+    var body: some View {
+        List {
+            Section("Plan") {
+                row("PlanState", planStateModel.map { describe($0.state) } ?? "no model")
+                row("Entitlement", diagnostics?.entitlementCase ?? "…")
+                row("validUntil", diagnostics?.validUntil.map { $0.formatted(date: .abbreviated, time: .shortened) } ?? "none")
+                row("Trial", diagnostics?.trial ?? "…")
+            }
+            Section("StoreKit") {
+                row("Paid product", diagnostics?.paidProductID ?? "none")
+                row("Verified", "\(diagnostics?.verifiedCount ?? 0)")
+                row("Unverified", diagnostics.map { $0.unverifiedErrors.isEmpty ? "0" : $0.unverifiedErrors.joined(separator: ", ") } ?? "0")
+                row("Accepted unverified (Xcode)", "\(diagnostics?.acceptedUnverifiedCount ?? 0)")
+            }
+            Section("Compiled rules") {
+                ForEach(diagnostics?.groupCounts ?? [], id: \.group) { count in
+                    row(count.group.rawValue, "\(count.ruleCount)")
+                }
+            }
+            Section("Last reload") {
+                if (diagnostics?.reloads ?? []).isEmpty {
+                    Text(verbatim: "No reloads this launch").foregroundStyle(.secondary)
+                }
+                ForEach(diagnostics?.reloads ?? [], id: \.extensionIdentifier) { entry in
+                    row(entry.extensionIdentifier.components(separatedBy: ".").last ?? entry.extensionIdentifier, entry.outcome)
+                }
+            }
+            Section {
+                Button { Task { await load() } } label: { Text(verbatim: "Refresh") }
+            }
+        }
+        .navigationTitle("Developer")
+        .task { await load() }
+    }
+
+    private func load() async {
+        let service = AppCompositionRoot.makeSubscriptionService()
+        diagnostics = await DeveloperDiagnostics.gather(
+            service: service,
+            trial: AppCompositionRoot.makeTrialSource(),
+            store: AppCompositionRoot.makeFilterStore()
+        )
+        await planStateModel?.refresh()
+    }
+
+    private func row(_ title: String, _ value: String) -> some View {
+        HStack {
+            Text(title)
+            Spacer()
+            Text(value).foregroundStyle(.secondary).multilineTextAlignment(.trailing)
+        }
+        .font(.callout.monospaced())
+    }
+
+    private func describe(_ state: PlanState) -> String {
+        switch state {
+        case .premium(let kind): return "premium(\(kind == .lifetime ? "lifetime" : "subscription"))"
+        case .trial(let days, _): return "trial(\(days)d)"
+        case .trialExpired: return "trialExpired"
+        case .free: return "free"
+        }
+    }
+}
+#endif
