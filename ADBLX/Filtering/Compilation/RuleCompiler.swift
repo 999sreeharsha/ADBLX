@@ -1,4 +1,5 @@
 import Foundation
+import os
 import ADBLXShared
 
 /// Converts a normalized, composed filter source into Safari content-blocker JSON.
@@ -19,6 +20,19 @@ enum RuleCompilerError: Error {
 /// standard ABP/AdGuard declarative filter lists into WebKit Safari Content Blocker JSON.
 /// Also provides backward compatibility with pre-formatted JSON fixtures.
 struct NativeRuleCompilerAdapter: RuleCompiler {
+    private nonisolated static let logger = Logger(subsystem: "com.ADBLX", category: "RuleCompiler")
+
+    /// Enum case name only: compiler errors can carry rule text, which is never logged.
+    private nonisolated static func failureName(_ error: Error) -> String {
+        switch error as? NativeABPRuleCompiler.CompilerError {
+        case .invalidUTF8Input: return "invalidUTF8Input"
+        case .encodingFailed: return "encodingFailed"
+        case .unrestrictedBlockRule: return "unrestrictedBlockRule"
+        case .unrestrictedExceptionRule: return "unrestrictedExceptionRule"
+        case nil: return "other"
+        }
+    }
+
     nonisolated func compile(source: Data, group: FilterGroup) async throws -> CompiledRuleSet {
         if source.isEmpty || source == Data("[]".utf8) {
             let stats = RuleStatistics(
@@ -34,6 +48,14 @@ struct NativeRuleCompilerAdapter: RuleCompiler {
         
         // If source is already a valid JSON array (e.g. bundled blockerList.json):
         if let array = (try? JSONSerialization.jsonObject(with: source)) as? [Any] {
+            if let rules = try? JSONDecoder().decode([SafariContentBlockerRule].self, from: source) {
+                do {
+                    try NativeABPRuleCompiler.assertNoUnrestrictedExceptionRules(rules)
+                } catch {
+                    Self.logger.error("Rejected \(group.rawValue, privacy: .public) rules: unrestricted exception")
+                    throw RuleCompilerError.invalidSource
+                }
+            }
             let stats = RuleStatistics(
                 compileDuration: 0.001,
                 rulesLoaded: array.count,
@@ -48,6 +70,12 @@ struct NativeRuleCompilerAdapter: RuleCompiler {
         // Real ABP Text Compilation
         do {
             let (jsonData, report) = try NativeABPRuleCompiler.compileToJSON(source: source, group: group.rawValue)
+            Self.logger.info("""
+                Compiled \(group.rawValue, privacy: .public): rules=\(report.compiledRuleCount) \
+                droppedAllUnsupportedDomains=\(report.droppedUnsupportedDomainsCount) \
+                droppedUnlessOnly=\(report.droppedUnlessOnlyCount) \
+                trimmedDomains=\(report.trimmedDomainsRuleCount)
+                """)
             let stats = RuleStatistics(
                 compileDuration: report.compilationDurationSeconds,
                 rulesLoaded: report.compiledRuleCount,
@@ -63,6 +91,7 @@ struct NativeRuleCompilerAdapter: RuleCompiler {
                 statistics: stats
             )
         } catch {
+            Self.logger.error("Compile failed for \(group.rawValue, privacy: .public): \(Self.failureName(error), privacy: .public)")
             throw RuleCompilerError.invalidSource
         }
     }

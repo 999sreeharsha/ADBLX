@@ -5,9 +5,13 @@ public enum NativeABPRuleCompiler: Sendable {
         case invalidUTF8Input
         case encodingFailed(String)
         case unrestrictedBlockRule(urlFilter: String)
+        case unrestrictedExceptionRule
 
         public var errorDescription: String? {
             switch self {
+            case .unrestrictedExceptionRule:
+                return "Compiler produced an ignore-previous-rules rule that matches every page with no domain "
+                    + "restriction. It would cancel every earlier rule in the group on every site."
             case .invalidUTF8Input:
                 return "The filter list input data is not valid UTF-8 text."
             case .encodingFailed(let reason):
@@ -23,6 +27,28 @@ public enum NativeABPRuleCompiler: Sendable {
     /// catch-all `url-filter` and no `if-domain` scoping — the failure mode that black-screened
     /// YouTube (`$ping,third-party` -> `{"url-filter":".*"}` block). `ignore-previous-rules`
     /// and `css-display-none` catch-alls are legitimate and are not flagged.
+    /// True for an `ignore-previous-rules` rule that matches every page load with no domain
+    /// restriction. Safari applies it on every site and it cancels every earlier rule in
+    /// the list, so one such rule makes a whole group inert.
+    public static func isUnrestrictedException(_ rule: SafariContentBlockerRule) -> Bool {
+        guard rule.action.type == "ignore-previous-rules",
+              SafariRuleGenerator.isCatchAllURLFilter(rule.trigger.urlFilter),
+              (rule.trigger.ifDomain ?? []).isEmpty,
+              (rule.trigger.unlessDomain ?? []).isEmpty else {
+            return false
+        }
+        guard let resourceTypes = rule.trigger.resourceType else { return true }
+        return resourceTypes.contains("document")
+    }
+
+    /// Fails compilation if any rule is an unrestricted exception (see
+    /// `isUnrestrictedException`). A failed compile leaves the last-good rules installed.
+    public static func assertNoUnrestrictedExceptionRules(_ rules: [SafariContentBlockerRule]) throws {
+        if rules.contains(where: isUnrestrictedException) {
+            throw CompilerError.unrestrictedExceptionRule
+        }
+    }
+
     static func assertNoUnrestrictedBlockRules(_ rules: [SafariContentBlockerRule]) throws {
         for rule in rules where rule.action.type == "block" {
             let hasDomainScope = !(rule.trigger.ifDomain ?? []).isEmpty
@@ -82,7 +108,10 @@ public enum NativeABPRuleCompiler: Sendable {
                 let disposition = ABPSemanticValidator.validate(parsed)
                 switch disposition {
                 case .supported(let validated):
-                    let rules = SafariRuleGenerator.generate(from: validated)
+                    let (rules, scope) = SafariRuleGenerator.generateWithScope(from: validated)
+                    if record(scope, in: &report) {
+                        return
+                    }
                     if rules.isEmpty {
                         report.skippedRulesCount += 1
                         report.unsupportedSemanticModifiers["empty_selector", default: 0] += 1
@@ -122,7 +151,10 @@ public enum NativeABPRuleCompiler: Sendable {
                 let disposition = ABPSemanticValidator.validate(parsed)
                 switch disposition {
                 case .supported(let validated):
-                    let rules = SafariRuleGenerator.generate(from: validated)
+                    let (rules, scope) = SafariRuleGenerator.generateWithScope(from: validated)
+                    if record(scope, in: &report) {
+                        return
+                    }
                     if rules.isEmpty {
                         report.skippedRulesCount += 1
                         report.unsupportedSemanticModifiers["unsupported_dfa_regex", default: 0] += 1
@@ -145,6 +177,7 @@ public enum NativeABPRuleCompiler: Sendable {
         
         // Fix C: fail loudly rather than ship a catch-all block rule.
         try assertNoUnrestrictedBlockRules(compiledRules)
+        try assertNoUnrestrictedExceptionRules(compiledRules)
 
         let elapsed = CFAbsoluteTimeGetCurrent() - startTime
         report.compilationDurationSeconds = elapsed
@@ -152,6 +185,25 @@ public enum NativeABPRuleCompiler: Sendable {
         return (compiledRules, report)
     }
     
+    /// Counts a rule's domain-scope outcome. Returns true when the rule was dropped.
+    private static func record(_ scope: SafariRuleGenerator.DomainScopeOutcome, in report: inout CompilationReport) -> Bool {
+        switch scope {
+        case .kept:
+            return false
+        case .trimmed:
+            report.trimmedDomainsRuleCount += 1
+            return false
+        case .droppedAllUnsupported:
+            report.droppedUnsupportedDomainsCount += 1
+        case .droppedUnlessOnly:
+            report.droppedUnlessOnlyCount += 1
+        case .droppedGenericHidingException:
+            report.unsupportedSemanticModifiers["generic_hiding_exception", default: 0] += 1
+        }
+        report.skippedRulesCount += 1
+        return true
+    }
+
     private static func canonicalNetworkSignature(
         isException: Bool,
         pattern: ABPPattern,

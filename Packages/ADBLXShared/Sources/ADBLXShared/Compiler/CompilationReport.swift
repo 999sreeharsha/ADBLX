@@ -9,6 +9,13 @@ public struct CompilationReport: Sendable, Equatable, Codable {
     public var deferredToWebExtensionCount: Int
     public var invalidRulesCount: Int
     public var badfilterCount: Int
+    /// Rules dropped because every domain they named is unsupported by Safari (e.g. `site.*`).
+    public var droppedUnsupportedDomainsCount: Int
+    /// Rules dropped because all of their included domains were unsupported, leaving only
+    /// exclusions; emitting them would widen a site-specific rule to every other site.
+    public var droppedUnlessOnlyCount: Int
+    /// Rules kept with some unsupported domains removed from a mixed list.
+    public var trimmedDomainsRuleCount: Int
     public var unsupportedSemanticModifiers: [String: Int]
     public var compilationDurationSeconds: TimeInterval
     public var group: String
@@ -21,6 +28,9 @@ public struct CompilationReport: Sendable, Equatable, Codable {
         deferredToWebExtensionCount: Int = 0,
         invalidRulesCount: Int = 0,
         badfilterCount: Int = 0,
+        droppedUnsupportedDomainsCount: Int = 0,
+        droppedUnlessOnlyCount: Int = 0,
+        trimmedDomainsRuleCount: Int = 0,
         unsupportedSemanticModifiers: [String: Int] = [:],
         compilationDurationSeconds: TimeInterval = 0,
         group: String = ""
@@ -32,6 +42,9 @@ public struct CompilationReport: Sendable, Equatable, Codable {
         self.deferredToWebExtensionCount = deferredToWebExtensionCount
         self.invalidRulesCount = invalidRulesCount
         self.badfilterCount = badfilterCount
+        self.droppedUnsupportedDomainsCount = droppedUnsupportedDomainsCount
+        self.droppedUnlessOnlyCount = droppedUnlessOnlyCount
+        self.trimmedDomainsRuleCount = trimmedDomainsRuleCount
         self.unsupportedSemanticModifiers = unsupportedSemanticModifiers
         self.compilationDurationSeconds = compilationDurationSeconds
         self.group = group

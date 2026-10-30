@@ -1,8 +1,31 @@
 import Foundation
 
 public enum SafariRuleGenerator: Sendable {
+    /// What happened to a rule's `if-domain`/`unless-domain` lists. Safari cannot express
+    /// entity domains (`site.*`) or paths, so those entries are removed; a rule is dropped
+    /// whenever removing them would widen it.
+    public enum DomainScopeOutcome: Sendable, Equatable {
+        case kept
+        /// Some unsupported domains were removed from a mixed list.
+        case trimmed
+        /// Every domain the rule named was unsupported.
+        case droppedAllUnsupported
+        /// Every included domain was unsupported, leaving only exclusions.
+        case droppedUnlessOnly
+        /// A hiding exception with no domains: Safari can only express it as cancelling
+        /// every earlier rule on every page.
+        case droppedGenericHidingException
+    }
+
     /// Generates strongly-typed SafariContentBlockerRules from a ValidatedABPRule.
     public static func generate(from validated: ValidatedABPRule) -> [SafariContentBlockerRule] {
+        generateWithScope(from: validated).rules
+    }
+
+    /// Like `generate(from:)`, also reporting how the rule's domain scope was handled.
+    public static func generateWithScope(
+        from validated: ValidatedABPRule
+    ) -> (rules: [SafariContentBlockerRule], scope: DomainScopeOutcome) {
         switch validated {
         case .cosmetic(let cos):
             return generateCosmetic(cos)
@@ -10,19 +33,59 @@ public enum SafariRuleGenerator: Sendable {
             return generateNetwork(net)
         }
     }
-    
-    private static func generateCosmetic(_ cos: ValidatedCosmeticRule) -> [SafariContentBlockerRule] {
-        if !cos.isException && cos.selector.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            return []
+
+    private struct DomainScope {
+        let ifDomains: [String]?
+        let unlessDomains: [String]?
+        let outcome: DomainScopeOutcome
+    }
+
+    private static func resolveScope(ifDomains: [String], unlessDomains: [String]) -> DomainScope {
+        let keptIf = sanitizeDomains(ifDomains)
+        let keptUnless = sanitizeDomains(unlessDomains)
+        let named = ifDomains.count + unlessDomains.count
+        let kept = keptIf.count + keptUnless.count
+
+        let outcome: DomainScopeOutcome
+        if named > 0 && kept == 0 {
+            outcome = .droppedAllUnsupported
+        } else if !ifDomains.isEmpty && keptIf.isEmpty {
+            outcome = .droppedUnlessOnly
+        } else {
+            outcome = kept < named ? .trimmed : .kept
         }
-        
-        let ifDomains = sanitizeDomains(cos.ifDomains)
-        let unlessDomains = sanitizeDomains(cos.unlessDomains)
-        
+        return DomainScope(
+            ifDomains: keptIf.isEmpty ? nil : keptIf,
+            unlessDomains: keptUnless.isEmpty ? nil : keptUnless,
+            outcome: outcome
+        )
+    }
+
+    private static func isDropped(_ outcome: DomainScopeOutcome) -> Bool {
+        outcome != .kept && outcome != .trimmed
+    }
+
+    private static func generateCosmetic(
+        _ cos: ValidatedCosmeticRule
+    ) -> (rules: [SafariContentBlockerRule], scope: DomainScopeOutcome) {
+        if !cos.isException && cos.selector.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return ([], .kept)
+        }
+
+        let scope = resolveScope(ifDomains: cos.ifDomains, unlessDomains: cos.unlessDomains)
+        if isDropped(scope.outcome) {
+            return ([], scope.outcome)
+        }
+        // Safari has no selector-specific exception: `#@#.sel` with no domains would become
+        // an ignore-previous-rules on every page.
+        if cos.isException && scope.ifDomains == nil && scope.unlessDomains == nil {
+            return ([], .droppedGenericHidingException)
+        }
+
         let trigger = SafariContentBlockerRule.Trigger(
             urlFilter: ".*",
-            ifDomain: ifDomains,
-            unlessDomain: unlessDomains
+            ifDomain: scope.ifDomains,
+            unlessDomain: scope.unlessDomains
         )
         
         let action: SafariContentBlockerRule.Action
@@ -32,19 +95,21 @@ public enum SafariRuleGenerator: Sendable {
             action = SafariContentBlockerRule.Action(type: "css-display-none", selector: cos.selector)
         }
         
-        return [SafariContentBlockerRule(trigger: trigger, action: action)]
+        return ([SafariContentBlockerRule(trigger: trigger, action: action)], scope.outcome)
     }
-    
-    private static func generateNetwork(_ net: ValidatedNetworkRule) -> [SafariContentBlockerRule] {
+
+    private static func generateNetwork(
+        _ net: ValidatedNetworkRule
+    ) -> (rules: [SafariContentBlockerRule], scope: DomainScopeOutcome) {
         var urlFilter = generateUrlFilter(from: net.pattern)
         if urlFilter.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             urlFilter = ".*"
         }
-        
+
         // If the pattern was a raw regex with unsupported DFA features (like {n,m} or disjunctions), skip it
         if case .regularExpression(let rawRegex) = net.pattern {
             if isUnsupportedDFARegex(rawRegex) {
-                return []
+                return ([], .kept)
             }
         }
         
@@ -62,8 +127,12 @@ public enum SafariRuleGenerator: Sendable {
             resourceTypeStrings = nil
         }
         
-        let ifDomains = sanitizeDomains(net.ifDomains)
-        let unlessDomains = sanitizeDomains(net.unlessDomains)
+        let scope = resolveScope(ifDomains: net.ifDomains, unlessDomains: net.unlessDomains)
+        if isDropped(scope.outcome) {
+            return ([], scope.outcome)
+        }
+        let ifDomains = scope.ifDomains
+        let unlessDomains = scope.unlessDomains
 
         // Fix A: reject pattern-less catch-all BLOCK rules. An ABP rule with an empty URL
         // pattern is scoped entirely by modifiers (e.g. `$ping,third-party`). WebKit's
@@ -73,7 +142,7 @@ public enum SafariRuleGenerator: Sendable {
         // catch-all is only safe when domain-scoped or when it is an `ignore-previous-rules`
         // exception; an unscoped catch-all block is never intentional.
         if !net.isException && isCatchAllURLFilter(urlFilter) && ifDomains == nil {
-            return []
+            return ([], .kept)
         }
 
         let trigger = SafariContentBlockerRule.Trigger(
@@ -87,7 +156,7 @@ public enum SafariRuleGenerator: Sendable {
         let actionType = net.isException ? "ignore-previous-rules" : "block"
         let action = SafariContentBlockerRule.Action(type: actionType)
 
-        return [SafariContentBlockerRule(trigger: trigger, action: action)]
+        return ([SafariContentBlockerRule(trigger: trigger, action: action)], scope.outcome)
     }
 
     /// True when a `url-filter` regex imposes no real URL constraint — it matches every URL.
@@ -114,8 +183,8 @@ public enum SafariRuleGenerator: Sendable {
         return false
     }
     
-    private static func sanitizeDomains(_ domains: [String]) -> [String]? {
-        let sanitized = domains.compactMap { d -> String? in
+    private static func sanitizeDomains(_ domains: [String]) -> [String] {
+        domains.compactMap { d -> String? in
             var cleaned = d.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
             let hasLeadingWildcard = cleaned.hasPrefix("*")
             if hasLeadingWildcard {
@@ -128,7 +197,6 @@ public enum SafariRuleGenerator: Sendable {
             }
             return "*\(cleaned)"
         }
-        return sanitized.isEmpty ? nil : sanitized
     }
     
     public static func generateUrlFilter(from pattern: ABPPattern) -> String {
