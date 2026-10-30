@@ -9,8 +9,6 @@ nonisolated struct EntitlementSnapshot: Equatable, Sendable {
     var verifiedCount = 0
     /// StoreKit verification error case names for unverified entitlements, e.g. "invalidSignature".
     var unverifiedErrors: [String] = []
-    /// Unverified entitlements honoured under the DEBUG + Xcode-environment allowance.
-    var acceptedUnverifiedCount = 0
     var hasResolved = false
 }
 

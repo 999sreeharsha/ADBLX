@@ -16,12 +16,8 @@ struct EntitlementResolutionTests {
         TrialManager(store: InMemoryTrialStore(record: TrialRecord(activatedAt: Date(), lastObservedDate: Date())))
     }
 
-    private func service(
-        _ source: FakeStoreEntitlementSource, trial: TrialManager? = nil, acceptsXcodeUnverified: Bool = false
-    ) -> StoreKitSubscriptionService {
-        StoreKitSubscriptionService(
-            trialManager: trial ?? expiredTrial(), entitlementSource: source, acceptsXcodeUnverified: acceptsXcodeUnverified
-        )
+    private func service(_ source: FakeStoreEntitlementSource, trial: TrialManager? = nil) -> StoreKitSubscriptionService {
+        StoreKitSubscriptionService(trialManager: trial ?? expiredTrial(), entitlementSource: source)
     }
 
     // MARK: 1. Paid always wins over trial / continue-free
@@ -192,33 +188,38 @@ struct EntitlementResolutionTests {
     func unverifiedPurchaseThrows() async {
         let source = FakeStoreEntitlementSource()
         source.purchaseOutcome = .success(.annual(id: 3).with(verification: .unverified("invalidCertificateChain")))
-        let sut = service(source, acceptsXcodeUnverified: false)
+        let sut = service(source)
 
         await #expect(throws: SubscriptionPurchaseError.self) { try await sut.purchase("annual") }
         #expect(await sut.currentState == .free)
         #expect(source.finished.isEmpty)
     }
 
-    @Test("an unverified entitlement is never granted when the Xcode-environment allowance is off")
-    func unverifiedNotGrantedInRelease() async {
+    @Test("an unverified entitlement is never granted, in any build")
+    func unverifiedNeverGranted() async {
         let source = FakeStoreEntitlementSource([.annual().with(verification: .unverified("invalidSignature"))])
-        let sut = service(source, acceptsXcodeUnverified: false)
+        let sut = service(source)
         #expect(await sut.refreshEntitlements() == .free)
         let snap = await sut.snapshot()
         #expect(snap.unverifiedErrors == ["invalidSignature"])
         #expect(snap.verifiedCount == 0)
     }
 
-    @Test("DEBUG allowance: an unverified Xcode-environment transaction is granted; a non-Xcode one never is")
-    func unverifiedXcodeAllowance() async {
-        let xcode = service(FakeStoreEntitlementSource([.annual().with(verification: .unverified("invalidCertificateChain"), xcode: true)]),
-                            acceptsXcodeUnverified: true)
-        guard case .annual = await xcode.refreshEntitlements() else { Issue.record("Xcode-env unverified not granted"); return }
-        #expect(await xcode.snapshot().acceptedUnverifiedCount == 1)
+    @Test("an unverified update from Transaction.updates is neither granted nor finished")
+    func unverifiedUpdateNotFinished() async throws {
+        let unverified = StoreEntitlement.annual(id: 41).with(verification: .unverified("invalidCertificateChain"))
+        let source = FakeStoreEntitlementSource([unverified])
+        let sut = service(source)
+        await sut.refreshEntitlements()
+        let readsBefore = source.readCount
 
-        let production = service(FakeStoreEntitlementSource([.annual().with(verification: .unverified("invalidCertificateChain"), xcode: false)]),
-                                 acceptsXcodeUnverified: true)
-        #expect(await production.refreshEntitlements() == .free)
+        try await Task.sleep(nanoseconds: 100_000_000)
+        source.emitUpdate(unverified)
+        for _ in 0..<40 where source.readCount == readsBefore { try await Task.sleep(nanoseconds: 50_000_000) }
+
+        #expect(source.readCount > readsBefore, "the update did not trigger a refresh")
+        #expect(await sut.currentState == .free)
+        #expect(source.finished.isEmpty)
     }
 
     @Test("a revoked entitlement is not granted")

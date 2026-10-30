@@ -19,7 +19,6 @@ struct DeveloperDiagnosticsView: View {
                 row("Paid product", diagnostics?.paidProductID ?? "none")
                 row("Verified", "\(diagnostics?.verifiedCount ?? 0)")
                 row("Unverified", diagnostics.map { $0.unverifiedErrors.isEmpty ? "0" : $0.unverifiedErrors.joined(separator: ", ") } ?? "0")
-                row("Accepted unverified (Xcode)", "\(diagnostics?.acceptedUnverifiedCount ?? 0)")
             }
             Section("Compiled rules") {
                 ForEach(diagnostics?.groupCounts ?? [], id: \.group) { count in

@@ -57,15 +57,14 @@ nonisolated final class FakeStoreEntitlementSource: StoreEntitlementSource, @unc
 extension StoreEntitlement {
     static func annual(id: UInt64 = 1, expires: Date = Date().addingTimeInterval(86400 * 365)) -> StoreEntitlement {
         StoreEntitlement(transactionID: id, productID: StoreKitSubscriptionService.annualProductID,
-                         expirationDate: expires, revocationDate: nil, verification: .verified, isXcodeEnvironment: true)
+                         expirationDate: expires, revocationDate: nil, verification: .verified)
     }
     static func lifetime(id: UInt64 = 2) -> StoreEntitlement {
         StoreEntitlement(transactionID: id, productID: StoreKitSubscriptionService.lifetimeProductID,
-                         expirationDate: nil, revocationDate: nil, verification: .verified, isXcodeEnvironment: true)
+                         expirationDate: nil, revocationDate: nil, verification: .verified)
     }
-    func with(verification: Verification? = nil, revoked: Date? = nil, xcode: Bool? = nil) -> StoreEntitlement {
+    func with(verification: Verification? = nil, revoked: Date? = nil) -> StoreEntitlement {
         StoreEntitlement(transactionID: transactionID, productID: productID, expirationDate: expirationDate,
-                         revocationDate: revoked ?? revocationDate, verification: verification ?? self.verification,
-                         isXcodeEnvironment: xcode ?? isXcodeEnvironment)
+                         revocationDate: revoked ?? revocationDate, verification: verification ?? self.verification)
     }
 }

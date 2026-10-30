@@ -16,9 +16,6 @@ nonisolated struct StoreEntitlement: Equatable, Sendable {
     let expirationDate: Date?
     let revocationDate: Date?
     let verification: Verification
-    /// True when the transaction came from Xcode's local StoreKit configuration rather than
-    /// the App Store (`Transaction.environment == .xcode`).
-    let isXcodeEnvironment: Bool
 }
 
 nonisolated enum StorePurchaseOutcome: Sendable {
@@ -114,8 +111,7 @@ nonisolated final class StoreKitEntitlementSource: StoreEntitlementSource, @unch
             productID: transaction.productID,
             expirationDate: transaction.expirationDate,
             revocationDate: transaction.revocationDate,
-            verification: status,
-            isXcodeEnvironment: transaction.environment == .xcode
+            verification: status
         )
     }
 

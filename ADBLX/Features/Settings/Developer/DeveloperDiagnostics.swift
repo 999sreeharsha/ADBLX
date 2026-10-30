@@ -13,7 +13,6 @@ nonisolated struct DeveloperDiagnostics: Sendable {
     var paidProductID: String?
     var verifiedCount = 0
     var unverifiedErrors: [String] = []
-    var acceptedUnverifiedCount = 0
     var trial = "unknown"
     var groupCounts: [GroupCount] = []
     var reloads: [ReloadResultLog.Entry] = []
@@ -60,7 +59,6 @@ nonisolated struct DeveloperDiagnostics: Sendable {
         result.paidProductID = snapshot.paidProductID
         result.verifiedCount = snapshot.verifiedCount
         result.unverifiedErrors = snapshot.unverifiedErrors
-        result.acceptedUnverifiedCount = snapshot.acceptedUnverifiedCount
         result.trial = trialDescription(await trial.snapshot(at: Date()))
         let filters = (try? await store.read("installed_filters.json", in: .metadata))
             .flatMap { try? JSONDecoder().decode([InstalledFilter].self, from: $0) } ?? []

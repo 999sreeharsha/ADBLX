@@ -16,7 +16,6 @@ public actor StoreKitSubscriptionService: SubscriptionService, EntitlementServic
 
     private let trialManager: TrialManagerProtocol
     private let entitlementSource: StoreEntitlementSource
-    private let acceptsXcodeUnverified: Bool
     private var state: EntitlementState = .free
     private var resolvedSnapshot = EntitlementSnapshot()
     private var refreshChain: Task<EntitlementState, Never>?
@@ -24,34 +23,13 @@ public actor StoreKitSubscriptionService: SubscriptionService, EntitlementServic
     private var transactionUpdatesTask: Task<Void, Never>?
     private var foregroundObserver: (any NSObjectProtocol)?
 
-    /// DEBUG builds running under Xcode's local StoreKit configuration may receive transactions
-    /// StoreKit reports as unverified (the local test certificate chain is not always trusted
-    /// on a device). Those are honoured ONLY when `Transaction.environment == .xcode`; a
-    /// release build never honours an unverified transaction.
-    static var defaultAcceptsXcodeUnverified: Bool {
-        #if DEBUG
-        return true
-        #else
-        return false
-        #endif
-    }
-
     public convenience init(trialManager: TrialManagerProtocol = TrialManager()) {
-        self.init(
-            trialManager: trialManager,
-            entitlementSource: StoreKitEntitlementSource(),
-            acceptsXcodeUnverified: Self.defaultAcceptsXcodeUnverified
-        )
+        self.init(trialManager: trialManager, entitlementSource: StoreKitEntitlementSource())
     }
 
-    init(
-        trialManager: TrialManagerProtocol,
-        entitlementSource: StoreEntitlementSource,
-        acceptsXcodeUnverified: Bool
-    ) {
+    init(trialManager: TrialManagerProtocol, entitlementSource: StoreEntitlementSource) {
         self.trialManager = trialManager
         self.entitlementSource = entitlementSource
-        self.acceptsXcodeUnverified = acceptsXcodeUnverified
         startTransactionListener()
         setupForegroundObserver()
     }
@@ -105,19 +83,12 @@ public actor StoreKitSubscriptionService: SubscriptionService, EntitlementServic
                 guard let self else { break }
                 let spID = Self.signposter.makeSignpostID()
                 let updateInterval = Self.signposter.beginInterval("entitlement.transactionUpdate", id: spID)
-                if await self.isAcceptable(update) {
+                if update.verification == .verified {
                     await source.finish(update)
                 }
                 await self.refreshEntitlements()
                 Self.signposter.endInterval("entitlement.transactionUpdate", updateInterval)
             }
-        }
-    }
-
-    private func isAcceptable(_ entitlement: StoreEntitlement) -> Bool {
-        switch entitlement.verification {
-        case .verified: return true
-        case .unverified: return acceptsXcodeUnverified && entitlement.isXcodeEnvironment
         }
     }
 
@@ -142,9 +113,7 @@ public actor StoreKitSubscriptionService: SubscriptionService, EntitlementServic
 
         let entitlements = await entitlementSource.currentEntitlements()
         let trialCandidate = await trialManager.currentEntitlement(at: Date())
-        let resolved = Self.resolve(
-            entitlements: entitlements, trialCandidate: trialCandidate, acceptsXcodeUnverified: acceptsXcodeUnverified
-        )
+        let resolved = Self.resolve(entitlements: entitlements, trialCandidate: trialCandidate)
 
         // The snapshot is committed before the state is published, so a consumer woken by
         // `stateUpdates()` always reads the entitlement that caused the wake-up.
@@ -152,9 +121,7 @@ public actor StoreKitSubscriptionService: SubscriptionService, EntitlementServic
         let highestState = resolved.state
 
         if resolved.unverifiedErrors.isEmpty == false {
-            Self.logger.notice(
-                "unverified entitlements=\(resolved.unverifiedErrors.count) accepted=\(resolved.acceptedUnverifiedCount)"
-            )
+            Self.logger.notice("unverified entitlements=\(resolved.unverifiedErrors.count)")
         }
 
         if highestState != self.state {
@@ -177,12 +144,9 @@ public actor StoreKitSubscriptionService: SubscriptionService, EntitlementServic
     }
 
     /// Pure resolution rules. Paid always outranks the trial by `precedence`; an expired trial
-    /// and the "continue free" choice contribute nothing here (they are `.free`).
-    static func resolve(
-        entitlements: [StoreEntitlement],
-        trialCandidate: EntitlementState,
-        acceptsXcodeUnverified: Bool
-    ) -> EntitlementSnapshot {
+    /// and the "continue free" choice contribute nothing here (they are `.free`). An unverified
+    /// entitlement is counted for diagnostics but never granted.
+    static func resolve(entitlements: [StoreEntitlement], trialCandidate: EntitlementState) -> EntitlementSnapshot {
         var snapshot = EntitlementSnapshot(hasResolved: true)
         var best: EntitlementState = .free
         var bestProductID: String?
@@ -193,8 +157,7 @@ public actor StoreKitSubscriptionService: SubscriptionService, EntitlementServic
                 snapshot.verifiedCount += 1
             case .unverified(let name):
                 snapshot.unverifiedErrors.append(name)
-                guard acceptsXcodeUnverified && entitlement.isXcodeEnvironment else { continue }
-                snapshot.acceptedUnverifiedCount += 1
+                continue
             }
             let candidate = state(for: entitlement)
             if candidate.precedence > best.precedence {
@@ -285,14 +248,11 @@ public actor StoreKitSubscriptionService: SubscriptionService, EntitlementServic
 
         switch try await entitlementSource.purchase(productID: productID) {
         case .success(let entitlement):
-            guard isAcceptable(entitlement) else {
-                // Do NOT finish it: an unverified transaction must not be consumed, and the
-                // user must be told rather than left looking at an unchanged paywall.
-                if case .unverified(let name) = entitlement.verification {
-                    Self.logger.error("purchase returned an unverified transaction: \(name, privacy: .public)")
-                    throw SubscriptionPurchaseError.unverifiedTransaction(name)
-                }
-                return false
+            // Do NOT finish an unverified transaction: it must not be consumed, and the user
+            // must be told rather than left looking at an unchanged paywall.
+            if case .unverified(let name) = entitlement.verification {
+                Self.logger.error("purchase returned an unverified transaction: \(name, privacy: .public)")
+                throw SubscriptionPurchaseError.unverifiedTransaction(name)
             }
             await entitlementSource.finish(entitlement)
             await refreshEntitlements()
