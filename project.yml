@@ -386,6 +386,9 @@ schemes:
       config: Debug
     run:
       config: Debug
+      # Local StoreKit testing for Xcode runs (simulator and device). Set here, not in
+      # Xcode's scheme editor: `xcodegen generate` overwrites hand edits to the scheme.
+      storeKitConfiguration: Config/Configuration.storekit
     profile:
       config: Release
     analyze:
