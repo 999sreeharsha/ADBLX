@@ -348,5 +348,35 @@ Found in: entitlement purchase-bug fix (`FakeStoreEntitlementSource`), bisected 
   user-visible, auto-expiring "Recently blocked" list.
 - Rule until closed: DNS Protection must not be enabled in any release or
   TestFlight build.
+- Ruled out (2026-10-31): the content-blocker "unsupported domain dropped →
+  rule becomes unrestricted" bug (next entry). The DNS blocklist parser
+  (`DNSDomainNormalizer`) shares no code with `SafariRuleGenerator`. It rejects
+  any line with `$` modifiers, `*`, `/`, `?`, `:` or `^` in the host, so an
+  unsupported domain produces no DNS rule rather than a wider one.
 
 Found in: device testing on iPhone 14, 2026-10-30
+
+## Compiler: dropping an unsupported domain must never widen a rule
+
+Safari's `if-domain`/`unless-domain` cannot express entity domains (`site.*`)
+or paths. `SafariRuleGenerator` used to strip them and, when none were left,
+emit the rule with no domain restriction. `myloview.*#@#.cookiesInfo` became an
+unrestricted `ignore-previous-rules` that cancelled every earlier Annoyances
+rule on every page (0 effective rules on ordinary sites while reporting 48,451
+rules and a clean reload). Two `@@||jokerly.com/…$document` lines did the same
+to Ads document loads, and `site.*##` hiding rules became global hides.
+
+The fix:
+- A rule whose domains are all unsupported is dropped.
+- A rule left with only exclusions is dropped and counted separately.
+- A generic `#@#` exception is dropped.
+- `NativeABPRuleCompiler` fails the group's compile if any unrestricted
+  exception remains, so the last-good rules stay installed.
+- `BundledListScopingRegressionTests` checks the shipped lists.
+
+A rule count and a successful reload do not show that rules take effect.
+Check the effective rules for a real page.
+
+No App Store build has shipped this compiler, so it is not a hotfix candidate.
+
+Found in: cookiebot.com banner still visible with Annoyances on, iPhone 14, 2026-10-31
