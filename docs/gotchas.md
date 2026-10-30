@@ -328,3 +328,25 @@ such as `SystemContentBlockerStateProvider` are declared). When that error appea
 look at test types added since the last green build, not at the file named in it.
 
 Found in: entitlement purchase-bug fix (`FakeStoreEntitlementSource`), bisected 2026-10-30
+
+## DNS Protection breaks app connectivity and payments (OPEN — blocks shipping DNS)
+
+- Observed 2026-10-30 on iPhone 14: with DNS Protection on, many apps can't reach
+  the internet and payment/UPI flows fail.
+- Not yet diagnosed. Suspects, in order:
+  1. The tunnel's routes capture more than DNS traffic. Check `includedRoutes`: it
+     must route only the tunnel's DNS address, never the default route.
+  2. IPv6 DNS/AAAA handling on Jio/Airtel mobile data.
+  3. No TCP fallback for truncated responses, and upstream timeouts that hang
+     instead of failing fast.
+  4. Blocklists blocking payment-gateway or bank anti-fraud domains.
+  5. Some banking/UPI apps refuse transactions while any VPN is active. Not fixable
+     in code; needs "Pause" UX.
+- Decisive test: run the tunnel in pass-through mode (empty blocklist). Still
+  broken → tunnel bug; fixed → list over-blocking.
+- Open owner decision: whether to amend `Logging.md` for an on-device-only,
+  user-visible, auto-expiring "Recently blocked" list.
+- Rule until closed: DNS Protection must not be enabled in any release or
+  TestFlight build.
+
+Found in: device testing on iPhone 14, 2026-10-30
