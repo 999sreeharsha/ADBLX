@@ -41,6 +41,30 @@ struct DeveloperDiagnosticsTests {
         #expect(counts.map(\.group) == [.ads, .privacy, .annoyances, .regional])
         #expect(counts.map(\.ruleCount) == [73_294, 55_749, 0, 0])
     }
+
+    @Test("Recompile all rebuilds every installed group from its stored list")
+    func recompileAll() async throws {
+        let store = FilterStore.temporary()
+        let pipeline = AppCompositionRoot.makeFilterPipeline(store: store, allowlistStore: AllowlistStore(store: store))
+        let data = Data("##.cookie-bar\nexample.com##.promo".utf8)
+        _ = try await pipeline.install(GroupComposition(group: .annoyances, sources: [
+            FilterSource(filterID: "fanboy-annoyances", version: "1", checksumSHA256: Checksum.sha256Hex(of: data), data: data)
+        ]), reloadStrategy: .deferred)
+        // Stale output, as left on disk by an older compiler.
+        try await store.writeCompiledForTesting(Data("[]".utf8), filename: "Annoyances.json")
+
+        let summary = await DeveloperDiagnostics.recompileAll(pipeline: pipeline, gate: FilterTransactionGate())
+
+        #expect(summary == "annoyances=2")
+        let rules = try JSONSerialization.jsonObject(with: try await store.read("Annoyances.json", in: .compiled)) as? [Any]
+        #expect(rules?.count == 2)
+    }
+}
+
+private extension FilterStore {
+    func writeCompiledForTesting(_ data: Data, filename: String) throws {
+        try data.write(to: try directoryURL(.compiled).appendingPathComponent(filename))
+    }
 }
 
 @Suite("ReloadResultLog", .serialized)

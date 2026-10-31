@@ -6,6 +6,8 @@ import SwiftUI
 struct DeveloperDiagnosticsView: View {
     @Environment(PlanStateModel.self) private var planStateModel: PlanStateModel?
     @State private var diagnostics: DeveloperDiagnostics?
+    @State private var isRecompiling = false
+    @State private var recompileSummary: String?
 
     var body: some View {
         List {
@@ -35,6 +37,18 @@ struct DeveloperDiagnosticsView: View {
             }
             Section {
                 Button { Task { await load() } } label: { Text(verbatim: "Refresh") }
+                Button {
+                    Task { await recompile() }
+                } label: {
+                    HStack {
+                        Text(verbatim: "Recompile all now")
+                        if isRecompiling { Spacer(); ProgressView() }
+                    }
+                }
+                .disabled(isRecompiling)
+                if let recompileSummary {
+                    Text(verbatim: recompileSummary).font(.callout.monospaced()).foregroundStyle(.secondary)
+                }
             }
         }
         .navigationTitle("Developer")
@@ -49,6 +63,17 @@ struct DeveloperDiagnosticsView: View {
             store: AppCompositionRoot.makeFilterStore()
         )
         await planStateModel?.refresh()
+    }
+
+    private func recompile() async {
+        isRecompiling = true
+        recompileSummary = nil
+        let store = AppCompositionRoot.makeFilterStore()
+        recompileSummary = await DeveloperDiagnostics.recompileAll(
+            pipeline: AppCompositionRoot.makeFilterPipeline(store: store)
+        )
+        isRecompiling = false
+        await load()
     }
 
     private func row(_ title: String, _ value: String) -> some View {

@@ -181,7 +181,7 @@ struct BundledListScopingRegressionTests {
         for group in Self.groups {
             let (rules, report) = try NativeABPRuleCompiler.compile(source: try bundledList(group.file), group: group.name)
             #expect(!rules.contains(where: NativeABPRuleCompiler.isUnrestrictedException), "\(group.name)")
-            print("[scoping] \(group.name): compiled=\(rules.count) droppedAllUnsupported=\(report.droppedUnsupportedDomainsCount) droppedUnlessOnly=\(report.droppedUnlessOnlyCount) trimmed=\(report.trimmedDomainsRuleCount)")
+            print("[scoping] \(group.name): compiled=\(rules.count) droppedAllUnsupported=\(report.droppedUnsupportedDomainsCount) droppedUnlessOnly=\(report.droppedUnlessOnlyCount) trimmed=\(report.trimmedDomainsRuleCount) genericHidingExceptions=\(report.unsupportedSemanticModifiers["generic_hiding_exception"] ?? 0)")
 
             guard group.name == "Annoyances" else { continue }
             for host in ["www.cookiebot.com", "example.com"] {

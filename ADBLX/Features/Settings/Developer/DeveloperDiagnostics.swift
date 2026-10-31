@@ -44,6 +44,20 @@ nonisolated struct DeveloperDiagnostics: Sendable {
         }
     }
 
+    #if DEBUG
+    /// Recompiles every installed group from its stored list with the current compiler and
+    /// reloads the extensions, so a compiler fix reaches the device without a list update.
+    /// Returns "group=ruleCount" pairs, or the failing error's type name.
+    static func recompileAll(pipeline: FilterPipeline, gate: FilterTransactionGate = .shared) async -> String {
+        do {
+            let results = try await gate.run { try await pipeline.syncAllowlist() }
+            return results.map { "\($0.group.rawValue)=\($0.compiledRuleCount)" }.joined(separator: " ")
+        } catch {
+            return "failed: \(type(of: error))"
+        }
+    }
+    #endif
+
     /// Refreshes entitlement first so the screen shows what StoreKit reports right now.
     static func gather(
         service: StoreKitSubscriptionService,
