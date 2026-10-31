@@ -377,6 +377,21 @@ The fix:
 A rule count and a successful reload do not show that rules take effect.
 Check the effective rules for a real page.
 
-No App Store build has shipped this compiler, so it is not a hotfix candidate.
+Not released: the app has never been uploaded to the App Store or TestFlight,
+so no hotfix is needed.
+
+Pre-fix blocking measurements are invalid. The Ads page-wide exceptions
+cancelled earlier Ads rules on every page load, and Annoyances applied nothing
+on ordinary pages, so any ad-blocking or AdBlock-Tester / G1 measurement taken
+before `8b07893` is invalid. Re-measure G1 on a device after this fix.
+
+Pre-launch item (before App Store submission, not now): store a compiler
+version alongside the installed compiled rules, and on launch recompile every
+group from its stored lists when it differs from the app's compiler version.
+Today an existing install keeps rules from the old compiler until a list
+update or an allowlist edit happens to recompile that group, so a compiler fix
+does not reliably reach it. The
+DEBUG Developer screen's "Recompile all now" is the manual stand-in for device
+testing.
 
 Found in: cookiebot.com banner still visible with Annoyances on, iPhone 14, 2026-10-31
