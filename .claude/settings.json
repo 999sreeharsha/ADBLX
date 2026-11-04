@@ -21,7 +21,8 @@
       "Bash(xcodegen generate *)",
       "Bash(xcodebuild build *)",
       "Bash(node --test Tests/content.test.js)",
-      "Bash(xcodegen --version)"
+      "Bash(xcodegen --version)",
+      "mcp__claude-in-chrome__tabs_context_mcp"
     ]
   },
   "hooks": {
