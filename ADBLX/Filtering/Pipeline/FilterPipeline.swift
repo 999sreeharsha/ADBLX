@@ -422,25 +422,34 @@ extension FilterPipeline {
         return results
     }
 
-    /// Installs the bundled premium lists (today: Fanboy Annoyances) as the offline baseline
-    /// for an entitled user. Callers must have verified entitlement. Failures are logged and
-    /// yield no result for that list; the normal update path will install it from the network.
+    /// Installs the bundled premium lists (Fanboy Annoyances, then the SHIELD fixes) as the
+    /// offline baseline for an entitled user. Callers must have verified entitlement. Failures
+    /// are logged and yield no result; the normal update path will install them from the network.
+    /// Order matters: the fixes come last so no upstream exception can cancel them.
     func installBundledPremiumSnapshot(reloadStrategy: ReloadStrategy = .immediate) async -> [PipelineResult] {
         guard let annoyancesURL = bundledURL(forResource: "fanboy-annoyances", withExtension: "txt") else {
             return []
         }
         do {
             let annoyancesData = try Data(contentsOf: annoyancesURL)
-            let composition = GroupComposition(
-                group: .annoyances,
-                sources: [FilterSource(
-                    filterID: BundledPremiumCatalog.annoyancesFilterID,
+            var sources = [FilterSource(
+                filterID: BundledPremiumCatalog.annoyancesFilterID,
+                version: "bundled-baseline",
+                checksumSHA256: Checksum.sha256Hex(of: annoyancesData),
+                data: annoyancesData,
+                premium: true
+            )]
+            if let fixesURL = bundledURL(forResource: "shield-fixes", withExtension: "txt") {
+                let fixesData = try Data(contentsOf: fixesURL)
+                sources.append(FilterSource(
+                    filterID: BundledPremiumCatalog.shieldFixesFilterID,
                     version: "bundled-baseline",
-                    checksumSHA256: Checksum.sha256Hex(of: annoyancesData),
-                    data: annoyancesData,
+                    checksumSHA256: Checksum.sha256Hex(of: fixesData),
+                    data: fixesData,
                     premium: true
-                )]
-            )
+                ))
+            }
+            let composition = GroupComposition(group: .annoyances, sources: sources)
             return [try await install(composition, reloadStrategy: reloadStrategy)]
         } catch {
             Self.logger.error("Failed to install bundled premium snapshot: \(error, privacy: .public)")

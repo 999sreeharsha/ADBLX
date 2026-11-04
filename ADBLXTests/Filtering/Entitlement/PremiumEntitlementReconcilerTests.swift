@@ -80,10 +80,13 @@ struct PremiumEntitlementReconcilerTests {
         try JSONDecoder().decode([InstalledFilter].self, from: try await h.store.read("installed_filters.json", in: .metadata))
     }
 
-    /// Free Ads + premium Annoyances + premium Regional, all installed.
+    /// Free Ads + premium Annoyances (Fanboy and SHIELD fixes, as in the bundle) + premium Regional.
     private func seed(_ h: Harness) async throws {
         _ = try await h.pipeline.install(GroupComposition(group: .ads, sources: [source("easylist", "ads", premium: false)]), reloadStrategy: .deferred)
-        _ = try await h.pipeline.install(GroupComposition(group: .annoyances, sources: [source("fanboy-annoyances", "cookie", premium: true)]), reloadStrategy: .deferred)
+        _ = try await h.pipeline.install(GroupComposition(group: .annoyances, sources: [
+            source("fanboy-annoyances", "cookie", premium: true),
+            source("shield-fixes", "fixes", premium: true),
+        ]), reloadStrategy: .deferred)
         _ = try await h.pipeline.install(GroupComposition(group: .regional, sources: [source("regional-in", "india", premium: true)]), reloadStrategy: .deferred)
     }
 
@@ -101,7 +104,7 @@ struct PremiumEntitlementReconcilerTests {
         guard case .downgraded(let removed, let groups, let reloadFailures) = outcome else {
             Issue.record("expected .downgraded, got \(outcome)"); return
         }
-        #expect(removed == 2)
+        #expect(removed == 3)
         #expect(groups == [.annoyances, .regional])
         #expect(reloadFailures >= 0)
         #expect(try await compiled(h, "Annoyances.json") == Data("[]".utf8))
@@ -146,7 +149,7 @@ struct PremiumEntitlementReconcilerTests {
         guard case .downgraded(let removed, _, _) = await h.reconciler.reconcile() else {
             Issue.record("expected .downgraded after losing \(entitled)"); return
         }
-        #expect(removed == 2)
+        #expect(removed == 3)
         #expect(try await compiled(h, "Annoyances.json") == Data("[]".utf8))
     }
 
@@ -164,7 +167,7 @@ struct PremiumEntitlementReconcilerTests {
         #expect(outcome == .rolledBack)
         #expect(try await compiled(h, "Annoyances.json") == annoyancesBefore)
         #expect(try await compiled(h, "Regional.json") == regionalBefore)
-        #expect(Set(try await installedFilters(h).map(\.id)) == ["easylist", "fanboy-annoyances", "regional-in"])
+        #expect(Set(try await installedFilters(h).map(\.id)) == ["easylist", "fanboy-annoyances", "shield-fixes", "regional-in"])
     }
 
     // MARK: Legacy record resolution
@@ -219,11 +222,11 @@ struct PremiumEntitlementReconcilerTests {
         try await seed(h)
         await h.reconciler.startObserving()
         try await Task.sleep(nanoseconds: 100_000_000)   // let the initial (entitled) pass settle
-        #expect(try await installedFilters(h).count == 3)
+        #expect(try await installedFilters(h).count == 4)
 
         h.entitlement.updateState(.free)                 // StoreKit reports the revocation
 
-        var remaining = 3
+        var remaining = 4
         for _ in 0..<50 where remaining != 1 {
             try await Task.sleep(nanoseconds: 100_000_000)
             remaining = try await installedFilters(h).count
@@ -247,6 +250,7 @@ struct PremiumEntitlementReconcilerTests {
         #expect(installed == 1)
         let annoyances = try #require(try await installedFilters(h).first { $0.id == "fanboy-annoyances" })
         #expect(annoyances.premium == true)
+        #expect(try await installedFilters(h).contains { $0.id == "shield-fixes" && $0.premium == true })
         #expect(try await compiled(h, "Annoyances.json").count > 2)
         #expect(await h.reconciler.reconcile() == .noChange)
     }

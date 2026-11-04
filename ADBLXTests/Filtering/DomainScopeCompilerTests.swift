@@ -193,6 +193,51 @@ struct BundledListScopingRegressionTests {
     }
 }
 
+/// The SHIELD proprietary fixes list: gaps the upstream lists don't cover, shipped as its own
+/// Annoyances source through the registry/manifest path.
+@Suite("SHIELD fixes list", .serialized)
+struct ShieldFixesListTests {
+    private func bundled(_ file: String) throws -> Data {
+        let url = Bundle.main.url(forResource: file, withExtension: "txt")
+            ?? Bundle.main.url(forResource: file, withExtension: "txt", subdirectory: "Filters")
+        return try Data(contentsOf: try #require(url, "bundled \(file).txt missing from the app bundle"))
+    }
+
+    @Test("the Cookiebot dialog fix compiles to one unrestricted css-display-none rule")
+    func compilesToOneHidingRule() throws {
+        let (rules, _) = try NativeABPRuleCompiler.compile(source: try bundled("shield-fixes"), group: "annoyances")
+        #expect(rules.count == 1)
+        let rule = try #require(rules.first)
+        #expect(rule.action.type == "css-display-none")
+        #expect(rule.action.selector == "#CybotCookiebotDialog")
+        #expect(rule.trigger.urlFilter == ".*")
+        #expect(rule.trigger.ifDomain == nil)
+        #expect(rule.trigger.unlessDomain == nil)
+    }
+
+    @Test("composed after Fanboy, it adds exactly one effective rule on cookiebot.com and on other sites")
+    func addsOneEffectiveRule() throws {
+        let fanboy = try bundled("fanboy-annoyances")
+        let combined = fanboy + Data("\n".utf8) + (try bundled("shield-fixes"))
+        let base = try NativeABPRuleCompiler.compile(source: fanboy, group: "annoyances").rules
+        let withFix = try NativeABPRuleCompiler.compile(source: combined, group: "annoyances").rules
+        #expect(withFix.count == base.count + 1)
+        for host in ["www.cookiebot.com", "example.com"] {
+            let before = EffectiveRuleCounter.hidingRulesInEffect(base, url: "https://\(host)/", host: host)
+            let after = EffectiveRuleCounter.hidingRulesInEffect(withFix, url: "https://\(host)/", host: host)
+            print("[shield-fixes] \(host): effective hiding rules \(before) -> \(after)")
+            #expect(after == before + 1, "\(host)")
+        }
+    }
+
+    @Test("the published backend copy is identical to the bundled copy")
+    func backendCopyMatchesBundle() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        let published = root.appendingPathComponent("backend/public/filters/annoyances/shield-fixes.txt")
+        #expect(try Data(contentsOf: published) == bundled("shield-fixes"))
+    }
+}
+
 /// Approximates Safari's page-level evaluation: rules apply in order, and a matching
 /// `ignore-previous-rules` for the document load cancels every earlier rule.
 private enum EffectiveRuleCounter {

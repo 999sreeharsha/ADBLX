@@ -33,6 +33,17 @@
       "enabledByDefault": false,
       "premium": true,
       "notes": "Gated per PRD §5.1 (\"Cookie-banner / annoyance filters\" is a Premium feature)."
+    },
+    {
+      "id": "shield-fixes",
+      "name": "SHIELD Fixes",
+      "upstreamProject": "SHIELD (internal)",
+      "upstreamDownloadURL": "https://999sreeharsha.github.io/ADBLX/backend/public/filters/annoyances/shield-fixes.txt",
+      "license": "Internal",
+      "group": "annoyances",
+      "enabledByDefault": false,
+      "premium": true,
+      "notes": "Proprietary gap fixes the upstream lists lack. Composed after Fanboy Annoyances so no upstream exception can cancel them."
     }
   ]
 }

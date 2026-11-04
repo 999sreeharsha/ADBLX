@@ -255,7 +255,7 @@ Annoy/Reg)                 cosmetic,       DNS filtering,
 | OISD (small/big) | Ads/Privacy | DNS | CC0-ish (verify) |
 | HaGeZi Multi | Ads/Privacy | DNS | GPLv3 |
 | EasyList regional variants | Regional | CB | per-list |
-| SHIELD proprietary fixes | Ads | CB | internal |
+| SHIELD proprietary fixes | Annoyances | CB | internal |
 
 ---
 

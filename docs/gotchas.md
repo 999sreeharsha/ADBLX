@@ -394,6 +394,38 @@ testing.
 
 Found in: cookiebot.com banner still visible with Annoyances on, iPhone 14, 2026-10-31
 
+## Annoyances has two sources: Fanboy plus SHIELD fixes (not published yet)
+
+`shield-fixes` (`backend/public/filters/annoyances/shield-fixes.txt`, premium) holds
+rules the upstream lists lack. It is composed after `fanboy-annoyances`, so no
+upstream exception can cancel it. First entry: `###CybotCookiebotDialog`, found on
+cookiebot.com (classic dialog in the page DOM, no shadow root).
+
+- **Update path.** A group compiles to one rule set, so `UpdateCoordinator` now
+  recomposes it from all of its entitled sources, using the stored payload for
+  unchanged ones. Before this, an update that changed one source of a group
+  dropped the others' rules. It was latent while every group had one source.
+- **Bundled too.** The entry is in `BundledPremiumCatalog` and
+  `installBundledPremiumSnapshot`; the reconciler installs it for an entitled user
+  who has Fanboy but not the fixes, at the next launch or foreground.
+- **Three copies to keep equal:** the backend payload, the bundled copy in
+  `ADBLX/Resources/Filters/`, and the manifest checksum
+  (`ShieldFixesListTests` checks the first two). After editing the list, bump
+  `backend/metadata/shield-fixes.json` and run the Publisher.
+- **Not deployed.** The registry, manifest and docs are regenerated locally;
+  nothing is on gh-pages until someone runs `backend/tools/publish-pages.sh`.
+  Regenerating also dropped `/backend/public` from the existing entries'
+  `sourceURL`s (the Publisher's current output; Pages serves `public/` at its
+  root), and `backend/docs/ManifestGeneration.md` still describes the old form.
+- **Fanboy already includes the `easylist_cookie` sections** (general, specific
+  and international hide and block, third-party, and the allowlists), so a
+  separate EasyList Cookie List would mostly duplicate it.
+- **Known coverage limit, post-launch:** banners served inside an iframe by a
+  consent platform (Sourcepoint on theguardian.com) are not covered by these
+  rules.
+
+Found in: cookiebot.com banner investigation, iPhone 14, 2026-11-03
+
 ## Security audit findings, 2026-10-30 (OPEN)
 
 Sources: a manual full-app code audit, Claude Security scan 1 (premium,

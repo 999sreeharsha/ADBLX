@@ -47,6 +47,15 @@
 | Default enabled (fresh installation) | ❌ |
 | Premium | ✅ |
 | Notes | Gated per PRD §5.1 ("Cookie-banner / annoyance filters" is a Premium feature). |
+| Display name | SHIELD Fixes |
+| Internal ID | `shield-fixes` |
+| Upstream project | SHIELD (internal) |
+| Upstream download URL | https://999sreeharsha.github.io/ADBLX/backend/public/filters/annoyances/shield-fixes.txt |
+| License | Internal |
+| ADBLX FilterGroup | Annoyances |
+| Default enabled (fresh installation) | ❌ |
+| Premium | ✅ |
+| Notes | Proprietary gap fixes the upstream lists lack. Composed after Fanboy Annoyances so no upstream exception can cancel them. |
 
 ### Regional
 
