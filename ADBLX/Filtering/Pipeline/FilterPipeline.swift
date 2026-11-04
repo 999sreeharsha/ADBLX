@@ -164,7 +164,7 @@ actor FilterPipeline {
                 if let bundledURL = Bundle.main.url(forResource: "blockerList", withExtension: "json"),
                    let data = try? Data(contentsOf: bundledURL) {
                     sources.append(FilterSource(
-                        filterID: "ads-bundled",
+                        filterID: CompiledSources.uninstalledFallbackID,
                         version: "bundled-snapshot",
                         checksumSHA256: Checksum.sha256Hex(of: data),
                         data: data
@@ -201,7 +201,7 @@ actor FilterPipeline {
     }
 
     /// Pure composition pipeline shared by `install` and `remove`: compose → compile →
-    /// partition → atomic write `Compiled/<Group>.json` → merge `installed_filters.json`
+    /// partition → atomic write `Compiled/<Group>.json` and its sidecar → merge `installed_filters.json`
     /// (remove `removingFilterIDs`, then upsert `upsertingFilterEntries`) → write
     /// `statistics.json` → reload per `reloadStrategy`. Knows nothing about where
     /// `composition.sources` originated (network, disk, bundled snapshot) — that's each
@@ -257,9 +257,7 @@ actor FilterPipeline {
         }
 
         let writeState = Self.signposter.beginInterval("Pipeline.atomicWrite", id: Self.signposter.makeSignpostID())
-        let destinationURL = try await store.directoryURL(.compiled)
-            .appendingPathComponent("\(partition.group.rawValue.capitalized).json")
-        try writer.write(partition.json, to: destinationURL)
+        try await writeCompiled(partition, sourceIDs: composition.sources.map(\.filterID))
         Self.signposter.endInterval("Pipeline.atomicWrite", writeState)
 
         var existingFilters = (try? await loadInstalledFilters()) ?? []
@@ -316,6 +314,22 @@ actor FilterPipeline {
             installedRuleCount: partition.ruleCount,
             compileStatistics: compiled.statistics,
             reloadResults: reloadResults
+        )
+    }
+
+    /// The sidecar goes second: a crash between the two leaves it out of date, which the next
+    /// reconcile can see, rather than vouching for rules that were never written.
+    private func writeCompiled(_ partition: PartitionedRules, sourceIDs: [String]) async throws {
+        let directory = try await store.directoryURL(.compiled)
+        try writer.write(partition.json, to: directory.appendingPathComponent("\(partition.group.rawValue.capitalized).json"))
+        let sidecar = CompiledSources(
+            sourceIDs: sourceIDs,
+            compiledSHA256: Checksum.sha256Hex(of: partition.json),
+            ruleCount: partition.ruleCount
+        )
+        try writer.write(
+            try JSONEncoder().encode(sidecar),
+            to: directory.appendingPathComponent(CompiledSources.filename(for: partition.group))
         )
     }
 

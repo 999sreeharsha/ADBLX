@@ -11,6 +11,9 @@ enum ReconcileOutcome: Equatable {
     /// Entitled and a default premium list was missing: reinstalled from the bundle, and the
     /// cached manifest's ETag was cleared so the next update does a full fetch.
     case restored(installedCount: Int)
+    /// A group's compiled rules came from sources other than the installed ones: it was
+    /// recompiled from what is installed.
+    case repaired(groups: [FilterGroup], reloadFailures: Int)
     /// The batch failed part-way and the whole transaction was rolled back.
     case rolledBack
     /// Rollback itself failed. Surfaced distinctly, never swallowed.
@@ -91,7 +94,8 @@ actor PremiumEntitlementReconciler {
             // This is an actor, so its work must never land on the main thread (NFR-05).
             dispatchPrecondition(condition: .notOnQueue(.main))
             #endif
-            return state.hasPremiumAccess ? await restoreIfNeeded() : await downgradeIfNeeded()
+            let outcome = state.hasPremiumAccess ? await restoreIfNeeded() : await downgradeIfNeeded()
+            return await repairingDrift(after: outcome)
         }
         Self.signposter.endInterval("entitlement.reconcile", interval, "\(Self.caseName(of: outcome), privacy: .public)")
         if outcome != .noChange {
@@ -183,6 +187,42 @@ actor PremiumEntitlementReconciler {
         return .restored(installedCount: results.count)
     }
 
+    // MARK: - Drift
+
+    /// Recompiles any group whose rules came from sources other than the installed ones, which
+    /// a crash mid-install can leave behind and `installed_filters.json` alone can't reveal.
+    /// Compares source IDs only: hashing the compiled files on every run would cost too much.
+    private func repairingDrift(after outcome: ReconcileOutcome) async -> ReconcileOutcome {
+        if outcome == .rolledBack || outcome == .rollbackFailed { return outcome }
+
+        let installed = await readInstalled()
+        var repaired: [FilterGroup] = []
+        for group in FilterGroup.allCases {
+            let installedIDs = Set(installed.filter { $0.group == group }.map(\.id))
+            guard await hasDrifted(group, installedIDs: installedIDs) else { continue }
+            do {
+                _ = try await pipeline.remove(filterIDs: [], group: group, reloadStrategy: .deferred)
+                repaired.append(group)
+            } catch {
+                Self.logger.error("drift repair failed")
+            }
+        }
+        guard !repaired.isEmpty else { return outcome }
+
+        let results = await reloader.reload(extensionIdentifiers: repaired.map { identifier(for: $0) })
+        guard outcome == .noChange else { return outcome }
+        return .repaired(groups: repaired, reloadFailures: results.filter { !$0.success }.count)
+    }
+
+    private func hasDrifted(_ group: FilterGroup, installedIDs: Set<String>) async -> Bool {
+        guard let data = try? await store.read(CompiledSources.filename(for: group), in: .compiled),
+              let sidecar = try? JSONDecoder().decode(CompiledSources.self, from: data) else {
+            return !installedIDs.isEmpty
+        }
+        let fallback: Set<String> = [CompiledSources.uninstalledFallbackID]
+        return Set(sidecar.sourceIDs).subtracting(fallback) != installedIDs.subtracting(fallback)
+    }
+
     // MARK: - Helpers
 
     private func readInstalled() async -> [InstalledFilter] {
@@ -203,6 +243,7 @@ actor PremiumEntitlementReconciler {
         case .noChange: return "noChange"
         case .downgraded: return "downgraded"
         case .restored: return "restored"
+        case .repaired: return "repaired"
         case .rolledBack: return "rolledBack"
         case .rollbackFailed: return "rollbackFailed"
         }
@@ -214,6 +255,7 @@ actor PremiumEntitlementReconciler {
         case .downgraded(let removed, let groups, let failures):
             return "downgraded removed=\(removed) groups=\(groups.count) reloadFailures=\(failures)"
         case .restored(let count): return "restored installed=\(count)"
+        case .repaired(let groups, let failures): return "repaired groups=\(groups.count) reloadFailures=\(failures)"
         case .rolledBack: return "rolledBack"
         case .rollbackFailed: return "rollbackFailed"
         }
