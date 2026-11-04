@@ -118,6 +118,11 @@ actor UpdateCoordinator {
             if case .install(let group, let entries) = $0 { return (group, entries) }
             return nil
         }
+        let keptFilterIDs = Set(plan.actions.compactMap { action -> String? in
+            if case .keep(let filterID) = action { return filterID }
+            return nil
+        })
+        let installedByID = Dictionary(installedFilters.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         let removals: [(filterID: String, group: FilterGroup)] = plan.actions.compactMap { action in
             guard case .remove(let filterID) = action else { return nil }
             guard let group = installedFilters.first(where: { $0.id == filterID })?.group else { return nil }
@@ -167,21 +172,11 @@ actor UpdateCoordinator {
             // One group composed and installed at a time — keeps at most one group's
             // decoded sources resident in memory (Sprint 3A design doc's <200MB target).
             for (group, entries) in installGroups {
-                let premiumByID = Dictionary(uniqueKeysWithValues: entries.map { ($0.id, $0.premium) })
                 let downloaded = downloadedByGroup[group] ?? []
-                var sources: [FilterSource] = []
-                for filter in downloaded {
-                    // Bridge because FilterPipeline.install is Data-based. If a future
-                    // overload accepts a URL directly, this read disappears.
-                    let data = try Data(contentsOf: filter.tempFileURL)
-                    sources.append(FilterSource(
-                        filterID: filter.filterID,
-                        version: filter.version,
-                        checksumSHA256: filter.expectedChecksum,
-                        data: data,
-                        premium: premiumByID[filter.filterID] ?? false
-                    ))
-                }
+                let sources = try await composeSources(
+                    group: group, manifest: manifest, entries: entries,
+                    downloaded: downloaded, keptFilterIDs: keptFilterIDs, installedByID: installedByID
+                )
                 let composition = GroupComposition(group: group, sources: sources)
                 _ = try await pipeline.install(composition, reloadStrategy: .deferred)
                 installedFilterIDs.append(contentsOf: downloaded.map(\.filterID))
@@ -217,5 +212,48 @@ actor UpdateCoordinator {
         } catch {
             return []
         }
+    }
+
+    /// A group compiles to one rule set, so it must be recomposed from ALL of its sources, not
+    /// just the ones that changed: an unchanged sibling (e.g. Fanboy beside a new SHIELD fixes
+    /// list) would otherwise vanish from the result. Sources stay in manifest order; unchanged
+    /// ones come from the stored payload. A missing payload throws, which rolls the whole update
+    /// back to the last-good rules rather than compiling the group without that source.
+    private func composeSources(
+        group: FilterGroup,
+        manifest: FilterManifest,
+        entries: [FilterManifest.Entry],
+        downloaded: [DownloadedFilter],
+        keptFilterIDs: Set<String>,
+        installedByID: [String: InstalledFilter]
+    ) async throws -> [FilterSource] {
+        let premiumByID = Dictionary(entries.map { ($0.id, $0.premium) }, uniquingKeysWith: { first, _ in first })
+        var downloadedByID: [String: DownloadedFilter] = [:]
+        for filter in downloaded { downloadedByID[filter.filterID] = filter }
+
+        var sources: [FilterSource] = []
+        for entry in manifest.entries where entry.group == group {
+            if let filter = downloadedByID[entry.id] {
+                // Bridge because FilterPipeline.install is Data-based. If a future
+                // overload accepts a URL directly, this read disappears.
+                let data = try Data(contentsOf: filter.tempFileURL)
+                sources.append(FilterSource(
+                    filterID: filter.filterID,
+                    version: filter.version,
+                    checksumSHA256: filter.expectedChecksum,
+                    data: data,
+                    premium: premiumByID[filter.filterID] ?? false
+                ))
+            } else if keptFilterIDs.contains(entry.id), let installed = installedByID[entry.id] {
+                sources.append(FilterSource(
+                    filterID: installed.id,
+                    version: installed.installedVersion,
+                    checksumSHA256: installed.checksumSHA256,
+                    data: try await store.readFilterPayload(filterID: installed.id),
+                    premium: entry.premium
+                ))
+            }
+        }
+        return sources
     }
 }
