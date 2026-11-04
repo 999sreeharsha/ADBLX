@@ -152,6 +152,12 @@ final class Sprint10ClosureVerificationTests: XCTestCase {
         print("Total End-to-End Pipeline Duration: \(String(format: "%.3f", totalPipelineDuration))s")
         print("==================================================================\n")
         
+        // Report-only on CI (shared runners make timing unreliable); enforced locally.
+        if PerformanceBudget.isReportOnly && totalPipelineDuration >= 20.0 {
+            let options = XCTExpectedFailure.Options()
+            options.isStrict = false
+            XCTExpectFailure("Pipeline duration budget exceeded on CI (report-only)", options: options)
+        }
         XCTAssertLessThan(totalPipelineDuration, 20.0, "Total pipeline duration with in-process DFA gate must remain within 20.0s")
     }
     
