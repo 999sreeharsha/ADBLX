@@ -17,7 +17,8 @@ actor FilterPipeline {
     private let writer: AtomicRuleWriter
     private let reloader: ReloadCoordinator
     private let allowlistStore: AllowlistStore?
-    
+    private let gate: FilterTransactionGate
+
     private static let signposter = OSSignposter(subsystem: "com.ADBLX", category: "FilterPipeline")
 
     init(
@@ -28,7 +29,8 @@ actor FilterPipeline {
         store: FilterStore,
         writer: AtomicRuleWriter,
         reloader: ReloadCoordinator,
-        allowlistStore: AllowlistStore? = nil
+        allowlistStore: AllowlistStore? = nil,
+        gate: FilterTransactionGate = .shared
     ) {
         self.validator = validator
         self.compiler = compiler
@@ -38,6 +40,7 @@ actor FilterPipeline {
         self.writer = writer
         self.reloader = reloader
         self.allowlistStore = allowlistStore
+        self.gate = gate
     }
 
     /// Installs an entire group's composition in one pass: validate every source, persist
@@ -129,7 +132,13 @@ actor FilterPipeline {
 
     /// Recomposes all installed filter groups with the latest canonical allowlist rules,
     /// atomic-writes to `Compiled/<Group>.json`, and reloads affected extensions.
+    /// Takes the transaction gate, so callers must not already hold it: it recompiles from a
+    /// filter list it read earlier, and overlapping a downgrade would restore removed rules.
     func syncAllowlist(reloadStrategy: ReloadStrategy = .immediate) async throws -> [PipelineResult] {
+        try await gate.run { try await recomposeInstalledGroups(reloadStrategy: reloadStrategy) }
+    }
+
+    private func recomposeInstalledGroups(reloadStrategy: ReloadStrategy) async throws -> [PipelineResult] {
         let existingFilters = (try? await loadInstalledFilters()) ?? []
         let installedGroups = Set(existingFilters.map(\.group))
         let targetGroups: [FilterGroup] = installedGroups.isEmpty ? [.ads] : Array(installedGroups).sorted(by: { $0.rawValue < $1.rawValue })

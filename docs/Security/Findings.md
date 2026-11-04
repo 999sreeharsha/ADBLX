@@ -15,7 +15,7 @@ Scan reports are in the gitignored `CLAUDE-SECURITY-*` folders at the repo root.
 | ID | Finding | Severity | Source | Status |
 |---|---|---|---|---|
 | **Fix now** | | | | |
-| SEC-01 | `syncAllowlist` race restores premium rules | LOW | Panel | Open |
+| SEC-01 | `syncAllowlist` race restores premium rules | LOW | Panel | Race fixed; sidecar open |
 | SEC-02 | Content-blocker handlers parse the whole rules file | HIGH | Manual | Open |
 | SEC-03 | Broken-site report silently allowlists the domain | MEDIUM | Manual | Open |
 | SEC-04 | Paywall advertises "Encrypted DNS" | MEDIUM | Manual | Open |
@@ -45,11 +45,10 @@ Scan reports are in the gitignored `CLAUDE-SECURITY-*` folders at the repo root.
 
 `ICloudSyncCoordinator.swift:161` is also ungated, but nothing calls its `startObserving()` today.
 
+**Fixed:** `syncAllowlist` now holds the gate (`AllowlistSyncGateTests`), which also covers the iCloud path. No caller holds the gate when calling it, so no ungated variant was needed. An allowlist edit made during an update now waits for that update to finish. The sidecar below is still open.
+
 **Fix:**
-- Have only the `syncAllowlist` entry point acquire the gate, and keep an internal ungated variant for callers that already hold it. The gate is not re-entrant (see its doc comment), so a body that calls `run` again hangs.
-- Remove the `gate.run` wrapper in `DeveloperDiagnostics.swift:53` in the same commit, or it deadlocks.
 - Don't make the reconciler parse `Compiled/<Group>.json`. That can mean decoding about 150K rules on launch, against NFR-05 (cold start under 1.5s). Write a sidecar `Compiled/<Group>.sources.json` holding `{sourceIDs, compiledSHA256, ruleCount}` atomically after the compiled JSON, and compare that with `installed_filters.json` and entitlement. A missing or mismatched sidecar counts as drift and triggers a recompile. Including `ruleCount` now means SEC-02 needs no schema change.
-- Test: block a reconcile inside the gate, start an allowlist add, and assert the add waits and no premium rules remain.
 
 ### SEC-02: Content-blocker handlers parse the whole rules file
 

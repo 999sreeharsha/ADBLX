@@ -53,7 +53,7 @@ struct DeveloperDiagnosticsTests {
         // Stale output, as left on disk by an older compiler.
         try await store.writeCompiledForTesting(Data("[]".utf8), filename: "Annoyances.json")
 
-        let summary = await DeveloperDiagnostics.recompileAll(pipeline: pipeline, gate: FilterTransactionGate())
+        let summary = await DeveloperDiagnostics.recompileAll(pipeline: pipeline)
 
         #expect(summary == "annoyances=2")
         let rules = try JSONSerialization.jsonObject(with: try await store.read("Annoyances.json", in: .compiled)) as? [Any]
