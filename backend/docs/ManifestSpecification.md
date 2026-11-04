@@ -45,7 +45,7 @@ Commit 3 deliberately does not answer:
       "id": "easylist",
       "name": "EasyList",
       "group": "ads",
-      "sourceURL": "https://example.invalid/backend/public/filters/ads/easylist.txt",
+      "sourceURL": "https://example.invalid/filters/ads/easylist.txt",
       "version": "2026-07-15",
       "checksumSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b85",
       "ruleCount": 62000,

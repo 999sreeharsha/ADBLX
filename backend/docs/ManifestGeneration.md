@@ -112,12 +112,20 @@ deployment, not once per filter or per publish.
 
 ```text
 sourceURL = publishBaseURL
-          + "/backend/public/filters/"
+          + "/filters/"
           + <group>
           + "/"
           + <id>
           + ".txt"
 ```
+
+`backend/public/` is the deployed tree: `publish-pages.sh` copies its contents
+verbatim to the root of the gh-pages site, so a payload at
+`backend/public/filters/ads/easylist.txt` is served at
+`<publishBaseURL>/filters/ads/easylist.txt`. The repo path
+(`backend/public`) therefore never appears in a `sourceURL`. This is pinned by
+`ManifestTests` (the builder) and `CommittedManifestTests` (the committed
+`manifest.json`).
 
 `group` and `id` come from the registry; the path structure is fixed by
 Commit 1's frozen directory layout; `.txt` is a fixed convention for v1 (all

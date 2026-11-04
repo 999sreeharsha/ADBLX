@@ -414,9 +414,13 @@ cookiebot.com (classic dialog in the page DOM, no shadow root).
   `backend/metadata/shield-fixes.json` and run the Publisher.
 - **Not deployed.** The registry, manifest and docs are regenerated locally;
   nothing is on gh-pages until someone runs `backend/tools/publish-pages.sh`.
-  Regenerating also dropped `/backend/public` from the existing entries'
-  `sourceURL`s (the Publisher's current output; Pages serves `public/` at its
-  root), and `backend/docs/ManifestGeneration.md` still describes the old form.
+- **`sourceURL` layout (decided 2026-11-06): `<base>/filters/<group>/<id>.txt`,
+  never `/backend/public/`.** `publish-pages.sh` copies `backend/public/` to the
+  Pages root, so the repo path is not part of the URL. The Publisher
+  (`ManifestBuilder`), `ManifestGeneration.md` and `ManifestSpecification.md` now
+  agree; `ManifestTests` pins the builder and `CommittedManifestTests` pins the
+  committed `manifest.json` (a manifest generated before `aa64fef` carried the old
+  form).
 - **Fanboy already includes the `easylist_cookie` sections** (general, specific
   and international hide and block, third-party, and the allowlists), so a
   separate EasyList Cookie List would mostly duplicate it.
