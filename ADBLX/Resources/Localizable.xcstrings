@@ -1118,7 +1118,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "System-wide ad blocking via encrypted DNS queries. Blocks trackers in apps beyond the browser."
+            "value" : "System-wide ad blocking through DNS filtering. Blocks trackers in apps beyond the browser."
           }
         }
       }

@@ -353,7 +353,7 @@ The old "unconditional bundled-snapshot reinstall on every launch" is now **gate
 | Gate A network-transition matrix (Wi-Fi↔Cellular handover, sleep/wake socket recovery, third-party VPN conflict) | ❌ Open — no `NEVPNStatus.reasserting` / path-monitor socket re-init. ADR-0004 stays "conditionally accepted". |
 | Gate D — 24-hour on-device battery soak (NFR-02 <3%/day) | ❌ Open — short-run ~1.3%/day measured, full soak pending. |
 | Diagnostic counters (ingress/blocked/forwarded/egress) | ⚠️ Incremented but **never surfaced to the app** — no `handleAppMessage` reply payload. If the DNS UI is meant to show "queries blocked", that pipe doesn't exist. |
-| `DNSBenchmarkSpike.swift` + `dns_artifact.bin` (9.5MB, stale `ADBX` magic) | ⚠️ Dead spike code shipped in the extension bundle via `syncedFolder` — should be excluded. |
+| `DNSBenchmarkSpike.swift` + `dns_artifact.bin` (9.5MB, stale `ADBX` magic) | Moved to `spikes/dns-benchmark/`, outside every target (SEC-07). |
 
 ---
 
@@ -477,7 +477,7 @@ Consolidated from `docs/Audit/*`, `docs/gotchas.md`, `docs/Validation/*`, and th
 - 🔴 **Gate D** — 24-hour on-device battery soak (NFR-02 <3%/day).
 - ⚠️ Export the diagnostic counters (ingress/blocked/forwarded) to the app so the DNS UI can show real numbers.
 - ○ EDNS / large-response / TCP fallback (4096-byte cap, no TC-bit handling). IPv6 extension-header chains dropped.
-- ○ Remove `DNSBenchmarkSpike.swift` + the 9.5MB stale `dns_artifact.bin` from the extension bundle.
+- ✅ Remove `DNSBenchmarkSpike.swift` + the 9.5MB stale `dns_artifact.bin` from the extension bundle (moved to `spikes/dns-benchmark/`).
 - ○ `DNSProtectionSettingsStore` uses the wrong App Group suite string (`group.com.ADBLX.ADBLX` vs `group.com.ADBLX.shared`) — settings-only, but fix it.
 
 ### Web Extension (Layer 3)

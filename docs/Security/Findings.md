@@ -18,11 +18,11 @@ Scan reports are in the gitignored `CLAUDE-SECURITY-*` folders at the repo root.
 | SEC-01 | `syncAllowlist` race restores premium rules | LOW | Panel | Fixed |
 | SEC-02 | Content-blocker handlers parse the whole rules file | HIGH | Manual | Fixed; memory measurement pending |
 | SEC-03 | Broken-site report silently allowlists the domain | MEDIUM | Manual | Open |
-| SEC-04 | Paywall advertises "Encrypted DNS" | MEDIUM | Manual | Open |
-| SEC-05 | `deploy-pages.yml` publishes the dispatching branch | LOW | Overruled | Open |
-| SEC-06 | JS tests don't run in CI; `DIAG_VERBOSE` is on | LOW | Manual | Open |
-| SEC-07 | Benchmark spike files are in the tunnel folder | LOW | Manual | Open |
-| SEC-08 | Each ad skip sends two clicks | LOW | Manual | Open |
+| SEC-04 | Paywall advertises "Encrypted DNS" | MEDIUM | Manual | Claim removed; DNS still advertised |
+| SEC-05 | `deploy-pages.yml` publishes the dispatching branch | LOW | Overruled | Fixed |
+| SEC-06 | JS tests don't run in CI; `DIAG_VERBOSE` is on | LOW | Manual | Fixed |
+| SEC-07 | Benchmark spike files are in the tunnel folder | LOW | Manual | Fixed |
+| SEC-08 | Each ad skip sends two clicks | LOW | Manual | Fixed; check skip on a device |
 | **Pre-launch blockers** | | | | |
 | SEC-09 | Manifest isn't authenticated or validated | HIGH | Overruled | Open |
 | SEC-10 | `PublicSuffixList` widens allowlisted domains | MEDIUM | Overruled | Open |
@@ -79,31 +79,33 @@ The call sits inside a `logger.info` interpolation, but info messages are normal
 
 `ADBLX/Features/Premium/Trial/TrialExpiredDecisionView.swift:68` claims encrypted DNS, but the upstream is plaintext UDP/53. `DNSProtectionView` says "encrypted upstream" too (`docs/TECHNICAL_OVERVIEW.md` §6.3). DNS Protection also can't ship until its connectivity bug is closed.
 
-**Fix:** remove the DNS line from the paywall while DNS isn't in the release, and don't just reword it. Advertising an absent feature risks a Guideline 2.3 rejection. Correct the `DNSProtectionView` copy, and restore the claim only if DoH or DoT ships.
+**Fixed:** removed the DNS row from the trial-expired screen, and dropped "encrypted" from `premium.feature.dns.description`. No "encrypted" copy is left in the app's Swift or string catalog, including for `DNSProtectionView`. Restore the claim only if DoH or DoT ships.
+
+**Still open:** the feature itself is still advertised while DNS can't ship, which risks a Guideline 2.3 rejection: the paywall's `PremiumFeature.dnsProtection`, the `trial.feature.dns.*` onboarding row and the Home DNS stat.
 
 ### SEC-05: `deploy-pages.yml` publishes the dispatching branch
 
 `.github/workflows/deploy-pages.yml` checks out with no `ref` and uploads `.`, so a manual `workflow_dispatch` from another branch publishes that branch as the live manifest site. Only people with write access can trigger it.
 
-**Fix:** set `ref: gh-pages` on the checkout step.
+**Fixed:** the checkout step sets `ref: gh-pages`.
 
 ### SEC-06: JS tests don't run in CI; `DIAG_VERBOSE` is on
 
 `content.test.js:1112` asserts `DIAG_VERBOSE` is false, but `ci.yml` only runs `-only-testing:ADBLXTests`, so nothing enforces it. The working tree currently has it set to `true` (`content.js:20`). Its own comment says verbose mode can echo page markup, and `docs/Architecture/Logging.md` allows no exception for debug builds.
 
-**Fix:** add the extension's JS tests to CI, and set the flag back to `false` before committing. Check whether the verbose dumps can include URLs or domains.
+**Fixed:** CI runs the extension's JS tests, and the flag is `false`.
 
 ### SEC-07: Benchmark spike files are in the tunnel folder
 
 `Extensions/ADBLXPacketTunnel/` holds `DNSBenchmarkSpike.swift`, `DNSBenchmarkSpike.swift.patch` and `dns_artifact.bin`. The class has no callers, but it does unchecked raw `UInt32` loads.
 
-**Fix:** add them to the target's `excludes` in `project.yml`, or move them out of the folder.
+**Fixed:** moved to `spikes/dns-benchmark/`, outside every target, which also takes the 9.5 MB `dns_artifact.bin` out of the tunnel's folder.
 
 ### SEC-08: Each ad skip sends two clicks
 
 `content.js:337-338` calls `targetBtn.click()` and also dispatches its own click event.
 
-**Fix:** keep only `click()`, and add a test asserting one click per skip.
+**Fixed:** only `click()` remains, with a test asserting one click event per skip. The mock's `click()` now fires listeners as the DOM does. Not yet confirmed that a single click skips an ad on a real device.
 
 ## Pre-launch blockers
 
