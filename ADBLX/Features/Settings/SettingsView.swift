@@ -49,6 +49,7 @@ struct SettingsView: View {
                                     Image(systemName: "minus.circle.fill")
                                         .foregroundStyle(DesignColors.error)
                                 }
+                                .disabled(viewModel.isApplyingAllowlistEdit)
                             }
                             .padding(.vertical, DesignSpacing.base)
                         }
@@ -62,6 +63,16 @@ struct SettingsView: View {
                                 }
                             }
                             .disabled(newDomain.isEmpty)
+                        }
+                        .disabled(viewModel.isApplyingAllowlistEdit)
+                        if viewModel.isApplyingAllowlistEdit {
+                            HStack(spacing: DesignSpacing.base) {
+                                ProgressView()
+                                Text("settings.allowlist.applying")
+                                    .font(DesignTypography.bodySmall)
+                                    .foregroundStyle(DesignColors.onSurfaceVariant)
+                            }
+                            .accessibilityElement(children: .combine)
                         }
                     }
 
@@ -86,7 +97,7 @@ struct SettingsView: View {
             }
             .padding(DesignSpacing.containerPadding)
         }
-        .sheet(isPresented: $showBrokenSiteReport) {
+        .sheet(isPresented: $showBrokenSiteReport, onDismiss: { Task { await viewModel.load() } }) {
             BrokenSiteReportView(
                 viewModel: BrokenSiteReportViewModel(
                     reporter: AppCompositionRoot.makeBrokenSiteReporter(store: AppCompositionRoot.makeFilterStore())

@@ -118,8 +118,8 @@ which rows are load-bearing and which aren't before building on top of them:
 - **Allowlist (superseded, 2026-10-30):** this entry originally said the
   allowlist was storage-only. That is no longer true: `FilterPipeline.syncAllowlist`
   compiles the domains with `SafariAllowlistCompiler` (`FilterPipeline.swift:208`)
-  and DNS enforces them too (ADR-0009). See the `syncAllowlist` race entry
-  below for the remaining gap.
+  and DNS enforces them too (ADR-0009). See SEC-01 in
+  `docs/Security/Findings.md` for the remaining gap.
 - **Notifications and Safari Help are `ComingSoonState` navigation targets,
   not real screens.** Both rows navigate successfully (no crash, no dead
   link), but land on the same shared placeholder component used elsewhere in
@@ -270,7 +270,7 @@ Things to remember when touching this:
   the next launch/foreground reconcile. The web extension and tunnel enforce
   `validUntil` themselves (subscription expiry + 7 days; trial exact) — but
   the tunnel's check does not look at `state`, so a `.free` record is allowed
-  (see "Tunnel entitlement guard allows `.free`" below).
+  (SEC-13 in `docs/Security/Findings.md`).
 - Open product input: Apple's Billing Grace Period (enable in App Store
   Connect if lapse leniency is wanted) and Family Sharing are product
   decisions, not code.
@@ -346,6 +346,8 @@ Found in: entitlement purchase-bug fix (`FakeStoreEntitlementSource`), bisected 
   user-visible, auto-expiring "Recently blocked" list.
 - Rule until closed: DNS Protection must not be enabled in any release or
   TestFlight build.
+  `DNS_PROTECTION_ENABLED` (`Config/Debug.xcconfig` only) enforces this: Release
+  hides every DNS surface and doesn't embed the tunnel. See SEC-04.
 - Ruled out (2026-10-31): the content-blocker "unsupported domain dropped →
   rule becomes unrestricted" bug (next entry). The DNS blocklist parser
   (`DNSDomainNormalizer`) shares no code with `SafariRuleGenerator`. It rejects
@@ -430,248 +432,12 @@ cookiebot.com (classic dialog in the page DOM, no shadow root).
 
 Found in: cookiebot.com banner investigation, iPhone 14, 2026-11-03
 
-## Security audit findings, 2026-10-30 (OPEN)
+## Security findings live in `docs/Security/Findings.md`
 
-Sources: a manual full-app code audit, Claude Security scan 1 (premium,
-filtering and extensions; partial, it hit the usage limit) and scan chunk 2a
-(`Packages/ADBLXShared/Sources`, `ADBLX/Filtering/DNS`,
-`ADBLX/Filtering/WebExtension`). The reports live in the gitignored
-`CLAUDE-SECURITY-20261030-085321/`, `CLAUDE-SECURITY-20261030-201543/` and
-`CLAUDE-SECURITY-20261031-070846/` (2b: packet tunnel, Safari web extension)
-and `CLAUDE-SECURITY-20261103-062300/` (2c: compilation, validation, storage,
-deployment, the 4 content blockers) folders, plus
-`CLAUDE-SECURITY-20261104-184644/` (gap scan: `backend/tools/Publisher`,
-`Features/Settings`, `Features/BrokenSite`, `Features/Sync`). Still never in a
-scan's scope: the rest of `backend/`, `.github/`, and the other `ADBLX/Features`
-directories such as Protection, Home and Onboarding. A **[manual]** item was
-not raised by the panel.
-Everything here comes from reading the code. Nothing was exploited or tested.
+The open findings from the 2026-10-30 to 2026-11-04 security audit are tracked
+there with stable IDs (SEC-01 onward), a status and corrected fixes. Check it
+before touching entitlement, the filter pipeline, the manifest, the DNS tunnel
+or the web extension. Two fixes first proposed in the audit were wrong; use the
+corrected versions there.
 
-Tags: **[panel]** confirmed by the scan's 3-voter panel; **[manual]** manual
-audit only; **[rejected]** the panel rejected it because it treats the
-manifest as trusted. Kept here because that trust is itself an open decision.
-
-Each item below gives the issue and then a **Suggested fix**. The fixes are
-proposals written from reading the code; none has been implemented or
-tested yet. Write the failing test first (repo convention).
-
-### Entitlement and premium
-
-- **Tunnel entitlement guard allows `.free`** [panel, 3/3 in both 2a (MEDIUM)
-  and 2b (lowered to LOW)]. `TunnelEntitlementGuard.check`
-  (`Packages/ADBLXShared/Sources/ADBLXShared/TunnelEntitlementGuard.swift:26`)
-  only calls `isExpired(at:)`, which is false when `validUntil` is nil, and
-  every non-entitled state is published as `{state: free, validUntil: nil}`
-  (`WebExtensionEntitlementPublisher.swift:39-43`).
-  `DNSProtectionService.handleEntitlementLoss` (`DNSProtectionService.swift:107-109`)
-  sets `isEnabled = false` but leaves the VPN configuration installed, so a
-  lapsed user can connect it from Settings > VPN and keep the premium
-  blocklists. The tunnel never re-checks once running.
-  **Suggested fix:**
-  1. In `check`, keep `.allowed` for a missing/unreadable file (first-start
-     race, as the doc comment explains) but decide a decoded record on its
-     state, mirroring `SafariWebExtensionBridgeProcessor.swift:65-69`:
-     ```swift
-     guard record.state == .premiumActive, !record.isExpired(at: now) else {
-         return .deniedExpired
-     }
-     return .allowed
-     ```
-     Update the type's doc comment ("Only a positively-expired record
-     denies" is no longer true).
-  2. In `handleEntitlementLoss`, after stopping the tunnel, call
-     `manager.removeFromPreferences()` so the configuration disappears from
-     Settings > VPN (re-enabling then goes through the app's own gated flow).
-  3. Optional: re-run `TunnelEntitlementGuard.check()` on a long timer (or on
-     each generation reload) inside the tunnel and `cancelTunnelWithError`
-     when denied.
-  4. Tests: `.free` record → `.deniedExpired`; `premiumActive` without
-     `validUntil` → `.allowed`; `premiumActive` past `validUntil` →
-     `.deniedExpired`; missing file → `.allowed`.
-- **Clock set forward at trial activation gives an arbitrarily long trial**
-  [panel, LOW]. `TrialManager.evaluateStatus`
-  (`ADBLX/Features/Premium/Trial/TrialManager.swift:86`) uses
-  `max(date, lastObservedDate)`; activating with the clock N years ahead stores
-  future `activatedAt`/`lastObservedDate`, so after the clock is set back the
-  effective date stays pinned in the future and the trial runs N years + 15
-  days. The same future `validUntil` reaches the extensions and tunnel. The
-  trial entry above covers only backwards clock changes.
-  **Suggested fix:** at activation, compare the device clock with a
-  trusted time and refuse (or clamp) when it is ahead by more than a small
-  tolerance (e.g. 24 h). `AppTransaction.shared` gives a JWS-verified
-  `signedDate`; use it as the lower bound and `activatedAt = min(now,
-  signedDate + tolerance)`. If no trusted time is available (offline), allow
-  activation but cap `lastObservedDate` growth so a later observation earlier
-  than `activatedAt` re-anchors to it instead of being ignored. Tests: activate
-  at `now + 1 year`, then evaluate at `now` → trial must not outlive
-  `trustedNow + 15 days`.
-- **macOS: premium comes from an unsigned, user-editable `entitlement.json`**
-  [panel, LOW, 2/3]. `SafariWebExtensionBridgeProcessor.swift:67` trusts a
-  plain JSON file under `~/Library/Group Containers/group.com.ADBLX.shared/`;
-  a `premiumActive` record without `validUntil` never expires. A Mac user can
-  write it, lock it against the app's overwrite (`chflags uchg`), and unlock
-  Layer 3 (and pass the tunnel guard). Only a licence bypass on the user's own
-  machine; one voter rejected it on that basis.
-  **Suggested fix (only if macOS is a paid platform):** have the app write
-  the StoreKit transaction's signed JWS (`VerificationResult.jwsRepresentation`)
-  into `entitlement.json`, and verify it in the bridge before trusting
-  `state` (or call `Transaction.currentEntitlements` from the extension
-  process directly, which StoreKit 2 allows). Treat `premiumActive` without
-  `validUntil` as invalid unless it carries a verified lifetime purchase.
-  Otherwise, record the decision to accept this risk here.
-
-### Filter pipeline and updates
-
-- **`syncAllowlist` can run outside `FilterTransactionGate`** [panel, LOW;
-  scan 1 3/3, 2c twice at 2/3, gap scan 3/3].
-  `FilterPipeline.syncAllowlist` (`ADBLX/Filtering/Pipeline/FilterPipeline.swift:132`)
-  calls `installGroup`, which snapshots into the shared `Previous/` rollback
-  directory. `DeveloperDiagnostics.swift:53` wraps it in `gate.run`, but the
-  production callers do not: `SettingsService.swift:68` and `:84`.
-  `ICloudSyncCoordinator.swift:161` doesn't either, though nothing calls its
-  `startObserving()` today, so that path is dormant until it is wired up. An
-  allowlist edit that
-  overlaps an update or a downgrade reconcile can overwrite or restore the
-  other's snapshot, e.g. resurrecting premium rules a downgrade just removed.
-  The result lasts: the reconciler compares only `installed_filters.json` with
-  entitlement, so it sees nothing to do while `Compiled/<Group>.json` still
-  holds the premium rules.
-  **Suggested fix:** inject `gate: FilterTransactionGate = .shared` into
-  `RealSettingsService` and `ICloudSyncCoordinator` (same pattern as
-  `UpdateCoordinator`/`PremiumEntitlementReconciler`) and call
-  `try await gate.run { try await pipeline.syncAllowlist() }`. Better: make
-  the pipeline method itself take the gate so no caller can forget. As further
-  safeguards, have `installGroup` re-read `installed_filters.json` before the
-  `Compiled/` write and abort if the group's sources no longer match, and have
-  the reconciler check the compiled files too, so existing drift gets
-  corrected. Test:
-  start a reconcile that blocks inside the gate, call the allowlist add, and
-  assert it waits until the reconcile finishes.
-- **Manifest is unsigned; per-filter SHA-256 comes from the same manifest**
-  [manual + rejected, again 0/3 in 2c]. `ManifestClient.swift:42`. Integrity rests on TLS plus
-  push access to the GitHub Pages site; whoever can push can ship any rules
-  (including YouTube CSS via web-extension rules) to every user.
-  **Suggested fix:** the publisher signs `manifest.json` with an Ed25519
-  key kept offline and publishes `manifest.json.sig`; the app pins the public
-  key (`CryptoKit.Curve25519.Signing.PublicKey`) and rejects a manifest whose
-  signature doesn't verify, keeping the current installed set. Allow two
-  pinned keys for rotation.
-- **Filter IDs from the manifest are used as path components** [manual +
-  rejected, again 0/3 twice in 2c]. `FilterStore.swift:89`, `:105`, `FilterDownloadClient.swift:44`:
-  an id like `../Compiled/Ads` writes or deletes outside `Filters/`.
-  **Suggested fix:** validate every manifest entry id against
-  `^[a-z0-9][a-z0-9-]{0,63}$` when the manifest is decoded, dropping invalid
-  entries; as defence in depth, in `FilterStore` check that the resolved URL's
-  `standardizedFileURL.path` still has the `Filters/` directory as prefix.
-- **Duplicate filter IDs in a manifest crash the app** [rejected, again 0/3
-  in 2c; the publisher's `Validator.swift` already refuses duplicates].
-  `UpdatePlan.swift:35` and `UpdateCoordinator.swift:170` build dictionaries
-  with `Dictionary(uniqueKeysWithValues:)`, which traps on duplicates. A bad
-  manifest (or publisher bug) becomes a crash on every update.
-  **Suggested fix:** use `Dictionary(_:uniquingKeysWith: { first, _ in first })`
-  or reject the manifest when ids are not unique (validate at decode, next to
-  the id check above). Add the uniqueness check to the publisher too.
-- **`PublicSuffixList` widens a domain under an unlisted multi-part suffix**
-  [rejected 0/3 in the gap scan: a real correctness bug, but only the device
-  owner supplies the input]. `ADBLX/Filtering/Validation/PublicSuffixList.swift:55`
-  returns `co.kr` for `shop.example.co.kr` because `co.kr` isn't in its set, and
-  `BrokenSiteReporter.swift:54` then allowlists it, so blocking stops for every
-  `.co.kr` site.
-  **Suggested fix:** use the full Public Suffix List, or keep the host unchanged
-  when the registrable domain can't be determined with confidence.
-- **`deploy-pages.yml` publishes whichever branch it is dispatched from**
-  [rejected 0/3 in the gap scan: only people with write access can trigger it].
-  `.github/workflows/deploy-pages.yml:27` checks out with no `ref` and `:35`
-  uploads `.`, so a manual `workflow_dispatch` from another branch would publish
-  that branch's tree as the live manifest site.
-  **Suggested fix:** set `ref: gh-pages` on the checkout step.
-- **Broken-site reports always fail but still auto-allowlist the domain**
-  [manual; not raised by the gap scan]. `BrokenSiteReporter.swift:29` POSTs to static GitHub Pages
-  (which cannot accept POSTs) while `autoAllowlist` defaults to `true`, so
-  every report silently disables blocking for that site.
-  **Suggested fix:** default `autoAllowlist` to `false` (or ask in the
-  report sheet), and only allowlist after the user confirms. Point reports at
-  an endpoint that accepts POST, or open a prefilled GitHub issue / mail
-  draft instead, and show the user when sending failed.
-
-### DNS tunnel (chunk 2b done 2026-10-31)
-
-- **Upstream DNS is easy to spoof off-path** [panel 2b, LOW, 2/3 twice:
-  txID allocation and response acceptance]. `DNSUpstreamForwarder.swift:10`
-  starts `nextTxID` at 1 and `allocateNextUpstreamTxID` (`:221-230`)
-  increments it; one long-lived unconnected socket per address family fixes
-  the source port; `handleUpstreamResponse` (`:171-184`) matches on source
-  IP, port and txID only, never the question, and lets an empty `senderIP` or
-  `senderPort == 0` pass.
-  **Suggested fix:**
-  1. Random txIDs: `var id: UInt16; repeat { id = UInt16.random(in: 1...UInt16.max) } while pendingTransactions[id] != nil`
-     (`SystemRandomNumberGenerator` is a CSPRNG on Apple platforms); remove
-     `nextTxID`.
-  2. `connect()` each `BSDUDPUpstreamSocket` to the resolver so the kernel
-     drops datagrams from other sources, and use a small pool of sockets
-     (e.g. 8, each with its own random ephemeral port) chosen per query.
-  3. Store the question bytes (QNAME/QTYPE/QCLASS) in `PendingQuery` and
-     deliver a response only if its question matches; on mismatch, keep the
-     pending entry (don't `removeValue` first) so a forged datagram can't
-     cancel the real answer.
-  4. Treat an empty `senderIP` or `senderPort == 0` as a reject.
-  5. Longer term: DoT/DoH upstream (also fixes the "Encrypted DNS" claim).
-  Tests: txIDs are not sequential across 1,000 allocations; a response with
-  the right txID but a different question is ignored and the real one is
-  still delivered.
-- **Paywall says "Encrypted DNS" but upstream is plaintext UDP/53** [manual].
-  `TrialExpiredDecisionView.swift:68` (also `DNSProtectionView`, see
-  `TECHNICAL_OVERVIEW.md` §6.3). Privacy claim the app doesn't keep and an
-  App Review risk.
-  **Suggested fix:** now: change the copy to e.g. "DNS filtering across all
-  apps" (both screens, and `Localizable.xcstrings`). Later: add DoH/DoT and
-  restore the claim only once it's true.
-- **Upstream responses over 4096 bytes are silently truncated** [manual].
-  `DNSUpstreamSocket.swift:98`, no TC handling. A possible contributor to the
-  open DNS connectivity entry above.
-  **Suggested fix:** receive into a 65,535-byte buffer (UDP maximum); if
-  the response still doesn't fit what the client advertised (512 or its EDNS
-  size), set the TC bit and drop the answer section so the client retries
-  over TCP, rather than delivering a cut-off packet.
-- **Thread-safety gaps** [manual]. `PacketTunnelProvider` counters are
-  mutated from the packet-flow callback and the forwarder queue;
-  `BSDUDPUpstreamSocket.close()` sets `fileDescriptor = -1` off its queue.
-  **Suggested fix:** move the counters behind one serial queue or an
-  `OSAllocatedUnfairLock`, and make `close()` dispatch onto the socket's own
-  queue (cancel the read source first, then close the fd in its cancel
-  handler). Run the tunnel tests with Thread Sanitizer.
-- **`DNSBenchmarkSpike.swift` (and its `.patch`, `dns_artifact.bin`) ship in
-  the tunnel target** [manual], because the whole folder is included.
-  Unreferenced, but it has unchecked raw `UInt32` loads.
-  **Suggested fix:** move them out of `Extensions/ADBLXPacketTunnel/`
-  (e.g. to `Scripts/spikes/`) or add them to the target's `excludes` in
-  `project.yml`.
-
-### Safari web extension and content blockers
-
-- **Rule checksum is returned but never verified** [manual; not raised by the
-  2a panel]. `SafariWebExtensionBridgeProcessor.swift:131` passes
-  `manifest.sha256Rules` through without hashing the bytes, and the JS never
-  checks it either.
-  **Suggested fix:** in the bridge, hash the rules bytes it read
-  (`CryptoKit.SHA256`) and return an error (keeping the previous rules) on
-  mismatch; then either drop the field from the response or keep it for
-  logging only. Test with a tampered rules file.
-- **Each ad skip sends two clicks** [manual]. `content.js:337-338` calls
-  `targetBtn.click()` and also dispatches a synthetic click.
-  **Suggested fix:** keep only `targetBtn.click()`; add a `content.test.js`
-  case asserting one click event per skip.
-- **Content-blocker handlers parse the whole rules JSON just to log a count**
-  [manual; not raised by 2c]. `ContentBlockerRequestHandler.swift:32` in all 4 extensions loads
-  up to ~150K rules per Safari request; under the extension memory limit this
-  can kill the extension and leave its rules unloaded.
-  **Suggested fix:** log the file size from
-  `FileManager.attributesOfItem(atPath:)[.size]` instead, or have the app
-  write the rule count next to the compiled file at compile time and read
-  that.
-- **Don't commit `DIAG_VERBOSE = true`** [manual] in `content.js`;
-  `content.test.js:1112` expects `false`.
-  **Suggested fix:** revert it to `false` before committing; consider a
-  pre-commit check or keeping the flag out of the shipped file.
-
-Found in: manual audit and Claude Security scans 1, 2a (2026-10-30), 2b (2026-10-31), 2c (2026-11-03) and the gap scan (2026-11-04)
+Found in: security audit and review, 2026-11-05

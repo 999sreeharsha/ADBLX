@@ -287,6 +287,15 @@
 			path = Extensions/ADBLXAdsBlocker;
 			sourceTree = "<group>";
 		};
+		D74724C2B3B54BDCCA7407D3 /* Extensions/ContentBlockerShared */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			explicitFileTypes = {
+			};
+			explicitFolders = (
+			);
+			path = Extensions/ContentBlockerShared;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -374,6 +383,7 @@
 				6E55DB98411B229448E7F2A9 /* Extensions/ADBLXPrivacyBlocker */,
 				11126BC11D41F3B6FC5A8F2E /* Extensions/ADBLXRegionalBlocker */,
 				08840849EAC568D56B6D152C /* Extensions/ADBLXSafariWebExtension */,
+				D74724C2B3B54BDCCA7407D3 /* Extensions/ContentBlockerShared */,
 				2F19974A1F17BCD69B2695EF /* Packages */,
 				36502E7A4796624FAD8BD33E /* Products */,
 			);
@@ -397,6 +407,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				4E670790808BA4FFFFB99817 /* ADBLXTests */,
+				D74724C2B3B54BDCCA7407D3 /* Extensions/ContentBlockerShared */,
 				148CF6E017153490F6E36F85 /* Extensions/ADBLXPacketTunnel/DNSRuntime */,
 				85BF56B0E585A2AAEC6C2D4A /* Extensions/ADBLXPacketTunnel/Forwarder */,
 				6CBB8C117B4C92F015138261 /* Extensions/ADBLXPacketTunnel/WireEngine */,
@@ -444,6 +455,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				6E55DB98411B229448E7F2A9 /* Extensions/ADBLXPrivacyBlocker */,
+				D74724C2B3B54BDCCA7407D3 /* Extensions/ContentBlockerShared */,
 			);
 			name = ADBLXPrivacyBlocker;
 			packageProductDependencies = (
@@ -519,6 +531,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				D3984DF576CCEBB0D50C8A9E /* Extensions/ADBLXAdsBlocker */,
+				D74724C2B3B54BDCCA7407D3 /* Extensions/ContentBlockerShared */,
 			);
 			name = ADBLXAdsBlocker;
 			packageProductDependencies = (
@@ -563,6 +576,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				4E46745D031963421B1BB746 /* Extensions/ADBLXAnnoyancesBlocker */,
+				D74724C2B3B54BDCCA7407D3 /* Extensions/ContentBlockerShared */,
 			);
 			name = ADBLXAnnoyancesBlocker;
 			packageProductDependencies = (
@@ -584,6 +598,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				11126BC11D41F3B6FC5A8F2E /* Extensions/ADBLXRegionalBlocker */,
+				D74724C2B3B54BDCCA7407D3 /* Extensions/ContentBlockerShared */,
 			);
 			name = ADBLXRegionalBlocker;
 			packageProductDependencies = (
@@ -1002,7 +1017,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = ADBLX/ADBLX.entitlements;
+				CODE_SIGN_ENTITLEMENTS = Config/ADBLX.Release.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -1010,6 +1025,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				ENABLE_USER_SELECTED_FILES = readonly;
+				EXCLUDED_SOURCE_FILE_NAMES = ADBLXPacketTunnel.appex;
 				GENERATE_INFOPLIST_FILE = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
@@ -1448,7 +1464,6 @@
 		E27D733FA6E582D2B41C0F56 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_ENTITLEMENTS = Extensions/ADBLXPacketTunnel/ADBLXPacketTunnel.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				INFOPLIST_FILE = Extensions/ADBLXPacketTunnel/Info.plist;

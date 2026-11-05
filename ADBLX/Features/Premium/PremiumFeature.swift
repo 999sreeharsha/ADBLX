@@ -9,9 +9,10 @@ nonisolated enum PremiumFeature: CaseIterable, Equatable, Sendable {
     case youtube
 
     /// Default order, with `focus` (if any) moved to the front.
-    static func displayOrder(focus: PremiumFeature?) -> [PremiumFeature] {
-        guard let focus else { return allCases }
-        return [focus] + allCases.filter { $0 != focus }
+    static func displayOrder(focus: PremiumFeature?, dnsEnabled: Bool = BuildFeatures.dnsProtection) -> [PremiumFeature] {
+        let features = allCases.filter { dnsEnabled || $0 != .dnsProtection }
+        guard let focus, features.contains(focus) else { return features }
+        return [focus] + features.filter { $0 != focus }
     }
 
     /// The feature a tap on `list` should open the paywall for, or nil when the list is usable.
@@ -45,4 +46,27 @@ nonisolated enum PremiumFeature: CaseIterable, Equatable, Sendable {
         case .youtube: return "premium.feature.youtube.description"
         }
     }
+}
+
+/// A row of the paywall's Free/Premium comparison.
+nonisolated enum PremiumComparisonRow: CaseIterable, Equatable, Sendable {
+    case safariBlocking
+    case dnsProtection
+    case autoUpdates
+    case premiumThemes
+
+    static func visible(dnsEnabled: Bool = BuildFeatures.dnsProtection) -> [PremiumComparisonRow] {
+        allCases.filter { dnsEnabled || $0 != .dnsProtection }
+    }
+
+    var featureKey: LocalizedStringKey {
+        switch self {
+        case .safariBlocking: return "premium.comparison.safariBlocking"
+        case .dnsProtection: return "premium.comparison.dnsProtection"
+        case .autoUpdates: return "premium.comparison.autoUpdates"
+        case .premiumThemes: return "premium.comparison.premiumThemes"
+        }
+    }
+
+    var freeIncluded: Bool { self == .safariBlocking }
 }

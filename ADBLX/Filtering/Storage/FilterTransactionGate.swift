@@ -4,7 +4,8 @@ import Foundation
 /// `Compiled/` / `Metadata/` / `Filters/` (an `UpdateCoordinator` transaction, an entitlement
 /// downgrade). Actor isolation alone does not do this: each of those spans many awaits, and
 /// both share the single `Previous/` snapshot directory, so overlapping them would let one
-/// restore or discard the other's snapshot.
+/// restore or discard the other's snapshot. An allowlist sync takes no snapshot but holds the
+/// gate too, because it recompiles from a filter list it read earlier.
 ///
 /// Busy behavior (deliberate): a caller that finds the gate held **waits its turn** and then
 /// runs; it is never dropped and never silently skipped. Waiters resume strictly FIFO. So a

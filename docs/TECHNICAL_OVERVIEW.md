@@ -236,7 +236,7 @@ Row-by-row status (verified against source; several rows are **deliberately half
 | **Safari Help** | `NavigationLink` → `ComingSoonState` | ⚠️ Placeholder |
 | **iCloud Sync** | Shows `PremiumBadge` + "on/off" where "on" == `isPremiumEntitled()`. No toggle, no action. | ⚠️ Display-only. `ICloudSyncCoordinator` exists (backed by `NSUbiquitousKeyValueStore`) and its **write path is live** (allowlist add/remove push to iCloud KVS via `RealSettingsService`), but **`startObserving()` is never called** — nothing pulls remote changes. And it syncs **only the allowlist**, not enabled filters (PRD FR-13 wanted both). |
 | **Allowlist** | Add/remove domains; persisted via `AllowlistStore` (`allowlist.json`, atomic), then `pipeline.syncAllowlist()` is invoked | ✅ Storage + pipeline sync from the UI. Whether a listed domain is actually *exempted* from blocking depends on `SafariAllowlistCompiler` / `FilterPipeline.syncAllowlist` — enforcement was added after the "storage-only" gotcha was written; DNS allowlist enforcement is solid (ADR-0009), Safari-side unification is a Gate C2 conditional (§10). |
-| **Report Broken Site** | Button → `BrokenSiteReportView` sheet | ✅ Real |
+| **Report Broken Site** | Button → `BrokenSiteReportView` sheet | ✅ Real (mail) |
 | **About** | `NavigationLink` → `AboutView` (real bundle version) → `FilterAttributionView` (hardcoded EasyList/EasyPrivacy/Fanboy attribution) | ✅ Real |
 
 > `AboutView` links point to `https://adblx.app/*` while the manifest/report endpoints use `999sreeharsha.github.io/ADBLX`. `adblx.app` is likely unregistered — domain inconsistency to resolve.
@@ -248,9 +248,9 @@ Row-by-row status (verified against source; several rows are **deliberately half
 
 ### 4.8 Broken Site reporting (`Features/BrokenSite/`)
 
-- `BrokenSiteReportView` — domain field, breakage category picker, optional notes (≤500 chars), an "instant allowlist" toggle (default on).
-- `RealBrokenSiteReporter` (`actor`) — sanitizes the domain to eTLD+1 (`SafariDomainNormalizer`), optionally adds it to `AllowlistStore`, builds a **PII-free** payload (`reportID`, eTLD+1 domain, category, notes, app/iOS version, active filter versions, DNS on/off + resolver type — **no paths, cookies, or user identifiers**), and `POST`s JSON to `https://999sreeharsha.github.io/ADBLX/api/reports`.
-- ⚠️ **That endpoint is GitHub Pages — static hosting that cannot accept POST.** Real submissions will fail and fall into `.allowlistedOnly` / `.failed`. There is **no backend ingestion API** (the backend is static-only by design). A scope decision is needed: drop the "report to backend" half, or build the infra (§10).
+- `BrokenSiteReportView` — domain field and breakage category picker. "Review Report" shows the whole report, then "Send by Mail" opens it. "Allow This Site" is a separate button.
+- `RealBrokenSiteReporter` (`actor`) — sanitizes the domain to eTLD+1 (`SafariDomainNormalizer`) and builds a `BrokenSiteReport` (domain, category, app version, enabled groups; **no paths, cookies, or identifiers**). It never uses the network. Allowlisting goes through `SettingsService`, so the rules recompile.
+- Delivery is a `mailto:` URL, falling back to the clipboard when no mail app opens. `BrokenSiteReport.recipient` is still `nil`, so the user fills in To. There is no backend (FR-14).
 
 ### 4.9 Update Progress (`Features/UpdateProgress/`)
 
@@ -353,7 +353,7 @@ The old "unconditional bundled-snapshot reinstall on every launch" is now **gate
 | Gate A network-transition matrix (Wi-Fi↔Cellular handover, sleep/wake socket recovery, third-party VPN conflict) | ❌ Open — no `NEVPNStatus.reasserting` / path-monitor socket re-init. ADR-0004 stays "conditionally accepted". |
 | Gate D — 24-hour on-device battery soak (NFR-02 <3%/day) | ❌ Open — short-run ~1.3%/day measured, full soak pending. |
 | Diagnostic counters (ingress/blocked/forwarded/egress) | ⚠️ Incremented but **never surfaced to the app** — no `handleAppMessage` reply payload. If the DNS UI is meant to show "queries blocked", that pipe doesn't exist. |
-| `DNSBenchmarkSpike.swift` + `dns_artifact.bin` (9.5MB, stale `ADBX` magic) | ⚠️ Dead spike code shipped in the extension bundle via `syncedFolder` — should be excluded. |
+| `DNSBenchmarkSpike.swift` + `dns_artifact.bin` (9.5MB, stale `ADBX` magic) | Moved to `spikes/dns-benchmark/`, outside every target (SEC-07). |
 
 ---
 
@@ -477,7 +477,7 @@ Consolidated from `docs/Audit/*`, `docs/gotchas.md`, `docs/Validation/*`, and th
 - 🔴 **Gate D** — 24-hour on-device battery soak (NFR-02 <3%/day).
 - ⚠️ Export the diagnostic counters (ingress/blocked/forwarded) to the app so the DNS UI can show real numbers.
 - ○ EDNS / large-response / TCP fallback (4096-byte cap, no TC-bit handling). IPv6 extension-header chains dropped.
-- ○ Remove `DNSBenchmarkSpike.swift` + the 9.5MB stale `dns_artifact.bin` from the extension bundle.
+- ✅ Remove `DNSBenchmarkSpike.swift` + the 9.5MB stale `dns_artifact.bin` from the extension bundle (moved to `spikes/dns-benchmark/`).
 - ○ `DNSProtectionSettingsStore` uses the wrong App Group suite string (`group.com.ADBLX.ADBLX` vs `group.com.ADBLX.shared`) — settings-only, but fix it.
 
 ### Web Extension (Layer 3)
@@ -518,7 +518,7 @@ Consolidated from `docs/Audit/*`, `docs/gotchas.md`, `docs/Validation/*`, and th
 - ⚠️ Pin XcodeGen (add `options.xcodeGenVersion` or a CI pin) and regenerate `project.pbxproj` with 2.45.4+ so the drift gate is stable.
 - ⚠️ Commit the pending `project.yml` working-tree changes (iCloud KVS entitlement, Safari-WebExt Tests exclude + `SFSafariWebExtensionManifestPath`).
 - ⚠️ Add CI coverage for `ADBLXShared`, `backend/tools/Publisher`, and the JS suites; add a macOS/visionOS build.
-- ⚠️ FR-14: decide whether "report broken site" keeps a backend half — GitHub Pages can't accept POST, and there is no ingestion API.
+- ⚠️ FR-14: reports go by mail, and the recipient address is still to be decided (`BrokenSiteReport.recipient`).
 - ⚠️ Register a production **Regional (India)** filter list (`shield-india`, PRD Appendix C) or formally defer the 4th CB group.
 - ○ `BGAppRefreshTask` background scheduling (`com.ADBLX.ADBLX.filterRefresh`) — only the 6h foreground throttle exists.
 - ○ NFR-03 (update success ≥99%) and NFR-04 (manifest p95 <300ms) have no measurement mechanism under the zero-analytics constraint.

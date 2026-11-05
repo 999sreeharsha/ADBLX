@@ -29,23 +29,10 @@ public struct TrialOnboardingView: View {
 
                 // Feature Highlights Card
                 Card {
-                    featureRow(
-                        icon: "network.badge.shield.half.filled",
-                        titleKey: "trial.feature.dns.title",
-                        bodyKey: "trial.feature.dns.body"
-                    )
-                    Divider()
-                    featureRow(
-                        icon: "play.rectangle.fill",
-                        titleKey: "trial.feature.safari.title",
-                        bodyKey: "trial.feature.safari.body"
-                    )
-                    Divider()
-                    featureRow(
-                        icon: "hand.raised.slash.fill",
-                        titleKey: "trial.feature.tracking.title",
-                        bodyKey: "trial.feature.tracking.body"
-                    )
+                    ForEach(TrialHighlight.visible(), id: \.self) { highlight in
+                        if highlight != TrialHighlight.visible().first { Divider() }
+                        featureRow(icon: highlight.icon, titleKey: highlight.titleKey, bodyKey: highlight.bodyKey)
+                    }
                 }
 
                 // Notification & Transparency Note
@@ -105,5 +92,40 @@ public struct TrialOnboardingView: View {
             }
         }
         .accessibilityElement(children: .combine)
+    }
+}
+
+/// A row of the onboarding feature card.
+nonisolated enum TrialHighlight: CaseIterable, Equatable, Sendable {
+    case dns
+    case safari
+    case tracking
+
+    static func visible(dnsEnabled: Bool = BuildFeatures.dnsProtection) -> [TrialHighlight] {
+        allCases.filter { dnsEnabled || $0 != .dns }
+    }
+
+    var icon: String {
+        switch self {
+        case .dns: return "network.badge.shield.half.filled"
+        case .safari: return "play.rectangle.fill"
+        case .tracking: return "hand.raised.slash.fill"
+        }
+    }
+
+    var titleKey: LocalizedStringKey {
+        switch self {
+        case .dns: return "trial.feature.dns.title"
+        case .safari: return "trial.feature.safari.title"
+        case .tracking: return "trial.feature.tracking.title"
+        }
+    }
+
+    var bodyKey: LocalizedStringKey {
+        switch self {
+        case .dns: return "trial.feature.dns.body"
+        case .safari: return "trial.feature.safari.body"
+        case .tracking: return "trial.feature.tracking.body"
+        }
     }
 }

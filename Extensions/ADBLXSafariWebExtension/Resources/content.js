@@ -17,7 +17,7 @@
     //           Event names and counts only, never a URL or an argument. Remove with
     //           installNavigationInstrumentation() once the signal is chosen.
     const DIAG = true;
-    const DIAG_VERBOSE = true;
+    const DIAG_VERBOSE = false;
     const DIAG_INSTRUMENTATION = false;
     function diag(...args) {
         if (DIAG && typeof console !== "undefined") {
@@ -333,9 +333,6 @@
         try {
             if (typeof targetBtn.click === "function") {
                 targetBtn.click();
-            }
-            if (typeof targetBtn.dispatchEvent === "function" && typeof MouseEvent === "function") {
-                targetBtn.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
             }
             return true;
         } catch (e) {

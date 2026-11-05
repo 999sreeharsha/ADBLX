@@ -231,6 +231,26 @@
     "Blocks ads, tracking, and telemetry across all installed apps using local DNS filtering." : {
 
     },
+    "brokenSite.action.allow" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Allow This Site"
+          }
+        }
+      }
+    },
+    "brokenSite.action.back" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Back"
+          }
+        }
+      }
+    },
     "brokenSite.action.close" : {
       "localizations" : {
         "en" : {
@@ -251,22 +271,32 @@
         }
       }
     },
-    "brokenSite.action.submit" : {
+    "brokenSite.action.review" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Submit Report"
+            "value" : "Review Report"
           }
         }
       }
     },
-    "brokenSite.action.submitAndAllowlist" : {
+    "brokenSite.action.sendMail" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Submit Report & Allowlist"
+            "value" : "Send by Mail"
+          }
+        }
+      }
+    },
+    "brokenSite.allowlist.done" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ is allowlisted. Ads and trackers won’t be blocked on it."
           }
         }
       }
@@ -276,17 +306,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Immediately bypasses blocking for this site so it works normally."
-          }
-        }
-      }
-    },
-    "brokenSite.allowlist.title" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Allowlist this website now"
+            "value" : "Turns off blocking on this site so it works normally. This doesn’t send a report."
           }
         }
       }
@@ -297,6 +317,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "What is Broken?"
+          }
+        }
+      }
+    },
+    "brokenSite.delivery.copied" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No mail app opened, so the report was copied. Paste it into an email to send it."
+          }
+        }
+      }
+    },
+    "brokenSite.delivery.mailOpened" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your mail app has the report. Nothing is sent until you send it there."
           }
         }
       }
@@ -321,12 +361,32 @@
         }
       }
     },
+    "brokenSite.error.allowFailed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This site couldn’t be allowlisted. Try again."
+          }
+        }
+      }
+    },
+    "brokenSite.error.invalidDomain" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Please enter a valid website domain."
+          }
+        }
+      }
+    },
     "brokenSite.header.subtitle" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Report a website that breaks when ad or tracker blocking is active. You can also allowlist the domain immediately to restore functionality."
+            "value" : "Report a website that breaks when ad or tracker blocking is active, or allow the site to restore it."
           }
         }
       }
@@ -341,32 +401,32 @@
         }
       }
     },
-    "brokenSite.notes.label" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Additional Details (Optional)"
-          }
-        }
-      }
-    },
-    "brokenSite.notes.placeholder" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Briefly describe what happened..."
-          }
-        }
-      }
-    },
     "brokenSite.privacy.notice" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Privacy Guarantee: Only the domain and active filter versions are submitted. Zero personal data, cookies, URL paths, or browsing history are ever transmitted."
+            "value" : "You’ll see the whole report before anything is sent. It holds only the site’s domain, the issue, the app version and which filter groups are on, with no page addresses, cookies or browsing history."
+          }
+        }
+      }
+    },
+    "brokenSite.review.note" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This opens your mail app. You can edit the report or not send it."
+          }
+        }
+      }
+    },
+    "brokenSite.review.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This is everything in the report"
           }
         }
       }
@@ -376,7 +436,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Allowlist & report issue"
+            "value" : "Report an issue or allow a site"
           }
         }
       }
@@ -387,16 +447,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Report a Broken Site"
-          }
-        }
-      }
-    },
-    "brokenSite.success.title" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Report Submitted"
           }
         }
       }
@@ -694,7 +744,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "System-wide protection is enabled"
+            "value" : "Safari protection is enabled"
           }
         }
       }
@@ -1118,7 +1168,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "System-wide ad blocking via encrypted DNS queries. Blocks trackers in apps beyond the browser."
+            "value" : "System-wide ad blocking through DNS filtering. Blocks trackers in apps beyond the browser."
           }
         }
       }
@@ -1758,6 +1808,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Add"
+          }
+        }
+      }
+    },
+    "settings.allowlist.applying" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Applying your change…"
           }
         }
       }

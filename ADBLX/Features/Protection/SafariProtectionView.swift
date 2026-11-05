@@ -234,17 +234,19 @@ struct SafariProtectionView: View {
                     )
                 }
                 Divider().overlay(DesignColors.outlineVariant.opacity(0.2))
-                NavigationLink {
-                    DNSProtectionView(subscriptionService: subscriptionService)
-                } label: {
-                    configurationRow(
-                        icon: "lock.shield.fill",
-                        iconColor: DesignColors.tertiary,
-                        titleKey: "protection.row.dnsProtection",
-                        detailKey: "protection.row.dnsProtection.detail"
-                    )
+                if BuildFeatures.dnsProtection {
+                    NavigationLink {
+                        DNSProtectionView(subscriptionService: subscriptionService)
+                    } label: {
+                        configurationRow(
+                            icon: "lock.shield.fill",
+                            iconColor: DesignColors.tertiary,
+                            titleKey: "protection.row.dnsProtection",
+                            detailKey: "protection.row.dnsProtection.detail"
+                        )
+                    }
+                    Divider().overlay(DesignColors.outlineVariant.opacity(0.2))
                 }
-                Divider().overlay(DesignColors.outlineVariant.opacity(0.2))
                 configurationRow(
                     icon: "bolt.fill",
                     iconColor: DesignColors.primary,

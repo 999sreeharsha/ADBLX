@@ -17,7 +17,8 @@ actor FilterPipeline {
     private let writer: AtomicRuleWriter
     private let reloader: ReloadCoordinator
     private let allowlistStore: AllowlistStore?
-    
+    private let gate: FilterTransactionGate
+
     private static let signposter = OSSignposter(subsystem: "com.ADBLX", category: "FilterPipeline")
 
     init(
@@ -28,7 +29,8 @@ actor FilterPipeline {
         store: FilterStore,
         writer: AtomicRuleWriter,
         reloader: ReloadCoordinator,
-        allowlistStore: AllowlistStore? = nil
+        allowlistStore: AllowlistStore? = nil,
+        gate: FilterTransactionGate = .shared
     ) {
         self.validator = validator
         self.compiler = compiler
@@ -38,6 +40,7 @@ actor FilterPipeline {
         self.writer = writer
         self.reloader = reloader
         self.allowlistStore = allowlistStore
+        self.gate = gate
     }
 
     /// Installs an entire group's composition in one pass: validate every source, persist
@@ -129,7 +132,13 @@ actor FilterPipeline {
 
     /// Recomposes all installed filter groups with the latest canonical allowlist rules,
     /// atomic-writes to `Compiled/<Group>.json`, and reloads affected extensions.
+    /// Takes the transaction gate, so callers must not already hold it: it recompiles from a
+    /// filter list it read earlier, and overlapping a downgrade would restore removed rules.
     func syncAllowlist(reloadStrategy: ReloadStrategy = .immediate) async throws -> [PipelineResult] {
+        try await gate.run { try await recomposeInstalledGroups(reloadStrategy: reloadStrategy) }
+    }
+
+    private func recomposeInstalledGroups(reloadStrategy: ReloadStrategy) async throws -> [PipelineResult] {
         let existingFilters = (try? await loadInstalledFilters()) ?? []
         let installedGroups = Set(existingFilters.map(\.group))
         let targetGroups: [FilterGroup] = installedGroups.isEmpty ? [.ads] : Array(installedGroups).sorted(by: { $0.rawValue < $1.rawValue })
@@ -155,7 +164,7 @@ actor FilterPipeline {
                 if let bundledURL = Bundle.main.url(forResource: "blockerList", withExtension: "json"),
                    let data = try? Data(contentsOf: bundledURL) {
                     sources.append(FilterSource(
-                        filterID: "ads-bundled",
+                        filterID: CompiledSources.uninstalledFallbackID,
                         version: "bundled-snapshot",
                         checksumSHA256: Checksum.sha256Hex(of: data),
                         data: data
@@ -192,7 +201,7 @@ actor FilterPipeline {
     }
 
     /// Pure composition pipeline shared by `install` and `remove`: compose → compile →
-    /// partition → atomic write `Compiled/<Group>.json` → merge `installed_filters.json`
+    /// partition → atomic write `Compiled/<Group>.json` and its sidecar → merge `installed_filters.json`
     /// (remove `removingFilterIDs`, then upsert `upsertingFilterEntries`) → write
     /// `statistics.json` → reload per `reloadStrategy`. Knows nothing about where
     /// `composition.sources` originated (network, disk, bundled snapshot) — that's each
@@ -248,9 +257,7 @@ actor FilterPipeline {
         }
 
         let writeState = Self.signposter.beginInterval("Pipeline.atomicWrite", id: Self.signposter.makeSignpostID())
-        let destinationURL = try await store.directoryURL(.compiled)
-            .appendingPathComponent("\(partition.group.rawValue.capitalized).json")
-        try writer.write(partition.json, to: destinationURL)
+        try await writeCompiled(partition, sourceIDs: composition.sources.map(\.filterID))
         Self.signposter.endInterval("Pipeline.atomicWrite", writeState)
 
         var existingFilters = (try? await loadInstalledFilters()) ?? []
@@ -310,6 +317,22 @@ actor FilterPipeline {
         )
     }
 
+    /// The sidecar goes second: a crash between the two leaves it out of date, which the next
+    /// reconcile can see, rather than vouching for rules that were never written.
+    private func writeCompiled(_ partition: PartitionedRules, sourceIDs: [String]) async throws {
+        let directory = try await store.directoryURL(.compiled)
+        try writer.write(partition.json, to: directory.appendingPathComponent(CompiledSources.rulesFilename(for: partition.group)))
+        let sidecar = CompiledSources(
+            sourceIDs: sourceIDs,
+            compiledByteCount: partition.json.count,
+            ruleCount: partition.ruleCount
+        )
+        try writer.write(
+            try JSONEncoder().encode(sidecar),
+            to: directory.appendingPathComponent(CompiledSources.filename(for: partition.group))
+        )
+    }
+
     private static let logger = Logger(subsystem: "com.ADBLX", category: "FilterPipeline")
 
     /// Resolves a bundled resource URL searching main bundle, current bundle, and all loaded bundles
@@ -343,7 +366,13 @@ extension FilterPipeline {
     /// Ads (EasyList -> fallback blockerList fixture), Privacy (EasyPrivacy), Annoyances (Fanboy Annoyances).
     ///
     /// Per-group isolation: failure in one filter list does not prevent remaining groups from installing.
+    /// Takes the transaction gate, so callers must not already hold it: a reconcile between an
+    /// install's rules and its metadata would see a source that isn't installed yet and empty the group.
     func installBundledSnapshotIfNeeded(includePremium: Bool = false) async throws -> [PipelineResult] {
+        try await gate.run { try await installBundledSnapshots(includePremium: includePremium) }
+    }
+
+    private func installBundledSnapshots(includePremium: Bool) async throws -> [PipelineResult] {
         var results: [PipelineResult] = []
         var atLeastOneInstalled = false
 

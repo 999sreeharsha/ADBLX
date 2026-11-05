@@ -18,6 +18,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Run Safari web extension JS tests
+        run: node --test "Extensions/ADBLXSafariWebExtension/Tests/*.test.js"
+
       - name: Select Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:

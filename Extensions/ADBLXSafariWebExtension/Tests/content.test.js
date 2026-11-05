@@ -109,6 +109,8 @@ function createMockDOMEnvironment(hostname = "www.youtube.com", { readyState = "
         }
         click() {
             this.clicksDispatched++;
+            // Like the DOM, click() delivers a click event to the element's listeners.
+            this.dispatchEvent({ type: "click" });
         }
         dispatchEvent(event) {
             const handlers = this.eventListeners[event.type] || [];
@@ -547,6 +549,41 @@ test("Candidate B: Skip button click fires at most once per configured interval 
     content.evaluateFSM(gen);
     content.evaluateFSM(gen);
     assert.equal(skipBtn.clicksDispatched, 1);
+});
+
+test("Candidate B: One skip delivers exactly one click event to the page", () => {
+    const env = createMockDOMEnvironment("www.youtube.com");
+    const player = env.createElement("div", "movie_player", "html5-video-player");
+    const video = env.createElement("video");
+    const skipBtn = env.createElement("button", "", "ytp-ad-skip-button");
+    player.appendChild(video);
+    player.appendChild(skipBtn);
+    env.addDocumentElement(player);
+    let clickEvents = 0;
+    skipBtn.addEventListener("click", () => { clickEvents++; });
+
+    const content = loadContentWithMock(env);
+    env.respondToConfigQuery({
+        layer3Enabled: true,
+        generation: 1,
+        rules: {
+            youtube: {
+                selectors: {
+                    skipButtons: [".ytp-ad-skip-button"]
+                },
+                disableMask: {
+                    cosmeticHidingDisabled: false,
+                    skipClickDisabled: false,
+                    accelerationDisabled: true
+                }
+            }
+        }
+    });
+
+    player.classList.add("ad-showing");
+    content.evaluateFSM(content.getEngineState().playerGeneration);
+
+    assert.equal(clickEvents, 1);
 });
 
 test("Candidate B: Detached skip button (isConnected == false) is never clicked", () => {

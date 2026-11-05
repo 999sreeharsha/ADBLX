@@ -27,14 +27,6 @@ targets:
             echo "warning: SwiftLint not installed. Run: brew install swiftlint"
           fi
         basedOnDependencyAnalysis: false
-    entitlements:
-      path: ADBLX/ADBLX.entitlements
-      properties:
-        com.apple.developer.networking.networkextension:
-          - packet-tunnel-provider
-        com.apple.developer.ubiquity-kvstore-identifier: "$(TeamIdentifierPrefix)$(CFBundleIdentifier)"
-        com.apple.security.application-groups:
-          - group.com.ADBLX.shared
     dependencies:
       - target: ADBLXAdsBlocker
         embed: true
@@ -90,12 +82,23 @@ targets:
         SWIFT_VERSION: "5.0"
         TARGETED_DEVICE_FAMILY: "1,2,7"
         XROS_DEPLOYMENT_TARGET: "26.5"
+      configs:
+        # DNS Protection can't ship yet (docs/gotchas.md). XcodeGen has no per-configuration
+        # embed, so Release leaves the tunnel out of the copy phase and drops its entitlement.
+        # Set here, not with `entitlements:`, which would override both configurations.
+        Debug:
+          CODE_SIGN_ENTITLEMENTS: ADBLX/ADBLX.entitlements
+        Release:
+          EXCLUDED_SOURCE_FILE_NAMES: ADBLXPacketTunnel.appex
+          CODE_SIGN_ENTITLEMENTS: Config/ADBLX.Release.entitlements
   ADBLXTests:
     type: bundle.unit-test
     platform: auto
     supportedDestinations: [iOS, macOS, visionOS]
     sources:
       - path: ADBLXTests
+        type: syncedFolder
+      - path: Extensions/ContentBlockerShared
         type: syncedFolder
       - path: Extensions/ADBLXPacketTunnel/DNSRuntime
         type: syncedFolder
@@ -163,6 +166,8 @@ targets:
     sources:
       - path: Extensions/ADBLXAdsBlocker
         type: syncedFolder
+      - path: Extensions/ContentBlockerShared
+        type: syncedFolder
     info:
       path: Extensions/ADBLXAdsBlocker/Info.plist
       properties:
@@ -195,6 +200,8 @@ targets:
     supportedDestinations: [iOS, macOS, visionOS]
     sources:
       - path: Extensions/ADBLXPrivacyBlocker
+        type: syncedFolder
+      - path: Extensions/ContentBlockerShared
         type: syncedFolder
     info:
       path: Extensions/ADBLXPrivacyBlocker/Info.plist
@@ -229,6 +236,8 @@ targets:
     sources:
       - path: Extensions/ADBLXAnnoyancesBlocker
         type: syncedFolder
+      - path: Extensions/ContentBlockerShared
+        type: syncedFolder
     info:
       path: Extensions/ADBLXAnnoyancesBlocker/Info.plist
       properties:
@@ -261,6 +270,8 @@ targets:
     supportedDestinations: [iOS, macOS, visionOS]
     sources:
       - path: Extensions/ADBLXRegionalBlocker
+        type: syncedFolder
+      - path: Extensions/ContentBlockerShared
         type: syncedFolder
     info:
       path: Extensions/ADBLXRegionalBlocker/Info.plist
@@ -303,13 +314,6 @@ targets:
         NSExtension:
           NSExtensionPointIdentifier: com.apple.networkextension.packet-tunnel
           NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).PacketTunnelProvider
-    entitlements:
-      path: Extensions/ADBLXPacketTunnel/ADBLXPacketTunnel.entitlements
-      properties:
-        com.apple.developer.networking.networkextension:
-          - packet-tunnel-provider
-        com.apple.security.application-groups:
-          - group.com.ADBLX.shared
     settings:
       base:
         CODE_SIGN_STYLE: Automatic
@@ -324,6 +328,11 @@ targets:
         SWIFT_VERSION: "5.0"
         TARGETED_DEVICE_FAMILY: "1,2,7"
         XROS_DEPLOYMENT_TARGET: "26.5"
+      configs:
+        # Debug only: Release still builds this as an app dependency but never embeds it, so
+        # it must not need the Network Extension capability to sign.
+        Debug:
+          CODE_SIGN_ENTITLEMENTS: Extensions/ADBLXPacketTunnel/ADBLXPacketTunnel.entitlements
   ADBLXSafariWebExtension:
     type: app-extension
     platform: auto

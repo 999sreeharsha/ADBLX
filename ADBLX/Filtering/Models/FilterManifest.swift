@@ -21,7 +21,7 @@ struct FilterManifest: Codable, Equatable {
     var entries: [Entry]
 }
 
-enum FilterGroup: String, Codable, Equatable {
+enum FilterGroup: String, Codable, Equatable, CaseIterable {
     case ads
     case privacy
     case annoyances

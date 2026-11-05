@@ -236,10 +236,9 @@ struct PremiumView: View {
 
             VStack(spacing: 0) {
                 comparisonHeaderRow
-                comparisonRow(featureKey: "premium.comparison.safariBlocking", freeIncluded: true, premiumIncluded: true)
-                comparisonRow(featureKey: "premium.comparison.dnsProtection", freeIncluded: false, premiumIncluded: true)
-                comparisonRow(featureKey: "premium.comparison.autoUpdates", freeIncluded: false, premiumIncluded: true)
-                comparisonRow(featureKey: "premium.comparison.premiumThemes", freeIncluded: false, premiumIncluded: true)
+                ForEach(PremiumComparisonRow.visible(), id: \.self) { row in
+                    comparisonRow(featureKey: row.featureKey, freeIncluded: row.freeIncluded, premiumIncluded: true)
+                }
             }
             .background(.ultraThinMaterial)
             .clipShape(RoundedRectangle(cornerRadius: DesignShape.defaultCornerRadius * 2))

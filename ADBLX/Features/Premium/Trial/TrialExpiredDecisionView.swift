@@ -64,13 +64,6 @@ public struct TrialExpiredDecisionView: View {
                         featureRow(
                             icon: "lock.fill",
                             color: DesignColors.outline,
-                            title: "System-Wide DNS Protection",
-                            detail: "Encrypted DNS filtering across all apps."
-                        )
-                        Divider()
-                        featureRow(
-                            icon: "lock.fill",
-                            color: DesignColors.outline,
                             title: "Advanced Safari & YouTube Blocking",
                             detail: "Video ad protection and cosmetic filtering."
                         )

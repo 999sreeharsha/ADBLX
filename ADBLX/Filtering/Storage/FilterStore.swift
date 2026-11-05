@@ -105,6 +105,15 @@ actor FilterStore {
         try fileManager.removeItem(at: fileURL)
     }
 
+    /// A compiled file's size from its file metadata, without reading it. `nil` if it's absent.
+    func compiledFileSize(_ filename: String) -> Int? {
+        guard let path = try? url(for: .compiled).appendingPathComponent(filename).path,
+              let attributes = try? fileManager.attributesOfItem(atPath: path) else {
+            return nil
+        }
+        return (attributes[.size] as? NSNumber)?.intValue
+    }
+
     func directoryURL(_ directory: Directory) throws -> URL {
         try url(for: directory)
     }

@@ -7,11 +7,12 @@ import SwiftUI
 public final class BrokenSiteReportViewModel: ObservableObject {
     @Published public var domainInput: String = ""
     @Published public var selectedCategory: BreakageCategory = .pageLayoutBroken
-    @Published public var notesInput: String = ""
-    @Published public var autoAllowlist: Bool = true
-    @Published public var isSubmitting: Bool = false
-    @Published public var submissionResult: ReportSubmissionResult? = nil
-    @Published public var errorMessage: String? = nil
+    /// The report on show for review. Nothing has left the device while this is set.
+    @Published public private(set) var report: BrokenSiteReport? = nil
+    @Published public private(set) var delivery: BrokenSiteDelivery? = nil
+    @Published public private(set) var allowlistedDomain: String? = nil
+    @Published public private(set) var isWorking: Bool = false
+    @Published public private(set) var errorMessage: String? = nil
 
     private let reporter: BrokenSiteReporting
 
@@ -35,37 +36,48 @@ public final class BrokenSiteReportViewModel: ObservableObject {
         }
     }
 
-    public func submit() async {
+    public func prepareReport() async {
         guard isDomainValid else {
-            errorMessage = "Please enter a valid website domain."
+            errorMessage = String(localized: "brokenSite.error.invalidDomain")
             return
         }
-
-        isSubmitting = true
+        isWorking = true
         errorMessage = nil
-
+        defer { isWorking = false }
         do {
-            let result = try await reporter.submitReport(
-                domain: domainInput,
-                category: selectedCategory,
-                notes: notesInput.isEmpty ? nil : notesInput,
-                autoAllowlist: autoAllowlist
-            )
-            self.submissionResult = result
-            self.isSubmitting = false
+            report = try await reporter.makeReport(domain: domainInput, category: selectedCategory)
         } catch {
-            self.errorMessage = error.localizedDescription
-            self.isSubmitting = false
+            errorMessage = String(localized: "brokenSite.error.invalidDomain")
         }
     }
 
-    public func reset() {
-        domainInput = ""
-        selectedCategory = .pageLayoutBroken
-        notesInput = ""
-        autoAllowlist = true
-        isSubmitting = false
-        submissionResult = nil
+    public func cancelReview() {
+        report = nil
+    }
+
+    /// Opens the user's mail app, or copies the report if none opens.
+    public func send(open: (URL) async -> Bool, copy: (String) -> Void) async {
+        guard let report else { return }
+        if let url = report.mailURL(recipient: BrokenSiteReport.recipient), await open(url) {
+            delivery = .mailOpened
+        } else {
+            copy(report.bodyText)
+            delivery = .copiedToClipboard
+        }
+    }
+
+    public func allowSite() async {
+        guard isDomainValid else {
+            errorMessage = String(localized: "brokenSite.error.invalidDomain")
+            return
+        }
+        isWorking = true
         errorMessage = nil
+        defer { isWorking = false }
+        do {
+            allowlistedDomain = try await reporter.allowlist(domain: domainInput)
+        } catch {
+            errorMessage = String(localized: "brokenSite.error.allowFailed")
+        }
     }
 }

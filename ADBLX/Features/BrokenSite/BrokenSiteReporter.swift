@@ -1,38 +1,36 @@
 // ADBLX/Features/BrokenSite/BrokenSiteReporter.swift
 import Foundation
 
-/// Protocol for submitting privacy-preserving broken site reports and triggering instant allowlisting.
+/// Builds broken site reports for the user to send themselves, and allowlists a site when the
+/// user asks. The two are separate: reporting never allowlists, and nothing here touches the
+/// network. There is no backend, so a report leaves the device only through the user's mail app.
 public protocol BrokenSiteReporting: Sendable {
     func sanitizeDomain(_ input: String) throws -> String
-    func submitReport(
-        domain: String,
-        category: BreakageCategory,
-        notes: String?,
-        autoAllowlist: Bool
-    ) async throws -> ReportSubmissionResult
+    func makeReport(domain: String, category: BreakageCategory) async throws -> BrokenSiteReport
+    /// Returns the domain that was allowlisted.
+    func allowlist(domain: String) async throws -> String
 }
 
-/// Actor implementing broken site reporting with strict domain sanitization,
-/// App Group allowlist integration, and network submission.
+public enum BrokenSiteError: Error, Equatable {
+    case allowlistFailed
+}
+
 actor RealBrokenSiteReporter: BrokenSiteReporting {
-    private let allowlistStore: AllowlistStore
-    private let manifestStore: ManifestStore?
-    private let dnsSettingsStore: DNSProtectionSettingsStore?
-    private let session: HTTPSession
-    private let endpoint: URL
+    private let settingsService: SettingsService
+    private let stateProvider: ContentBlockerStateProviding
+    private let extensionIdentifiers: GroupExtensionIdentifiers
+    private let appVersion: String
 
     init(
-        allowlistStore: AllowlistStore,
-        manifestStore: ManifestStore? = nil,
-        dnsSettingsStore: DNSProtectionSettingsStore? = nil,
-        session: HTTPSession = URLSession.shared,
-        endpoint: URL = URL(string: "https://999sreeharsha.github.io/ADBLX/api/reports")!
+        settingsService: SettingsService,
+        stateProvider: ContentBlockerStateProviding,
+        extensionIdentifiers: GroupExtensionIdentifiers,
+        appVersion: String = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
     ) {
-        self.allowlistStore = allowlistStore
-        self.manifestStore = manifestStore
-        self.dnsSettingsStore = dnsSettingsStore
-        self.session = session
-        self.endpoint = endpoint
+        self.settingsService = settingsService
+        self.stateProvider = stateProvider
+        self.extensionIdentifiers = extensionIdentifiers
+        self.appVersion = appVersion
     }
 
     /// Normalizes and extracts the privacy-preserving eTLD+1 domain from user input.
@@ -40,96 +38,24 @@ actor RealBrokenSiteReporter: BrokenSiteReporting {
         try SafariDomainNormalizer.extractETLDPlusOne(input: input)
     }
 
-    /// Submits a broken site report, optionally adding the domain to the app-wide AllowlistStore.
-    public func submitReport(
-        domain: String,
-        category: BreakageCategory,
-        notes: String? = nil,
-        autoAllowlist: Bool = true
-    ) async throws -> ReportSubmissionResult {
+    public func makeReport(domain: String, category: BreakageCategory) async throws -> BrokenSiteReport {
         let cleanDomain = try sanitizeDomain(domain)
-
-        var didAllowlist = false
-        if autoAllowlist {
-            _ = try await allowlistStore.add(domain: cleanDomain)
-            didAllowlist = true
+        var enabledGroups: [String] = []
+        for group in FilterGroup.allCases where await stateProvider.state(of: extensionIdentifiers[group]) == .enabled {
+            enabledGroups.append(group.rawValue)
         }
-
-        let payload = await buildPayload(domain: cleanDomain, category: category, notes: notes)
-        return await transmitPayload(payload, cleanDomain: cleanDomain, didAllowlist: didAllowlist)
+        return BrokenSiteReport(domain: cleanDomain, category: category, appVersion: appVersion, enabledGroups: enabledGroups)
     }
 
-    private func buildPayload(
-        domain: String,
-        category: BreakageCategory,
-        notes: String?
-    ) async -> BrokenSiteReportPayload {
-        var activeFilterVersions: [String: String] = [:]
-        if let cached = try? await manifestStore?.load() {
-            for entry in cached.manifest.entries {
-                activeFilterVersions[entry.id] = entry.version
-            }
+    /// Through `SettingsService`, as a Settings edit is: storing the domain alone would leave the
+    /// compiled rules blocking the site.
+    public func allowlist(domain: String) async throws -> String {
+        let cleanDomain = try sanitizeDomain(domain)
+        await settingsService.addAllowlistEntry(domain: cleanDomain)
+        // The service rolls back and returns normally when the recompile fails.
+        guard await settingsService.fetchSnapshot().allowlist.contains(where: { $0.domain == cleanDomain }) else {
+            throw BrokenSiteError.allowlistFailed
         }
-
-        let dnsSettings = dnsSettingsStore?.loadSettings()
-        let isDNSEnabled = dnsSettings?.isEnabled ?? false
-        let resolverDescription: String? = {
-            guard let settings = dnsSettings else { return nil }
-            switch settings.resolverOption {
-            case .quad9Default:
-                return "quad9"
-            case .custom:
-                return "custom_ipv4_ipv6"
-            }
-        }()
-
-        let sanitizedNotes: String? = {
-            guard let raw = notes?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else {
-                return nil
-            }
-            return String(raw.prefix(500))
-        }()
-
-        return BrokenSiteReportPayload(
-            domain: domain,
-            breakageCategory: category,
-            notes: sanitizedNotes,
-            timestamp: Date(),
-            appVersion: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0",
-            iosVersion: ProcessInfo.processInfo.operatingSystemVersionString,
-            activeFilterVersions: activeFilterVersions,
-            dnsProtectionEnabled: isDNSEnabled,
-            upstreamResolver: resolverDescription
-        )
-    }
-
-    private func transmitPayload(
-        _ payload: BrokenSiteReportPayload,
-        cleanDomain: String,
-        didAllowlist: Bool
-    ) async -> ReportSubmissionResult {
-        do {
-            var request = URLRequest(url: endpoint)
-            request.httpMethod = "POST"
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.httpBody = try JSONEncoder().encode(payload)
-            request.timeoutInterval = 10.0
-
-            let (_, response) = try await session.data(for: request)
-            guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) else {
-                let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
-                if didAllowlist {
-                    return .allowlistedOnly(domain: cleanDomain, networkError: "HTTP \(statusCode)")
-                }
-                return .failed(reason: "Server returned HTTP \(statusCode)")
-            }
-
-            return .success(reportID: payload.reportID, domain: cleanDomain, allowlisted: didAllowlist)
-        } catch {
-            if didAllowlist {
-                return .allowlistedOnly(domain: cleanDomain, networkError: error.localizedDescription)
-            }
-            return .failed(reason: error.localizedDescription)
-        }
+        return cleanDomain
     }
 }
