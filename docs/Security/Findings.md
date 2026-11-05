@@ -17,7 +17,7 @@ Scan reports are in the gitignored `CLAUDE-SECURITY-*` folders at the repo root.
 | **Fix now** | | | | |
 | SEC-01 | `syncAllowlist` race restores premium rules | LOW | Panel | Fixed |
 | SEC-02 | Content-blocker handlers parse the whole rules file | HIGH | Manual | Fixed; memory measurement pending |
-| SEC-03 | Broken-site report silently allowlists the domain | MEDIUM | Manual | Open |
+| SEC-03 | Broken-site report silently allowlists the domain | MEDIUM | Manual | Fixed; recipient address open |
 | SEC-04 | Paywall advertises "Encrypted DNS" | MEDIUM | Manual | Fixed; DNS hidden in Release; signed archive untested |
 | SEC-05 | `deploy-pages.yml` publishes the dispatching branch | LOW | Overruled | Fixed |
 | SEC-06 | JS tests don't run in CI; `DIAG_VERBOSE` is on | LOW | Manual | Fixed |
@@ -70,13 +70,12 @@ The call sits inside a `logger.info` interpolation, but info messages are normal
 
 `BrokenSiteReporter.swift:48` defaults `autoAllowlist` to `true`, and `:53` allowlists before sending. FR-14 specifies an auto-allowlist *prompt*. The report also POSTs to static GitHub Pages (`:29`), which can't accept it, and it sends a domain off the device.
 
-**Fix:**
-- Default to `false`, and allowlist only after the user confirms.
-- Get explicit consent and show the payload before anything is sent.
-- **Transport (decided): a `mailto:` URL, not `MFMailComposeViewController`.** `canSendMail()` is false unless Apple Mail is set up, and a `mailto:` URL opens the user's default mail app. If it can't open, copy the report to the clipboard and say so.
-- The report holds only the registrable domain, the app version and the enabled groups, with no full URL, path or query.
-- "Report" and "Allow this site" are separate buttons.
-- Add a line to PRD FR-14: mail until a backend exists.
+**Fixed:**
+- Reporting and allowlisting are separate buttons, and only "Allow This Site" allowlists. That also fixes a bug the audit missed: the old path wrote the domain to the store without recompiling, so the site stayed blocked while the screen said it would load. It now goes through `SettingsService`.
+- "Review Report" shows the whole report. Nothing is sent until the user taps "Send by Mail", which opens a `mailto:` URL rather than `MFMailComposeViewController`, because `canSendMail()` is false unless Apple Mail is set up. If no mail app opens, the report is copied to the clipboard and the user is told.
+- The POST is gone. The report holds only the registrable domain, the issue category, the app version and the enabled groups. The category goes beyond the original list because a report is little use without it; notes are gone, since the user can add them in the mail app. PRD FR-14 says mail until a backend exists.
+
+**Still open:** `BrokenSiteReport.recipient` is `nil`, so To is empty until a reporting address is chosen. Opening a real mail app hasn't been tried on a device.
 
 ### SEC-04: Paywall advertises "Encrypted DNS"
 

@@ -154,7 +154,7 @@ Annoy/Reg)                 cosmetic,       DNS filtering,
 | FR-11 | Local packet tunnel filters DNS against hosts lists; on/off toggle; VPN-conflict detection | P1 |
 | FR-12 | Web extension blocks YouTube ads on youtube.com in Safari | P1 |
 | FR-13 | iCloud sync of enabled filters + allowlist | P1 |
-| FR-14 | "Report broken site" action → auto-allowlist prompt + report to backend | P1 |
+| FR-14 | "Report broken site" action → auto-allowlist prompt + report to backend (by mail until a backend exists) | P1 |
 | FR-15 | Custom filter list import by URL, with rule budget warning | P2 |
 | FR-16 | Rule-budget enforcement (150K per extension target) | P0 |
 | FR-17 | Multi-language localization (English + Hindi, Japanese, Spanish, German, French) | P1 |

@@ -97,7 +97,7 @@ struct SettingsView: View {
             }
             .padding(DesignSpacing.containerPadding)
         }
-        .sheet(isPresented: $showBrokenSiteReport) {
+        .sheet(isPresented: $showBrokenSiteReport, onDismiss: { Task { await viewModel.load() } }) {
             BrokenSiteReportView(
                 viewModel: BrokenSiteReportViewModel(
                     reporter: AppCompositionRoot.makeBrokenSiteReporter(store: AppCompositionRoot.makeFilterStore())

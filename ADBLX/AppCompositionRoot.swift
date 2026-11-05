@@ -186,13 +186,15 @@ public enum AppCompositionRoot {
 
     static func makeBrokenSiteReporter(store: FilterStore) -> BrokenSiteReporting {
         let allowlistStore = makeAllowlistStore(store: store)
-        let manifestStore = ManifestStore(filterStore: store)
-        let dnsSettingsStore = DNSProtectionSettingsStore()
+        let pipeline = makeFilterPipeline(store: store, allowlistStore: allowlistStore)
         return RealBrokenSiteReporter(
-            allowlistStore: allowlistStore,
-            manifestStore: manifestStore,
-            dnsSettingsStore: dnsSettingsStore,
-            session: makeHTTPSession()
+            settingsService: RealSettingsService(
+                allowlistStore: allowlistStore,
+                pipeline: pipeline,
+                iCloudSyncCoordinator: makeICloudSyncCoordinator(store: store, pipeline: pipeline)
+            ),
+            stateProvider: SystemContentBlockerStateProvider(),
+            extensionIdentifiers: extensionIdentifiers
         )
     }
 

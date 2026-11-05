@@ -47,48 +47,52 @@ public enum BreakageCategory: String, CaseIterable, Codable, Sendable, Identifia
     }
 }
 
-/// Privacy-preserving reporting payload schema.
-/// Strictly contains domain, filter versions, and diagnostic category; ZERO user PII, cookies, or URL paths.
-public struct BrokenSiteReportPayload: Codable, Sendable, Equatable {
-    public let reportID: String
-    public let domain: String
-    public let breakageCategory: BreakageCategory
-    public let notes: String?
-    public let timestamp: Date
-    public let appVersion: String
-    public let iosVersion: String
-    public let activeFilterVersions: [String: String]
-    public let dnsProtectionEnabled: Bool
-    public let upstreamResolver: String?
+/// What a broken site report holds, shown to the user in full before anything is sent.
+/// Only the registrable domain, issue, app version and enabled groups: no path, query, cookie
+/// or identifier.
+public struct BrokenSiteReport: Sendable, Equatable {
+    /// Where reports go. `nil` leaves the mail's To field for the user to fill in.
+    static let recipient: String? = nil
 
-    public init(
-        reportID: String = UUID().uuidString,
-        domain: String,
-        breakageCategory: BreakageCategory,
-        notes: String? = nil,
-        timestamp: Date = Date(),
-        appVersion: String = "1.0",
-        iosVersion: String = "26.5",
-        activeFilterVersions: [String: String] = [:],
-        dnsProtectionEnabled: Bool = false,
-        upstreamResolver: String? = nil
-    ) {
-        self.reportID = reportID
+    public let domain: String
+    public let category: BreakageCategory
+    public let appVersion: String
+    public let enabledGroups: [String]
+
+    public init(domain: String, category: BreakageCategory, appVersion: String, enabledGroups: [String]) {
         self.domain = domain
-        self.breakageCategory = breakageCategory
-        self.notes = notes
-        self.timestamp = timestamp
+        self.category = category
         self.appVersion = appVersion
-        self.iosVersion = iosVersion
-        self.activeFilterVersions = activeFilterVersions
-        self.dnsProtectionEnabled = dnsProtectionEnabled
-        self.upstreamResolver = upstreamResolver
+        self.enabledGroups = enabledGroups
+    }
+
+    /// In English whatever the app's language, because it's read by the maintainers.
+    public var bodyText: String {
+        """
+        ADBLX broken site report
+        Site: \(domain)
+        Issue: \(category.displayName)
+        App version: \(appVersion)
+        Enabled filter groups: \(enabledGroups.joined(separator: ", "))
+        """
+    }
+
+    /// A `mailto:` URL rather than `MFMailComposeViewController`, whose `canSendMail()` is false
+    /// unless Apple Mail is set up.
+    public func mailURL(recipient: String?) -> URL? {
+        var components = URLComponents()
+        components.scheme = "mailto"
+        components.path = recipient ?? ""
+        components.queryItems = [
+            URLQueryItem(name: "subject", value: "Broken site: \(domain)"),
+            URLQueryItem(name: "body", value: bodyText)
+        ]
+        return components.url
     }
 }
 
-/// Result of broken site reporting and recovery flow.
-public enum ReportSubmissionResult: Sendable, Equatable {
-    case success(reportID: String, domain: String, allowlisted: Bool)
-    case allowlistedOnly(domain: String, networkError: String)
-    case failed(reason: String)
+/// How a report left the app.
+public enum BrokenSiteDelivery: Sendable, Equatable {
+    case mailOpened
+    case copiedToClipboard
 }
