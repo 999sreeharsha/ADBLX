@@ -321,7 +321,7 @@ actor FilterPipeline {
     /// reconcile can see, rather than vouching for rules that were never written.
     private func writeCompiled(_ partition: PartitionedRules, sourceIDs: [String]) async throws {
         let directory = try await store.directoryURL(.compiled)
-        try writer.write(partition.json, to: directory.appendingPathComponent("\(partition.group.rawValue.capitalized).json"))
+        try writer.write(partition.json, to: directory.appendingPathComponent(CompiledSources.rulesFilename(for: partition.group)))
         let sidecar = CompiledSources(
             sourceIDs: sourceIDs,
             compiledSHA256: Checksum.sha256Hex(of: partition.json),
@@ -366,7 +366,13 @@ extension FilterPipeline {
     /// Ads (EasyList -> fallback blockerList fixture), Privacy (EasyPrivacy), Annoyances (Fanboy Annoyances).
     ///
     /// Per-group isolation: failure in one filter list does not prevent remaining groups from installing.
+    /// Takes the transaction gate, so callers must not already hold it: a reconcile between an
+    /// install's rules and its metadata would see a source that isn't installed yet and empty the group.
     func installBundledSnapshotIfNeeded(includePremium: Bool = false) async throws -> [PipelineResult] {
+        try await gate.run { try await installBundledSnapshots(includePremium: includePremium) }
+    }
+
+    private func installBundledSnapshots(includePremium: Bool) async throws -> [PipelineResult] {
         var results: [PipelineResult] = []
         var atLeastOneInstalled = false
 

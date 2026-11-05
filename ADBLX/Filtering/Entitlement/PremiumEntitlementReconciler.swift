@@ -190,12 +190,16 @@ actor PremiumEntitlementReconciler {
     // MARK: - Drift
 
     /// Recompiles any group whose rules came from sources other than the installed ones, which
-    /// a crash mid-install can leave behind and `installed_filters.json` alone can't reveal.
+    /// a crash mid-install can leave behind and `installed_filters.json` alone can't reveal. A
+    /// group with no installed sources recompiles to empty, or to its allowlist rules alone.
     /// Compares source IDs only: hashing the compiled files on every run would cost too much.
     private func repairingDrift(after outcome: ReconcileOutcome) async -> ReconcileOutcome {
         if outcome == .rolledBack || outcome == .rollbackFailed { return outcome }
 
-        let installed = await readInstalled()
+        guard let installed = await readInstalledIfTrustworthy() else {
+            Self.logger.error("drift check skipped: installed filters unreadable")
+            return outcome
+        }
         var repaired: [FilterGroup] = []
         for group in FilterGroup.allCases {
             let installedIDs = Set(installed.filter { $0.group == group }.map(\.id))
@@ -217,7 +221,8 @@ actor PremiumEntitlementReconciler {
     private func hasDrifted(_ group: FilterGroup, installedIDs: Set<String>) async -> Bool {
         guard let data = try? await store.read(CompiledSources.filename(for: group), in: .compiled),
               let sidecar = try? JSONDecoder().decode(CompiledSources.self, from: data) else {
-            return !installedIDs.isEmpty
+            if !installedIDs.isEmpty { return true }
+            return await store.compiledFileSize(CompiledSources.rulesFilename(for: group)) != nil
         }
         let fallback: Set<String> = [CompiledSources.uninstalledFallbackID]
         return Set(sidecar.sourceIDs).subtracting(fallback) != installedIDs.subtracting(fallback)
@@ -231,6 +236,19 @@ actor PremiumEntitlementReconciler {
             return []
         }
         return decoded
+    }
+
+    /// `nil` when the file exists but can't be read or decoded. Repairing from that would treat
+    /// every group as having no sources and empty them all.
+    private func readInstalledIfTrustworthy() async -> [InstalledFilter]? {
+        do {
+            let data = try await store.read("installed_filters.json", in: .metadata)
+            return try JSONDecoder().decode([InstalledFilter].self, from: data)
+        } catch let error as CocoaError where error.code == .fileReadNoSuchFile {
+            return []
+        } catch {
+            return nil
+        }
     }
 
     private func identifier(for group: FilterGroup) -> String {

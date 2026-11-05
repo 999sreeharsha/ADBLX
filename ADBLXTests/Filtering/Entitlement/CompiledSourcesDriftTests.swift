@@ -121,6 +121,63 @@ struct CompiledSourcesDriftTests {
         #expect(h.compiler.count == compilesBefore)
     }
 
+    @Test("rules on disk for a group with no installed sources and no sidecar are emptied")
+    func emptyGroupWithoutSidecarIsRepaired() async throws {
+        let h = makeHarness()
+        // What the old race left on an install that predates the sidecar.
+        try await writeCompiled(String(decoding: oneRule, as: UTF8.self), "Annoyances.json", in: h.store)
+
+        let outcome = await h.reconciler.reconcile()
+
+        #expect(outcome == .repaired(groups: [.annoyances], reloadFailures: outcome.reloadFailuresForTesting))
+        #expect(try await ruleCount("Annoyances.json", in: h.store) == 0)
+        #expect(try await sidecar("Annoyances.sources.json", in: h.store)?["sourceIDs"] as? [String] == [])
+    }
+
+    @Test("a group already emptied is not recompiled on every launch")
+    func emptiedGroupIsNoChange() async throws {
+        let h = makeHarness()
+        try await install("fanboy-annoyances", group: .annoyances, premium: true, in: h)
+        _ = await h.reconciler.reconcile()
+        let compilesBefore = h.compiler.count
+
+        #expect(await h.reconciler.reconcile() == .noChange)
+        #expect(h.compiler.count == compilesBefore)
+    }
+
+    @Test("a repaired empty group keeps its allowlist rules, and stays repaired")
+    func emptyGroupKeepsAllowlistRules() async throws {
+        let h = makeHarness()
+        _ = try await AllowlistStore(store: h.store).add(domain: "example.com")
+        try await writeCompiled(String(decoding: oneRule, as: UTF8.self), "Annoyances.json", in: h.store)
+
+        _ = await h.reconciler.reconcile()
+
+        let rules = try await h.store.read("Annoyances.json", in: .compiled)
+        #expect(String(decoding: rules, as: UTF8.self).contains("example"))
+        #expect(!String(decoding: rules, as: UTF8.self).contains("\"block\""))
+        #expect(try await sidecar("Annoyances.sources.json", in: h.store)?["sourceIDs"] as? [String] == [])
+        #expect(await h.reconciler.reconcile() == .noChange)
+    }
+
+    @Test("a group with no rules on disk needs no repair")
+    func freshInstallIsNoChange() async {
+        let h = makeHarness()
+
+        #expect(await h.reconciler.reconcile() == .noChange)
+        #expect(h.compiler.count == 0)
+    }
+
+    @Test("an unreadable installed_filters.json is not read as nothing installed")
+    func corruptMetadataKeepsRules() async throws {
+        let h = makeHarness()
+        try await install("easylist", group: .ads, premium: false, in: h)
+        try await h.store.writeMetadata(Data("{".utf8), filename: "installed_filters.json")
+
+        #expect(await h.reconciler.reconcile() == .noChange)
+        #expect(try await ruleCount("Ads.json", in: h.store) == 1)
+    }
+
     @Test("the uninstalled bundled Ads fallback is not drift")
     func bundledFallbackIsNoChange() async throws {
         let h = makeHarness()

@@ -100,6 +100,51 @@ struct AllowlistSyncGateTests {
     }
 }
 
+/// The bootstrap writes rules, then the sidecar, then the metadata. A reconcile in between
+/// would see a source that isn't installed yet and empty the group.
+@Suite("Bundled bootstrap vs. reconcile", .serialized)
+struct BootstrapGateTests {
+    @Test("a reconcile arriving during the bootstrap waits for it", .timeLimit(.minutes(2)))
+    func reconcileWaitsForBootstrap() async throws {
+        let ids = GroupExtensionIdentifiers(
+            ads: "com.ADBLX.ADBLX.AdsBlocker", privacy: "com.ADBLX.ADBLX.PrivacyBlocker",
+            annoyances: "com.ADBLX.ADBLX.AnnoyancesBlocker", regional: "com.ADBLX.ADBLX.RegionalBlocker"
+        )
+        let store = FilterStore.temporary()
+        let gate = FilterTransactionGate()
+        let compiler = HoldOnceCompiler()
+        let pipeline = FilterPipeline(
+            validator: FilterValidator(), compiler: compiler,
+            compositionService: JSONArrayCompositionService(),
+            partitioner: GroupPartitioner(extensionIdentifiers: ids),
+            store: store, writer: AtomicRuleWriter(), reloader: ReloadCoordinator(),
+            gate: gate
+        )
+        let reconciler = PremiumEntitlementReconciler(
+            store: store, pipeline: pipeline, manifestStore: ManifestStore(filterStore: store),
+            reloader: ReloadCoordinator(), extensionIdentifiers: ids,
+            entitlementService: StubEntitlementService(isPremiumEntitled: false), gate: gate
+        )
+        compiler.arm()
+
+        let bootstrap = Task { try await pipeline.installBundledSnapshotIfNeeded() }
+        await compiler.waitUntilHeld()
+
+        let finished = FinishFlag()
+        let reconcile = Task {
+            defer { finished.set() }
+            return await reconciler.reconcile()
+        }
+        for _ in 0..<100_000 where await gate.waiterCount == 0 && !finished.isSet { await Task.yield() }
+        #expect(await gate.waiterCount == 1, "reconcile did not queue behind the bootstrap")
+
+        compiler.release()
+        // The passthrough compiler can't take the bundled ABP text. Only the queueing matters here.
+        _ = try? await bootstrap.value
+        _ = await reconcile.value
+    }
+}
+
 private struct Fixture {
     let store: FilterStore
     let gate: FilterTransactionGate

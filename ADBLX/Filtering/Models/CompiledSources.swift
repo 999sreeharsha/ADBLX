@@ -12,6 +12,10 @@ nonisolated struct CompiledSources: Codable, Equatable, Sendable {
     var compiledSHA256: String
     var ruleCount: Int
 
+    static func rulesFilename(for group: FilterGroup) -> String {
+        "\(group.rawValue.capitalized).json"
+    }
+
     static func filename(for group: FilterGroup) -> String {
         "\(group.rawValue.capitalized).sources.json"
     }
