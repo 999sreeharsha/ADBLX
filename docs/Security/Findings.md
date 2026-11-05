@@ -18,7 +18,7 @@ Scan reports are in the gitignored `CLAUDE-SECURITY-*` folders at the repo root.
 | SEC-01 | `syncAllowlist` race restores premium rules | LOW | Panel | Fixed |
 | SEC-02 | Content-blocker handlers parse the whole rules file | HIGH | Manual | Fixed; memory measurement pending |
 | SEC-03 | Broken-site report silently allowlists the domain | MEDIUM | Manual | Open |
-| SEC-04 | Paywall advertises "Encrypted DNS" | MEDIUM | Manual | Claim removed; DNS still advertised |
+| SEC-04 | Paywall advertises "Encrypted DNS" | MEDIUM | Manual | Fixed; DNS hidden in Release; signed archive untested |
 | SEC-05 | `deploy-pages.yml` publishes the dispatching branch | LOW | Overruled | Fixed |
 | SEC-06 | JS tests don't run in CI; `DIAG_VERBOSE` is on | LOW | Manual | Fixed |
 | SEC-07 | Benchmark spike files are in the tunnel folder | LOW | Manual | Fixed |
@@ -84,7 +84,11 @@ The call sits inside a `logger.info` interpolation, but info messages are normal
 
 **Fixed:** removed the DNS row from the trial-expired screen, and dropped "encrypted" from `premium.feature.dns.description`. No "encrypted" copy is left in the app's Swift or string catalog, including for `DNSProtectionView`. Restore the claim only if DoH or DoT ships.
 
-**Still open:** the feature itself is still advertised while DNS can't ship, which risks a Guideline 2.3 rejection: the paywall's `PremiumFeature.dnsProtection`, the `trial.feature.dns.*` onboarding row and the Home DNS stat.
+**Hidden (also fixed):** `DNS_PROTECTION_ENABLED` is set in `Config/Debug.xcconfig` and not in Release. It's a compile-time flag on purpose: a remote flag that hides a feature from review is what Guideline 2.3.1 rejects. With it off, there's no DNS entry in the paywall list or comparison, the onboarding card, the Home stats or the Protection tab, and a paywall opened focused on DNS drops it (`DNSVisibilityTests`). The Protection row has no test of its own; it's a plain `if BuildFeatures.dnsProtection` in the view. `home.status.enabledDetail` no longer says "System-wide".
+
+**Tunnel in Release:** `EXCLUDED_SOURCE_FILE_NAMES` leaves `ADBLXPacketTunnel.appex` out of the app, and `Config/ADBLX.Release.entitlements` omits Network Extension. An unsigned Release archive has five plug-ins and no tunnel. The target still builds as a dependency, with no entitlements in Release so it shouldn't need the capability to sign. **A signed archive hasn't been tried.** Keep `Config/ADBLX.Release.entitlements` in step with `ADBLX/ADBLX.entitlements` by hand.
+
+**Still in the binary:** the DNS Swift code and the NetworkExtension import, unreachable from the UI. Turning the flag on for Release needs the connectivity entry in `docs/gotchas.md` closed first.
 
 ### SEC-05: `deploy-pages.yml` publishes the dispatching branch
 

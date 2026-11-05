@@ -694,7 +694,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "System-wide protection is enabled"
+            "value" : "Safari protection is enabled"
           }
         }
       }
@@ -1758,6 +1758,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Add"
+          }
+        }
+      }
+    },
+    "settings.allowlist.applying" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Applying your change…"
           }
         }
       }

@@ -346,6 +346,8 @@ Found in: entitlement purchase-bug fix (`FakeStoreEntitlementSource`), bisected 
   user-visible, auto-expiring "Recently blocked" list.
 - Rule until closed: DNS Protection must not be enabled in any release or
   TestFlight build.
+  `DNS_PROTECTION_ENABLED` (`Config/Debug.xcconfig` only) enforces this: Release
+  hides every DNS surface and doesn't embed the tunnel. See SEC-04.
 - Ruled out (2026-10-31): the content-blocker "unsupported domain dropped →
   rule becomes unrestricted" bug (next entry). The DNS blocklist parser
   (`DNSDomainNormalizer`) shares no code with `SafariRuleGenerator`. It rejects

@@ -104,6 +104,48 @@ struct HomeView: View {
         )
     }
 
+    @ViewBuilder
+    private func statTile(_ tile: HomeStatTile, status: HomeStatus) -> some View {
+        switch tile {
+        case .safari:
+            statTile(
+                icon: "safari",
+                labelKey: "home.stat.safari.label",
+                value: String(localized: "home.stat.safari.value"),
+                detail: String(localized: "home.stat.safari.detail"),
+                detailColor: DesignColors.secondary,
+                iconColor: DesignColors.primary
+            )
+        case .dns:
+            statTile(
+                icon: "network",
+                labelKey: "home.stat.dns.label",
+                value: String(localized: "home.stat.dns.value"),
+                detail: String(localized: "home.stat.dns.detail"),
+                detailColor: DesignColors.onSurfaceVariant,
+                iconColor: DesignColors.tertiary
+            )
+        case .lastUpdate:
+            statTile(
+                icon: "arrow.triangle.2.circlepath",
+                labelKey: "home.stat.lastUpdate.label",
+                value: status.lastUpdateDescription,
+                detail: nil,
+                detailColor: DesignColors.onSurfaceVariant,
+                iconColor: .orange
+            )
+        case .rules:
+            statTile(
+                icon: "list.bullet.rectangle",
+                labelKey: "home.stat.rules.label",
+                value: status.ruleCount.formatted(),
+                detail: nil,
+                detailColor: DesignColors.onSurfaceVariant,
+                iconColor: DesignColors.secondary
+            )
+        }
+    }
+
     private func monitoringGrid(for status: HomeStatus) -> some View {
         VStack(alignment: .leading, spacing: DesignSpacing.gutter) {
             Text("home.section.monitoring")
@@ -112,38 +154,9 @@ struct HomeView: View {
                 .textCase(.uppercase)
 
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: DesignSpacing.gutter) {
-                statTile(
-                    icon: "safari",
-                    labelKey: "home.stat.safari.label",
-                    value: String(localized: "home.stat.safari.value"),
-                    detail: String(localized: "home.stat.safari.detail"),
-                    detailColor: DesignColors.secondary,
-                    iconColor: DesignColors.primary
-                )
-                statTile(
-                    icon: "network",
-                    labelKey: "home.stat.dns.label",
-                    value: String(localized: "home.stat.dns.value"),
-                    detail: String(localized: "home.stat.dns.detail"),
-                    detailColor: DesignColors.onSurfaceVariant,
-                    iconColor: DesignColors.tertiary
-                )
-                statTile(
-                    icon: "arrow.triangle.2.circlepath",
-                    labelKey: "home.stat.lastUpdate.label",
-                    value: status.lastUpdateDescription,
-                    detail: nil,
-                    detailColor: DesignColors.onSurfaceVariant,
-                    iconColor: .orange
-                )
-                statTile(
-                    icon: "list.bullet.rectangle",
-                    labelKey: "home.stat.rules.label",
-                    value: status.ruleCount.formatted(),
-                    detail: nil,
-                    detailColor: DesignColors.onSurfaceVariant,
-                    iconColor: DesignColors.secondary
-                )
+                ForEach(HomeStatTile.visible(), id: \.self) { tile in
+                    statTile(tile, status: status)
+                }
             }
         }
     }
@@ -306,4 +319,16 @@ struct HomeView: View {
             pipeline: AppCompositionRoot.makeFilterPipeline(store: store), store: store
         )
     )
+}
+
+/// A tile of the Home monitoring grid.
+nonisolated enum HomeStatTile: CaseIterable, Equatable, Sendable {
+    case safari
+    case dns
+    case lastUpdate
+    case rules
+
+    static func visible(dnsEnabled: Bool = BuildFeatures.dnsProtection) -> [HomeStatTile] {
+        allCases.filter { dnsEnabled || $0 != .dns }
+    }
 }
