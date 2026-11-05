@@ -192,7 +192,7 @@ actor PremiumEntitlementReconciler {
     /// Recompiles any group whose rules came from sources other than the installed ones, which
     /// a crash mid-install can leave behind and `installed_filters.json` alone can't reveal. A
     /// group with no installed sources recompiles to empty, or to its allowlist rules alone.
-    /// Compares source IDs only: hashing the compiled files on every run would cost too much.
+    /// Compares source IDs and file size, never the rules: reading them every run would cost too much.
     private func repairingDrift(after outcome: ReconcileOutcome) async -> ReconcileOutcome {
         if outcome == .rolledBack || outcome == .rollbackFailed { return outcome }
 
@@ -219,11 +219,12 @@ actor PremiumEntitlementReconciler {
     }
 
     private func hasDrifted(_ group: FilterGroup, installedIDs: Set<String>) async -> Bool {
+        let compiledSize = await store.compiledFileSize(CompiledSources.rulesFilename(for: group))
         guard let data = try? await store.read(CompiledSources.filename(for: group), in: .compiled),
               let sidecar = try? JSONDecoder().decode(CompiledSources.self, from: data) else {
-            if !installedIDs.isEmpty { return true }
-            return await store.compiledFileSize(CompiledSources.rulesFilename(for: group)) != nil
+            return !installedIDs.isEmpty || compiledSize != nil
         }
+        if sidecar.compiledByteCount != compiledSize { return true }
         let fallback: Set<String> = [CompiledSources.uninstalledFallbackID]
         return Set(sidecar.sourceIDs).subtracting(fallback) != installedIDs.subtracting(fallback)
     }

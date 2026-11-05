@@ -47,11 +47,14 @@ Scan reports are in the gitignored `CLAUDE-SECURITY-*` folders at the repo root.
 
 **Fixed:**
 - `syncAllowlist` now holds the gate (`AllowlistSyncGateTests`), which also covers the iCloud path. No caller holds the gate when calling it, so no ungated variant was needed. An allowlist edit made during an update now waits for that update to finish.
-- Each compile writes `Compiled/<Group>.sources.json` holding `{sourceIDs, compiledSHA256, ruleCount}`, right after the compiled JSON. A reconcile recompiles a group whose sidecar is missing or whose source IDs differ from `installed_filters.json` (`CompiledSourcesDriftTests`).
+- Each compile writes `Compiled/<Group>.sources.json` holding `{sourceIDs, compiledByteCount, ruleCount}`, right after the compiled JSON. A reconcile recompiles a group when the sidecar is missing, its source IDs differ from `installed_filters.json`, or its byte count differs from the compiled file's size, which is what a crash between the two writes leaves (`CompiledSourcesDriftTests`).
+- A group with no installed sources must compile to nothing, or to its allowlist rules alone. Rules on disk with no sidecar or with a sidecar listing sources are recompiled away, which clears an install the old race already hit.
+- An unreadable `installed_filters.json` skips the check rather than reading as "nothing installed", which would empty every group. The bundled bootstrap holds the gate too.
 
 **Limits:**
-- A reconcile compares source IDs only. Hashing the compiled files on every launch and foreground would exceed the performance budget, so `compiledSHA256` is written but not yet checked.
-- An install from before this change has no sidecar, so its first reconcile recompiles every group once. A group with no sidecar and nothing installed is skipped, so a premium file left that way by the old bug isn't repaired.
+- The check compares IDs and size, not content, so a same-size difference goes unnoticed. Hashing on every launch and foreground would exceed the performance budget.
+- An install from before this change has no sidecar, so its first reconcile recompiles every group once. This runs detached, off the launch path.
+- While `installed_filters.json` is unreadable, premium rules stay on disk. The file is written atomically, so this needs outside damage.
 
 ### SEC-02: Content-blocker handlers parse the whole rules file
 

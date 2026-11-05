@@ -57,7 +57,7 @@ struct CompiledSourcesDriftTests {
         try Data(text.utf8).write(to: try await store.directoryURL(.compiled).appendingPathComponent(name))
     }
 
-    @Test("an install records its sources, rule count and compiled hash")
+    @Test("an install records its sources, rule count and compiled size")
     func installWritesSidecar() async throws {
         let h = makeHarness()
         try await install("easylist", group: .ads, premium: false, in: h)
@@ -66,7 +66,32 @@ struct CompiledSourcesDriftTests {
         #expect(written["sourceIDs"] as? [String] == ["easylist"])
         #expect(written["ruleCount"] as? Int == 1)
         let compiled = try await h.store.read("Ads.json", in: .compiled)
-        #expect(written["compiledSHA256"] as? String == Checksum.sha256Hex(of: compiled))
+        #expect(written["compiledByteCount"] as? Int == compiled.count)
+    }
+
+    @Test("a crash between the rules and the sidecar is repaired")
+    func newRulesWithOldSidecarAreRepaired() async throws {
+        let h = makeHarness()
+        try await install("easylist", group: .ads, premium: false, in: h)
+        // The source IDs still match, so only the size can give this away.
+        try await writeCompiled("[]", "Ads.json", in: h.store)
+
+        let outcome = await h.reconciler.reconcile()
+
+        #expect(outcome == .repaired(groups: [.ads], reloadFailures: outcome.reloadFailuresForTesting))
+        #expect(try await ruleCount("Ads.json", in: h.store) == 1)
+    }
+
+    @Test("a missing compiled file with a sidecar is repaired")
+    func missingRulesAreRepaired() async throws {
+        let h = makeHarness()
+        try await install("easylist", group: .ads, premium: false, in: h)
+        try FileManager.default.removeItem(at: try await h.store.directoryURL(.compiled).appendingPathComponent("Ads.json"))
+
+        let outcome = await h.reconciler.reconcile()
+
+        #expect(outcome == .repaired(groups: [.ads], reloadFailures: outcome.reloadFailuresForTesting))
+        #expect(try await ruleCount("Ads.json", in: h.store) == 1)
     }
 
     @Test("a downgrade leaves a sidecar that lists no premium source")
@@ -88,7 +113,7 @@ struct CompiledSourcesDriftTests {
         _ = await h.reconciler.reconcile()
         // What the old race left behind: premium rules on disk, nothing in the metadata.
         try await writeCompiled(String(decoding: oneRule, as: UTF8.self), "Annoyances.json", in: h.store)
-        try await writeCompiled("{\"sourceIDs\":[\"fanboy-annoyances\"],\"compiledSHA256\":\"x\",\"ruleCount\":1}", "Annoyances.sources.json", in: h.store)
+        try await writeCompiled("{\"sourceIDs\":[\"fanboy-annoyances\"],\"compiledByteCount\":\(oneRule.count),\"ruleCount\":1}", "Annoyances.sources.json", in: h.store)
 
         let outcome = await h.reconciler.reconcile()
 
@@ -184,7 +209,7 @@ struct CompiledSourcesDriftTests {
         // What syncAllowlist writes when nothing is installed: rules from the bundle, and no
         // installed_filters.json entry for them.
         try await writeCompiled(String(decoding: oneRule, as: UTF8.self), "Ads.json", in: h.store)
-        try await writeCompiled("{\"sourceIDs\":[\"ads-bundled\"],\"compiledSHA256\":\"x\",\"ruleCount\":1}", "Ads.sources.json", in: h.store)
+        try await writeCompiled("{\"sourceIDs\":[\"ads-bundled\"],\"compiledByteCount\":\(oneRule.count),\"ruleCount\":1}", "Ads.sources.json", in: h.store)
 
         #expect(await h.reconciler.reconcile() == .noChange)
         #expect(try await ruleCount("Ads.json", in: h.store) == 1)

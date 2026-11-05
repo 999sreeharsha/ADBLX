@@ -324,7 +324,7 @@ actor FilterPipeline {
         try writer.write(partition.json, to: directory.appendingPathComponent(CompiledSources.rulesFilename(for: partition.group)))
         let sidecar = CompiledSources(
             sourceIDs: sourceIDs,
-            compiledSHA256: Checksum.sha256Hex(of: partition.json),
+            compiledByteCount: partition.json.count,
             ruleCount: partition.ruleCount
         )
         try writer.write(

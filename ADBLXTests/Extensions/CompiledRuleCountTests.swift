@@ -19,7 +19,7 @@ struct CompiledRuleCountTests {
         // Not JSON, and a different count: parsing the rules could not produce "7".
         let rules = directory.appendingPathComponent("Ads.json")
         try Data("not json".utf8).write(to: rules)
-        try Data("{\"sourceIDs\":[\"easylist\"],\"compiledSHA256\":\"x\",\"ruleCount\":7}".utf8)
+        try Data("{\"sourceIDs\":[\"easylist\"],\"compiledByteCount\":8,\"ruleCount\":7}".utf8)
             .write(to: directory.appendingPathComponent("Ads.sources.json"))
 
         #expect(CompiledRuleCount.label(forRulesAt: rules) == "7")

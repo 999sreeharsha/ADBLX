@@ -9,7 +9,10 @@ nonisolated struct CompiledSources: Codable, Equatable, Sendable {
     static let uninstalledFallbackID = "ads-bundled"
 
     var sourceIDs: [String]
-    var compiledSHA256: String
+    /// Size of the rules file this sidecar describes. A mismatch means a crash between the two
+    /// writes, which the source IDs can't show. An mtime wouldn't: the atomic rename keeps the
+    /// temp file's.
+    var compiledByteCount: Int
     var ruleCount: Int
 
     static func rulesFilename(for group: FilterGroup) -> String {
