@@ -29,20 +29,11 @@ final class ContentBlockerRequestHandler: NSObject, NSExtensionRequestHandling {
             // not the Sprint 0 Rules/Ads.json path.
             let appGroupURL = containerURL.appendingPathComponent("Compiled/Ads.json")
             if FileManager.default.fileExists(atPath: appGroupURL.path) {
-                logger.info("Using App Group rules (\(ruleCount(at: appGroupURL)) rules)")
+                logger.info("Using App Group rules (\(CompiledRuleCount.label(forRulesAt: appGroupURL), privacy: .public) rules)")
                 return appGroupURL
             }
         }
-        let bundledURL = Bundle.main.url(forResource: "blockerList", withExtension: "json")
-        logger.info("Falling back to bundled rules (\(bundledURL.map { ruleCount(at: $0) } ?? 0) rules)")
-        return bundledURL
-    }
-
-    private static func ruleCount(at url: URL) -> Int {
-        guard let data = try? Data(contentsOf: url),
-              let rules = try? JSONSerialization.jsonObject(with: data) as? [Any] else {
-            return 0
-        }
-        return rules.count
+        logger.info("Falling back to bundled rules")
+        return Bundle.main.url(forResource: "blockerList", withExtension: "json")
     }
 }

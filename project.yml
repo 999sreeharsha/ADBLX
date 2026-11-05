@@ -97,6 +97,8 @@ targets:
     sources:
       - path: ADBLXTests
         type: syncedFolder
+      - path: Extensions/ContentBlockerShared
+        type: syncedFolder
       - path: Extensions/ADBLXPacketTunnel/DNSRuntime
         type: syncedFolder
       - path: Extensions/ADBLXPacketTunnel/WireEngine
@@ -163,6 +165,8 @@ targets:
     sources:
       - path: Extensions/ADBLXAdsBlocker
         type: syncedFolder
+      - path: Extensions/ContentBlockerShared
+        type: syncedFolder
     info:
       path: Extensions/ADBLXAdsBlocker/Info.plist
       properties:
@@ -195,6 +199,8 @@ targets:
     supportedDestinations: [iOS, macOS, visionOS]
     sources:
       - path: Extensions/ADBLXPrivacyBlocker
+        type: syncedFolder
+      - path: Extensions/ContentBlockerShared
         type: syncedFolder
     info:
       path: Extensions/ADBLXPrivacyBlocker/Info.plist
@@ -229,6 +235,8 @@ targets:
     sources:
       - path: Extensions/ADBLXAnnoyancesBlocker
         type: syncedFolder
+      - path: Extensions/ContentBlockerShared
+        type: syncedFolder
     info:
       path: Extensions/ADBLXAnnoyancesBlocker/Info.plist
       properties:
@@ -261,6 +269,8 @@ targets:
     supportedDestinations: [iOS, macOS, visionOS]
     sources:
       - path: Extensions/ADBLXRegionalBlocker
+        type: syncedFolder
+      - path: Extensions/ContentBlockerShared
         type: syncedFolder
     info:
       path: Extensions/ADBLXRegionalBlocker/Info.plist

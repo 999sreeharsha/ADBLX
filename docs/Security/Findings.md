@@ -16,7 +16,7 @@ Scan reports are in the gitignored `CLAUDE-SECURITY-*` folders at the repo root.
 |---|---|---|---|---|
 | **Fix now** | | | | |
 | SEC-01 | `syncAllowlist` race restores premium rules | LOW | Panel | Fixed |
-| SEC-02 | Content-blocker handlers parse the whole rules file | HIGH | Manual | Open |
+| SEC-02 | Content-blocker handlers parse the whole rules file | HIGH | Manual | Fixed; memory measurement pending |
 | SEC-03 | Broken-site report silently allowlists the domain | MEDIUM | Manual | Open |
 | SEC-04 | Paywall advertises "Encrypted DNS" | MEDIUM | Manual | Open |
 | SEC-05 | `deploy-pages.yml` publishes the dispatching branch | LOW | Overruled | Open |
@@ -59,9 +59,9 @@ Scan reports are in the gitignored `CLAUDE-SECURITY-*` folders at the repo root.
 
 The call sits inside a `logger.info` interpolation, but info messages are normally kept in memory on iOS, so it most likely runs, and it certainly runs when logs are streamed. The fix costs less than measuring that.
 
-**Fix:** read the count from the SEC-01 sidecar, and log "unknown" if the sidecar is missing. Never fall back to parsing the rules.
+**Fixed:** all four handlers now log the count from the SEC-01 sidecar through `CompiledRuleCount`, or "unknown" if it is missing, and never parse the rules. The bundled-fallback log line no longer gives a count.
 
-**Verify:** measure the extension with `memgraph` or the Allocations template while Safari reloads it. Peak memory should drop well below the limit of about 6 MB.
+**Still to verify (not done):** measure the extension with `memgraph` or the Allocations template while Safari reloads it. Peak memory should drop well below the limit of about 6 MB.
 
 ### SEC-03: Broken-site report silently allowlists the domain
 
