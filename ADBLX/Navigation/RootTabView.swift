@@ -22,6 +22,12 @@ struct RootTabView: View {
             NavigationStack {
                 HomeView(
                     viewModel: HomeViewModel(service: dependencies.homeService),
+                    planCard: HomePlanCardViewModel(
+                        stateProvider: SystemContentBlockerStateProvider(),
+                        extensionIdentifiers: AppCompositionRoot.extensionIdentifiers,
+                        subscriptionService: dependencies.subscriptionService
+                    ),
+                    subscriptionService: dependencies.subscriptionService,
                     updateCoordinator: dependencies.updateCoordinator
                 )
             }
