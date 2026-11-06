@@ -1,13 +1,19 @@
 import CryptoKit
 import Foundation
 
-/// Ed25519 signatures over the exact bytes of `manifest.json`, in `manifest.json.sig`: the
+/// Ed25519 signatures over the exact bytes of `manifest.json`, in `signatures/<sha256>.sig`: the
 /// base64 of the 64-byte signature and a newline. The app verifies those same bytes against
 /// its pinned public keys before parsing them. See `docs/Security/ManifestTrust.md`.
 ///
 /// CryptoKit randomizes Ed25519 signatures, so the signature file differs between runs even
 /// though the manifest does not. Every one of them verifies.
 enum ManifestSigning {
+    /// Named after the manifest's SHA-256, so a cached signature can only belong to the manifest
+    /// whose bytes the app hashed. The manifest and signature are cached separately.
+    static func signatureFilename(for manifest: Data) -> String {
+        SHA256.hash(data: manifest).map { String(format: "%02x", $0) }.joined() + ".sig"
+    }
+
     static func signatureFile(for manifest: Data, key: Curve25519.Signing.PrivateKey) throws -> Data {
         let signature = try key.signature(for: manifest)
         return Data((signature.base64EncodedString() + "\n").utf8)
@@ -23,19 +29,16 @@ enum ManifestSigning {
 
 /// Writing and signing the files the Pages deploy serves.
 enum ManifestPublication {
-    /// Writes the manifest and deletes any signature beside it, which can only be for an older
-    /// manifest and would fail verification on every device.
-    static func writeManifest(_ manifest: Data, to manifestURL: URL, signatureURL: URL) throws {
-        try AtomicFileWriter().write(manifest, to: manifestURL)
-        if FileManager.default.fileExists(atPath: signatureURL.path) {
-            try FileManager.default.removeItem(at: signatureURL)
-        }
-    }
-
-    /// Signs the manifest as it is on disk, the bytes devices will download.
-    static func sign(manifestAt manifestURL: URL, key: Curve25519.Signing.PrivateKey, signatureURL: URL) throws {
+    /// Signs the manifest as it is on disk, the bytes devices will download, and returns where the
+    /// signature went. Earlier signatures stay: a device whose CDN edge still serves an older
+    /// manifest needs that manifest's signature, and each is under 100 bytes.
+    @discardableResult
+    static func sign(manifestAt manifestURL: URL, key: Curve25519.Signing.PrivateKey, signaturesDirectory: URL) throws -> URL {
         let manifest = try Data(contentsOf: manifestURL)
+        try FileManager.default.createDirectory(at: signaturesDirectory, withIntermediateDirectories: true)
+        let signatureURL = signaturesDirectory.appendingPathComponent(ManifestSigning.signatureFilename(for: manifest))
         try AtomicFileWriter().write(try ManifestSigning.signatureFile(for: manifest, key: key), to: signatureURL)
+        return signatureURL
     }
 }
 

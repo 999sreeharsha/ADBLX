@@ -122,7 +122,7 @@ The panel rejected these items because it treats the HTTPS manifest as trusted. 
 **Fix:**
 Design: `docs/Security/ManifestTrust.md`. Built so far: the Publisher's `keygen`, `sign` and `verify` commands.
 
-- **Signature:** Ed25519 over the exact bytes `ManifestJSONWriter` emits, published as `manifest.json.sig`, with two pinned public keys for rotation. Fetch the signature only on a 200 response, never on a 304.
+- **Signature:** Ed25519 over the exact bytes `ManifestJSONWriter` emits, published as `signatures/<sha256 of the manifest>.sig` so a CDN can't pair a manifest with another's signature, with two pinned public keys for rotation. Fetch the signature only on a 200 response, never on a 304.
 - **Rollback:** reject a `manifestVersion` lower than the cached one, since a signature alone still allows replaying an old manifest. The field is a date string (`backend/docs/ManifestSpecification.md`), so confirm the comparison and how same-day republishes behave.
 - **Filter IDs:** `entry.id` reaches file paths unchecked (`FilterStore.swift:89`, `:105`; `FilterDownloadClient.swift`). Validate against `^[a-z0-9][a-z0-9-]{0,63}$`.
 - **Duplicate IDs:** `UpdatePlan.swift:35` and `UpdateCoordinator.swift:170` use `Dictionary(uniqueKeysWithValues:)`, which traps. Reject the whole manifest rather than keeping the first entry. First-wins hides publisher bugs and makes behaviour depend on entry order. This also closes the `filterLists` dedup gotcha.

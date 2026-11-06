@@ -6,7 +6,7 @@ enum PublisherPaths {
     static let metadataDirectory = URL(fileURLWithPath: "backend/metadata")
     static let payloadDirectory = URL(fileURLWithPath: "backend/public/filters")
     static let manifestOutput = URL(fileURLWithPath: "backend/public/manifest.json")
-    static let manifestSignatureOutput = URL(fileURLWithPath: "backend/public/manifest.json.sig")
+    static let signaturesOutput = URL(fileURLWithPath: "backend/public/signatures", isDirectory: true)
     /// Every command runs from the repository root (the paths above are relative to it).
     static let repositoryRoot = URL(fileURLWithPath: FileManager.default.currentDirectoryPath, isDirectory: true)
     static let filterRegistryDocsOutput = URL(fileURLWithPath: "backend/docs/FilterRegistry.md")

@@ -92,12 +92,12 @@ final class SigningTests: XCTestCase {
         let key = Curve25519.Signing.PrivateKey()
         let directory = try temporaryDirectory()
         let manifestURL = directory.appendingPathComponent("manifest.json")
-        let signatureURL = directory.appendingPathComponent("manifest.json.sig")
+        let signatures = directory.appendingPathComponent("signatures", isDirectory: true)
 
         var manifests: [Data] = []
         for _ in 0..<3 {
-            try ManifestPublication.writeManifest(manifest, to: manifestURL, signatureURL: signatureURL)
-            try ManifestPublication.sign(manifestAt: manifestURL, key: key, signatureURL: signatureURL)
+            try AtomicFileWriter().write(manifest, to: manifestURL)
+            let signatureURL = try ManifestPublication.sign(manifestAt: manifestURL, key: key, signaturesDirectory: signatures)
             let written = try Data(contentsOf: manifestURL)
             manifests.append(written)
             XCTAssertTrue(ManifestSigning.verify(
@@ -108,16 +108,41 @@ final class SigningTests: XCTestCase {
         XCTAssertEqual(manifests.first, manifest)
     }
 
-    // A signature left over from the previous manifest would fail on every device.
-    func test_writingAManifestRemovesTheStaleSignature() throws {
+    // The app fetches the signature named by the hash of the bytes it downloaded, so a CDN copy
+    // of a signature can never belong to a different manifest.
+    func test_theSignatureIsNamedAfterTheManifestsHash() throws {
         let directory = try temporaryDirectory()
         let manifestURL = directory.appendingPathComponent("manifest.json")
-        let signatureURL = directory.appendingPathComponent("manifest.json.sig")
-        try Data("stale\n".utf8).write(to: signatureURL)
+        try manifest.write(to: manifestURL)
 
-        try ManifestPublication.writeManifest(manifest, to: manifestURL, signatureURL: signatureURL)
+        let signatureURL = try ManifestPublication.sign(
+            manifestAt: manifestURL, key: Curve25519.Signing.PrivateKey(),
+            signaturesDirectory: directory.appendingPathComponent("signatures", isDirectory: true)
+        )
 
-        XCTAssertFalse(FileManager.default.fileExists(atPath: signatureURL.path))
+        let hash = SHA256.hash(data: manifest).map { String(format: "%02x", $0) }.joined()
+        XCTAssertEqual(signatureURL.lastPathComponent, "\(hash).sig")
+        XCTAssertEqual(signatureURL.deletingLastPathComponent().lastPathComponent, "signatures")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: signatureURL.path))
+    }
+
+    // A device whose CDN edge still serves the previous manifest must still find its signature.
+    func test_signingANewManifestKeepsTheEarlierSignature() throws {
+        let key = Curve25519.Signing.PrivateKey()
+        let directory = try temporaryDirectory()
+        let manifestURL = directory.appendingPathComponent("manifest.json")
+        let signatures = directory.appendingPathComponent("signatures", isDirectory: true)
+        var newer = manifest
+        newer.append(contentsOf: Data(" ".utf8))
+
+        try manifest.write(to: manifestURL)
+        let first = try ManifestPublication.sign(manifestAt: manifestURL, key: key, signaturesDirectory: signatures)
+        try newer.write(to: manifestURL)
+        let second = try ManifestPublication.sign(manifestAt: manifestURL, key: key, signaturesDirectory: signatures)
+
+        XCTAssertNotEqual(first, second)
+        XCTAssertTrue(ManifestSigning.verify(manifest: manifest, signatureFile: try Data(contentsOf: first), trustedKeys: [key.publicKey]))
+        XCTAssertTrue(ManifestSigning.verify(manifest: newer, signatureFile: try Data(contentsOf: second), trustedKeys: [key.publicKey]))
     }
 
     // MARK: - Keys

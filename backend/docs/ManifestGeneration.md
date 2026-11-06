@@ -51,13 +51,13 @@ Commit 4 deliberately does not answer:
 ## Output
 
 `backend/public/manifest.json`, matching `docs/ManifestSpecification.md`
-exactly. `publish` deletes any `manifest.json.sig` beside it, since that can only
-be for an older manifest.
+exactly. It is not signed yet.
 
-`publisher sign` then writes `backend/public/manifest.json.sig`, an Ed25519
-signature over the manifest's exact bytes, with a key kept outside the
-repository. Signatures are randomized, so the `.sig` file differs between runs
-even though the manifest doesn't. See `docs/Security/ManifestTrust.md` for the
+`publisher sign` then writes `backend/public/signatures/<sha256>.sig`, an
+Ed25519 signature over the manifest's exact bytes, named after their SHA-256,
+with a key kept outside the repository. Earlier signatures stay, for devices
+whose CDN edge still serves an older manifest. Signatures are randomized, so
+the `.sig` file differs between runs even though the manifest doesn't. See `docs/Security/ManifestTrust.md` for the
 commands, keys and what the app checks.
 
 ## `backend/metadata/{id}.json` — per-filter metadata sidecar

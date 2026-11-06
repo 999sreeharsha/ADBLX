@@ -24,7 +24,7 @@ struct KeygenCommand: ParsableCommand {
 struct SignCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "sign",
-        abstract: "Sign backend/public/manifest.json, writing manifest.json.sig beside it."
+        abstract: "Sign backend/public/manifest.json, writing backend/public/signatures/<sha256>.sig."
     )
 
     @Option(name: .customLong("signing-key-file"), help: "Private key file, outside the repository. Or set \(SigningKeySource.environmentVariable).")
@@ -36,10 +36,10 @@ struct SignCommand: ParsableCommand {
             environment: ProcessInfo.processInfo.environment,
             repositoryRoot: PublisherPaths.repositoryRoot
         )
-        try ManifestPublication.sign(
-            manifestAt: PublisherPaths.manifestOutput, key: key, signatureURL: PublisherPaths.manifestSignatureOutput
+        let signatureURL = try ManifestPublication.sign(
+            manifestAt: PublisherPaths.manifestOutput, key: key, signaturesDirectory: PublisherPaths.signaturesOutput
         )
-        print("✓ Wrote \(PublisherPaths.manifestSignatureOutput.path)")
+        print("✓ Wrote \(signatureURL.path)")
         print("  Signed with public key \(key.publicKey.rawRepresentation.base64EncodedString())")
     }
 }
@@ -47,7 +47,7 @@ struct SignCommand: ParsableCommand {
 struct VerifyCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "verify",
-        abstract: "Check manifest.json.sig against the public keys the app pins. Exits 1 if none verifies."
+        abstract: "Check the manifest's signature against the public keys the app pins. Exits 1 if none verifies."
     )
 
     @Option(name: .customLong("public-key"), help: "A pinned public key (base64). Repeat for each.")
@@ -63,9 +63,10 @@ struct VerifyCommand: ParsableCommand {
         }
         guard !keys.isEmpty else { throw ArgumentParser.ValidationError("Pass at least one --public-key.") }
         let manifest = try Data(contentsOf: PublisherPaths.manifestOutput)
-        guard let signature = try? Data(contentsOf: PublisherPaths.manifestSignatureOutput),
+        let signatureURL = PublisherPaths.signaturesOutput.appendingPathComponent(ManifestSigning.signatureFilename(for: manifest))
+        guard let signature = try? Data(contentsOf: signatureURL),
               ManifestSigning.verify(manifest: manifest, signatureFile: signature, trustedKeys: keys) else {
-            print("✗ \(PublisherPaths.manifestSignatureOutput.path) is missing or doesn't verify")
+            print("✗ \(signatureURL.path) is missing or doesn't verify")
             throw ExitCode(PublisherExitCode.validationFailure.rawValue)
         }
         print("✓ Signature verifies")

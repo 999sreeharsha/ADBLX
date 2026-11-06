@@ -42,9 +42,7 @@ struct PublishCommand: ParsableCommand {
         )
 
         let data = ManifestJSONWriter.write(manifest)
-        try ManifestPublication.writeManifest(
-            data, to: PublisherPaths.manifestOutput, signatureURL: PublisherPaths.manifestSignatureOutput
-        )
+        try AtomicFileWriter().write(data, to: PublisherPaths.manifestOutput)
 
         print("✓ Wrote \(PublisherPaths.manifestOutput.path)")
         print("  Not signed yet: run `publisher sign` before deploying.")

@@ -17,8 +17,9 @@ touches GitHub removes that dependency.
 - **Algorithm:** Ed25519 (CryptoKit `Curve25519.Signing`, iOS 13+ and macOS 10.15+).
 - **Message:** the exact bytes of `manifest.json` as `ManifestJSONWriter` writes them. The app
   verifies those bytes before parsing, never a re-encoding of the parsed value.
-- **File:** `manifest.json.sig` beside the manifest: the base64 of the 64-byte signature and a
-  newline. It has no key ID; the app tries each pinned key.
+- **File:** `signatures/<sha256>.sig` beside the manifest, where `<sha256>` is the lowercase hex
+  SHA-256 of the manifest bytes. It holds the base64 of the 64-byte signature and a newline. It
+  has no key ID; the app tries each pinned key.
 - **Not deterministic:** CryptoKit randomizes Ed25519 signatures, so signing the same manifest
   twice gives different signature files. Both verify. The manifest itself stays byte-identical
   for the same inputs.
@@ -30,14 +31,33 @@ touches GitHub removes that dependency.
 swift run --package-path backend/tools/Publisher Publisher keygen --output ~/Keys/adblx-manifest-1.key
 
 # Every publish, from the repository root.
-swift run --package-path backend/tools/Publisher Publisher publish --publish-base-url <url>   # removes a stale .sig
+swift run --package-path backend/tools/Publisher Publisher publish --publish-base-url <url>
 swift run --package-path backend/tools/Publisher Publisher sign --signing-key-file ~/Keys/adblx-manifest-1.key
 swift run --package-path backend/tools/Publisher Publisher verify --public-key <K1> --public-key <K2>
 ```
 
+### Why the signature is named after the manifest
+
+The manifest and its signature are fetched separately, and the CDN caches each file on its
+own. With one fixed `manifest.json.sig`, a device right after a deploy can get the new
+manifest with the old signature, or the old manifest with the new one, and both fail.
+
+Naming the signature after the manifest's hash removes that race. The app hashes the bytes it
+downloaded and fetches exactly that signature, so a cached copy can only ever be the right
+one. The other fixes considered:
+
+- **The manifest's ETag in the query string:** only gives a unique URL if the CDN keys on
+  the query, and an edge still serving the old manifest would fetch the new signature from
+  origin.
+- **One envelope file holding both:** removes the race too, but the signed bytes would have to
+  sit base64-encoded inside JSON, and the manifest format would change.
+
+Earlier signatures are never deleted, so a device on a stale cached manifest can still verify
+it. Each is under 100 bytes.
+
 `sign` also reads the key from `ADBLX_MANIFEST_SIGNING_KEY` (base64), and refuses when both are
-given. No command prints the private key, and no error contains it. Commit `manifest.json.sig`
-with the manifest: it is public, and the deploy copies `backend/public/` verbatim.
+given. No command prints the private key, and no error contains it. Commit the signature with
+the manifest: it is public, and the deploy copies `backend/public/` verbatim.
 
 ## Keys
 
@@ -48,9 +68,11 @@ with the manifest: it is public, and the deploy copies `backend/public/` verbati
   where `sign` reads it from at publish time. Publishing is a local step
   (`backend/tools/publish-pages.sh`), so CI never needs the private key. If signing ever moves
   to CI, the key goes in the CI secret store as `ADBLX_MANIFEST_SIGNING_KEY` and nowhere else.
-- **K2, the standby key:** generated at the same time, and kept offline only, in two places
-  (for example, an encrypted USB drive and a printed copy in a safe). It is never used until a
-  rotation.
+- **K2, the standby key:** generated now, with K1, not at the first rotation. Rotation only
+  works if K2's public key is already pinned in every installed app, so it must ship in the
+  first build. Kept offline only, in two places separate from K1 (for example, an encrypted
+  USB drive and a printed copy in a safe). It is never used until a rotation.
+- Both public keys are pinned before the first TestFlight build.
 - The public keys are not secret. Both ship in the app.
 - `.gitignore` ignores `*.key` as a backstop, and `keygen` refuses repository paths, but the
   key file should never be inside a checkout in the first place.
@@ -76,8 +98,8 @@ learn new keys, so rotation always moves to a key every installed version alread
 
 On a `200` response:
 
-1. **Fetch `manifest.json.sig`** from the same base URL, with the same size cap as the
-   manifest. A missing or unreadable signature is a verification failure. On a `304` the
+1. **Fetch `signatures/<sha256 of the downloaded bytes>.sig`** from the same base URL, with its
+   own size cap. A missing or unreadable signature is a verification failure. On a `304` the
    cached manifest was verified when it was stored, so no signature is fetched.
 2. **Verify** the downloaded bytes against the pinned keys, before parsing.
 3. **Parse,** then apply every rule below to the whole manifest. Any failure rejects the whole
@@ -146,23 +168,37 @@ per-list cap set from the largest real list with headroom.
 
 ## When verification fails
 
+Treat it as temporary. The likeliest cause is a deploy still reaching the CDN (the signature
+not there yet), not an attack, and the safe response to both is the same.
+
 - Keep every installed rule and the cached manifest and ETag exactly as they are. Nothing is
-  downloaded or compiled.
-- Report a failed update: the update sheet shows "Couldn't verify the filter update. Your
-  current filters are still on." An automatic update logs it and retries on the next run, like
-  any failed update.
+  downloaded or compiled. Not saving the ETag means the next run fetches the manifest again.
+- Don't show it as an error. An automatic update says nothing and retries on the next run. A
+  manual update shows the neutral "Couldn't check for filter updates right now. Your current
+  filters are still on.", the same as a network failure. It does not mention verification.
+- Retry at the next opportunity (the next launch, foreground or scheduled run), not in a loop,
+  and don't let the failure advance the update throttle.
 - Log the reason as a case name and a count only (`docs/Architecture/Logging.md`): for example
-  `manifest rejected reason=signature`, never a URL or ID.
-- Don't fall back to the unsigned path, and don't retry immediately: a manifest that fails now
-  fails the same way until it changes.
+  `manifest rejected reason=signature`, never a URL or ID. The DEBUG diagnostics screen shows
+  consecutive failures, so one that lasts past a deploy can be seen during testing.
+- Never fall back to the unsigned path.
+
+The rule checks below (rollback, IDs, duplicates, groups, `sourceURL`) fail the same way. A
+manifest that breaks them is a publishing bug or an attack, and it stays rejected until a new
+manifest replaces it.
 
 ## Order of work
 
-1. Publisher: `keygen`, `sign`, `verify`, and removing a stale signature on `publish`. **Done.**
+1. Publisher: `keygen`, `sign` (to `signatures/<sha256>.sig`, keeping earlier ones) and
+   `verify`. **Done.**
 2. Publisher: the `manifestVersion` change and the ID-pattern check in `Validator`.
-3. Generate K1 and K2, store them as above, and record both public keys in the app.
+3. Generate K1 and K2 now, together, store them as above, and record both public keys in the
+   app.
 4. App: download cap and streaming (SEC-09 size cap), then signature fetch and verification,
    then the rollback, ID, duplicate, group and `sourceURL` rules, each with a test that the
    whole manifest is rejected and the installed rules are unchanged.
-5. Sign and deploy the first signed manifest **before** shipping an app that requires one. An
-   app that requires a signature, reading a site that has none, can never update.
+5. Sign and deploy the first signed manifest **before** the first TestFlight upload. Nothing has
+   shipped, so there is no unsigned transition: every build requires a signature from the
+   first release on. An app that requires a signature, reading a site that has none, can never
+   update, so "signed manifest live on the site" is on the release checklist
+   (`docs/AppStoreSetup.md`).
