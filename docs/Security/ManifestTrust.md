@@ -182,7 +182,8 @@ list we since removed or that has an older checksum.
 An `id` becomes a file name (`Filters/<id>.json`) and part of a URL.
 
 - Must match `^[a-z0-9][a-z0-9-]{0,63}$`. Anything else rejects the manifest.
-- The Publisher's `Validator` enforces the same pattern, so a bad ID never gets published.
+- The Publisher's `Validator` enforces the same pattern (`Validator.idPattern`), so a bad ID
+  never gets published.
 
 ### Duplicates
 
@@ -241,7 +242,7 @@ manifest replaces it.
 1. Publisher: `keygen`, `sign` (to `signatures/<sha256>.sig`, keeping earlier ones) and
    `verify`. **Done.**
 2. Publisher: signature pruning (7 days, `signatures/index.json`) and the `manifestVersion`
-   timestamp. **Done.** Still to do: the ID-pattern check in `Validator`.
+   timestamp, and the ID-pattern check in `Validator`. **Done.**
 3. Generate K1 (`keygen --secure-enclave`) and K2 (a key file, written to offline storage)
    together, and record both public keys in the app. The algorithm is settled: P-256.
 4. App: download cap and streaming (SEC-09 size cap), then signature fetch and verification,

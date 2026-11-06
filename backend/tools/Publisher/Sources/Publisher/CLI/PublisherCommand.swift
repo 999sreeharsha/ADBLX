@@ -59,6 +59,8 @@ enum PublisherPipeline {
             return "Registry is empty (zero registered filters)"
         case .invalidGroup(let id, let found):
             return "Invalid group \"\(found)\" for filter \"\(id)\" (expected: ads|privacy|annoyances|regional)"
+        case .invalidID(let id):
+            return "Invalid filter id \(id.debugDescription) (expected lowercase letters, digits and hyphens, starting with a letter or digit, at most 64 characters)"
         case .duplicateRegistryID(let id):
             return "Duplicate registry id \"\(id)\""
         case .missingMetadata(let id):

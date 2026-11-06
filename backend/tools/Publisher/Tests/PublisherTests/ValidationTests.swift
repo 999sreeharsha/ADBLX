@@ -23,6 +23,23 @@ final class ValidationTests: XCTestCase {
         XCTAssertEqual(errors, [.duplicateRegistryID(id: "easylist")])
     }
 
+    // An id becomes a file name and part of a URL on every device; the app rejects a manifest
+    // with any other id (docs/Security/ManifestTrust.md, Filter IDs), so it must never ship.
+    func test_anIDOutsideThePatternIsRejected() {
+        let tooLong = "a" + String(repeating: "b", count: 64)
+        for bad in ["", "-easylist", "EasyList", "easy_list", "easy.list", "../easylist", "easy/list", "easy list", "ëasylist", tooLong] {
+            let registry = Registry(registryVersion: 1, filters: [makeEntry(id: bad, group: "ads")])
+            XCTAssertEqual(Validator.validateRegistry(registry), [.invalidID(id: bad)], "accepted \(bad.debugDescription)")
+        }
+    }
+
+    func test_idsInsideThePatternAreAccepted() {
+        for good in ["easylist", "fanboy-annoyances", "shield-fixes", "0", "a" + String(repeating: "b", count: 63)] {
+            let registry = Registry(registryVersion: 1, filters: [makeEntry(id: good, group: "ads")])
+            XCTAssertEqual(Validator.validateRegistry(registry), [], good)
+        }
+    }
+
     func test_collectsMultipleIndependentErrors() {
         let entryA = makeEntry(id: "easylist", group: "advertisements")
         let entryB = makeEntry(id: "easylist", group: "privacy")
