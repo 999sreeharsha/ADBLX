@@ -223,51 +223,63 @@ struct SafariProtectionView: View {
                 .foregroundStyle(DesignColors.onSurfaceVariant)
 
             VStack(spacing: 0) {
-                NavigationLink {
-                    AdvancedFilterListsView(viewModel: viewModel)
-                } label: {
-                    configurationRow(
-                        icon: "line.3.horizontal.decrease.circle.fill",
-                        iconColor: DesignColors.primary,
-                        titleKey: "protection.row.advancedFilterLists",
-                        detailKey: "protection.row.advancedFilterLists.detail"
-                    )
-                }
-                Divider().overlay(DesignColors.outlineVariant.opacity(0.2))
-                if BuildFeatures.dnsProtection {
-                    NavigationLink {
-                        DNSProtectionView(subscriptionService: subscriptionService)
-                    } label: {
-                        configurationRow(
-                            icon: "lock.shield.fill",
-                            iconColor: DesignColors.tertiary,
-                            titleKey: "protection.row.dnsProtection",
-                            detailKey: "protection.row.dnsProtection.detail"
-                        )
+                let rows = ProtectionConfigurationRow.visible()
+                ForEach(rows, id: \.self) { row in
+                    configurationEntry(row)
+                    if row != rows.last {
+                        Divider().overlay(DesignColors.outlineVariant.opacity(0.2))
                     }
-                    Divider().overlay(DesignColors.outlineVariant.opacity(0.2))
                 }
-                configurationRow(
-                    icon: "bolt.fill",
-                    iconColor: DesignColors.primary,
-                    titleKey: "protection.row.speedOptimization",
-                    detailKey: nil
-                )
-                Divider().overlay(DesignColors.outlineVariant.opacity(0.2))
-                Button {
-                    isShowingBrokenSiteReport = true
-                } label: {
-                    configurationRow(
-                        icon: "exclamationmark.bubble.fill",
-                        iconColor: DesignColors.secondary,
-                        titleKey: "brokenSite.row.title",
-                        detailKey: "brokenSite.row.detail"
-                    )
-                }
-                .buttonStyle(.plain)
             }
             .background(DesignColors.surfaceContainer)
             .clipShape(RoundedRectangle(cornerRadius: DesignShape.defaultCornerRadius * 2))
+        }
+    }
+
+    @ViewBuilder
+    private func configurationEntry(_ row: ProtectionConfigurationRow) -> some View {
+        switch row {
+        case .advancedFilterLists:
+            NavigationLink {
+                AdvancedFilterListsView(viewModel: viewModel)
+            } label: {
+                configurationRow(
+                    icon: "line.3.horizontal.decrease.circle.fill",
+                    iconColor: DesignColors.primary,
+                    titleKey: "protection.row.advancedFilterLists",
+                    detailKey: "protection.row.advancedFilterLists.detail"
+                )
+            }
+        case .dnsProtection:
+            NavigationLink {
+                DNSProtectionView(subscriptionService: subscriptionService)
+            } label: {
+                configurationRow(
+                    icon: "lock.shield.fill",
+                    iconColor: DesignColors.tertiary,
+                    titleKey: "protection.row.dnsProtection",
+                    detailKey: "protection.row.dnsProtection.detail"
+                )
+            }
+        case .speedOptimization:
+            configurationRow(
+                icon: "bolt.fill",
+                iconColor: DesignColors.primary,
+                titleKey: "protection.row.speedOptimization",
+                detailKey: nil
+            )
+        case .brokenSiteReport:
+            Button {
+                isShowingBrokenSiteReport = true
+            } label: {
+                configurationRow(
+                    icon: "exclamationmark.bubble.fill",
+                    iconColor: DesignColors.secondary,
+                    titleKey: "brokenSite.row.title",
+                    detailKey: "brokenSite.row.detail"
+                )
+            }
+            .buttonStyle(.plain)
         }
     }
 
@@ -347,5 +359,18 @@ struct SafariProtectionView: View {
             ),
             subscriptionService: MockSubscriptionService()
         )
+    }
+}
+
+/// The rows of the Protection tab's configuration list, so the build flag decides what the view
+/// draws and a test can check it with the flag off.
+nonisolated enum ProtectionConfigurationRow: CaseIterable, Hashable, Sendable {
+    case advancedFilterLists
+    case dnsProtection
+    case speedOptimization
+    case brokenSiteReport
+
+    static func visible(dnsEnabled: Bool = BuildFeatures.dnsProtection) -> [ProtectionConfigurationRow] {
+        allCases.filter { dnsEnabled || $0 != .dnsProtection }
     }
 }
