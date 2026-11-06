@@ -484,3 +484,20 @@ or the web extension. Two fixes first proposed in the audit were wrong; use the
 corrected versions there.
 
 Found in: security audit and review, 2026-11-05
+
+## Pre-launch: the PRD promises free weekly auto-updates, but nothing schedules them
+
+`docs/adblock-prd-v1.1.md` (feature table, "Automatic filter updates") lists
+"✅ (weekly)" for the free plan and "daily + push-triggered" for Premium. No
+`BGAppRefreshTask` or `BGTaskScheduler` exists in the app. What does exist is the
+foreground update in `ADBLXApp.swift` (`coordinator.run()` on app open, throttled by
+`UpdateThrottle` to 6 hours). The Home plan card therefore says "Filter updates when
+you open the app", which matches the code. "Background Updates" is also listed as a
+Premium feature on the paywall, so a free user cannot get background updates today.
+
+Before App Store submission, either build it (a `BGAppRefreshTask` that calls
+`UpdateCoordinator.run()`, free weekly and Premium daily, with the entitlement check
+inside the coordinator) or amend the PRD and the paywall. Until then, no marketing
+copy, App Store text or in-app string may say "automatic weekly updates".
+
+Found in: Home plan card (Phase 4b) review, 2026-11-06
