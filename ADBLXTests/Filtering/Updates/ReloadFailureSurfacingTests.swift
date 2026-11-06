@@ -157,6 +157,18 @@ struct ReloadFailureSurfacingTests {
         #expect(model.phase == .failed(String(localized: "updateprogress.status.failed")))
         #expect(try await store.read("Ads.json", in: .compiled) == rulesBefore)
     }
+
+    @Test("a snapshot that fails on a full disk leaves nothing behind")
+    func failedSnapshotCleansUp() async throws {
+        let store = FilterStore.temporary(fileManager: OutOfSpaceFileManager())
+        let compiled = try await store.directoryURL(.compiled)
+        try goodRules.write(to: compiled.appendingPathComponent("Ads.json"))
+
+        await #expect(throws: (any Error).self) { try await store.snapshotForRollback() }
+
+        let previous = compiled.deletingLastPathComponent().appendingPathComponent("Previous")
+        #expect(!FileManager.default.fileExists(atPath: previous.path))
+    }
 }
 
 private nonisolated final class ReloadRecorder: @unchecked Sendable {
@@ -187,4 +199,10 @@ private nonisolated struct FixedBlockerState: ContentBlockerStateProviding {
     let value: ContentBlockerSettingsState
     init(_ value: ContentBlockerSettingsState) { self.value = value }
     func state(of extensionIdentifier: String) async -> ContentBlockerSettingsState { value }
+}
+
+private nonisolated final class OutOfSpaceFileManager: FileManager, @unchecked Sendable {
+    override func copyItem(at srcURL: URL, to dstURL: URL) throws {
+        throw CocoaError(.fileWriteOutOfSpace)
+    }
 }
