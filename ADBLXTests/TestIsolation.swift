@@ -5,11 +5,14 @@ extension FilterStore {
     /// A store rooted in a fresh temporary directory. Tests never use the real App Group: the
     /// installed Safari extensions and the DNS tunnel read it, and two test runners sharing it
     /// made the suite order-dependent.
-    nonisolated static func temporary(fileManager: FileManager = .default) -> FilterStore {
+    nonisolated static func temporary(
+        fileManager: FileManager = .default,
+        swapPaths: @escaping @Sendable (URL, URL) throws -> Void = { try FilterStore.swapPathsAtomically($0, $1) }
+    ) -> FilterStore {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("FilterStore-\(UUID().uuidString)", isDirectory: true)
         try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
-        return FilterStore(fileManager: fileManager, overrideBaseURL: url)
+        return FilterStore(fileManager: fileManager, overrideBaseURL: url, swapPaths: swapPaths)
     }
 }
 

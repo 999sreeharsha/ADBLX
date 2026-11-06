@@ -19,8 +19,7 @@ struct CorruptMetadataRecoveryTests {
         let reconciler: PremiumEntitlementReconciler
     }
 
-    private func makeHarness(entitled: Bool) -> Harness {
-        let store = FilterStore.temporary()
+    private func makeHarness(entitled: Bool, store: FilterStore = .temporary()) -> Harness {
         let gate = FilterTransactionGate()
         let compiler = RecoveryTestCompiler()
         let pipeline = FilterPipeline(
@@ -53,6 +52,11 @@ struct CorruptMetadataRecoveryTests {
     private func truncateMetadata(_ h: Harness) async throws {
         let data = try await h.store.read("installed_filters.json", in: .metadata)
         try await h.store.writeMetadata(data.prefix(data.count / 2), filename: "installed_filters.json")
+    }
+
+    private func deleteMetadata(_ h: Harness) async throws {
+        let url = try await h.store.directoryURL(.metadata).appendingPathComponent("installed_filters.json")
+        try FileManager.default.removeItem(at: url)
     }
 
     private func installedIDs(_ h: Harness) async throws -> Set<String> {
@@ -121,6 +125,113 @@ struct CorruptMetadataRecoveryTests {
 
         #expect(h.compiler.count == compilesBefore)
         #expect(try await ruleCount("Ads.json", h) == 1)
+    }
+
+    // A crash part-way through a restore can lose the file while the rules stay. Read as
+    // "nothing installed", drift repair would empty every group.
+    @Test("not entitled: missing metadata with rules on disk recovers instead of emptying groups")
+    func missingMetadataRecoversNotEntitled() async throws {
+        let h = makeHarness(entitled: false)
+        try await seed(h)
+        try await deleteMetadata(h)
+
+        #expect(await h.reconciler.reconcile() == .recoveredMetadata)
+
+        #expect(try await installedIDs(h) == ["easylist", "easyprivacy"])
+        #expect(try await ruleCount("Ads.json", h) > 1)
+        #expect(try await ruleCount("Privacy.json", h) > 1)
+    }
+
+    @Test("entitled: missing metadata with rules on disk restores the premium lists too")
+    func missingMetadataRecoversEntitled() async throws {
+        let h = makeHarness(entitled: true)
+        try await seed(h)
+        try await deleteMetadata(h)
+
+        #expect(await h.reconciler.reconcile() == .recoveredMetadata)
+
+        #expect(try await installedIDs(h) == ["easylist", "easyprivacy", "fanboy-annoyances", "shield-fixes"])
+        #expect(try await ruleCount("Annoyances.json", h) > 1)
+    }
+
+    @Test("no metadata and no rules is a fresh install, not something to recover")
+    func freshInstallIsNotRecovered() async throws {
+        let h = makeHarness(entitled: false)
+
+        #expect(await h.reconciler.reconcile() == .noChange)
+
+        #expect(h.compiler.count == 0)
+    }
+
+    // Lists that came from an update (Regional, say) are gone after a recovery until one runs.
+    @Test("a recovery lets the next update run without waiting out the throttle")
+    func recoveryBypassesThrottleOnce() async throws {
+        let h = makeHarness(entitled: false)
+        try await seed(h)
+        let throttle = UpdateThrottle(store: h.store, interval: 24 * 60 * 60)
+        try await throttle.recordSuccess(at: Date())
+        try await truncateMetadata(h)
+
+        _ = await h.reconciler.reconcile()
+
+        #expect(await throttle.shouldRun(now: Date()))
+    }
+
+    /// An update that adds a second Ads list, rolled back by a restore that stops part-way, as
+    /// a crash between two directory swaps would.
+    private func interruptedRollback(swap: @escaping @Sendable (URL, URL) throws -> Void) async throws -> Harness {
+        let h = makeHarness(entitled: false, store: .temporary(swapPaths: swap))
+        try await install("easylist", oneRule, group: .ads, in: h)
+        try await install("easyprivacy", oneRule, group: .privacy, in: h)
+        let snapshot = try await h.store.snapshotForRollback()
+        let second = Data("[{\"trigger\":{\"url-filter\":\"second\"},\"action\":{\"type\":\"block\"}}]".utf8)
+        try await install("ads-second", second, group: .ads, in: h, alongside: ["easylist": oneRule])
+        try? await h.store.restore(snapshot)
+        return h
+    }
+
+    private func install(_ id: String, _ data: Data, group: FilterGroup, in h: Harness, alongside: [String: Data] = [:]) async throws {
+        let sources = ([id: data].merging(alongside) { first, _ in first }).sorted { $0.key < $1.key }.map {
+            FilterSource(filterID: $0.key, version: "v1", checksumSHA256: Checksum.sha256Hex(of: $0.value), data: $0.value, premium: false)
+        }
+        _ = try await h.pipeline.install(GroupComposition(group: group, sources: sources), reloadStrategy: .deferred)
+    }
+
+    private func adsSidecarSources(_ h: Harness) async throws -> Set<String> {
+        let data = try await h.store.read(CompiledSources.filename(for: .ads), in: .compiled)
+        return Set(try JSONDecoder().decode(CompiledSources.self, from: data).sourceIDs)
+    }
+
+    @Test("a crash after Compiled/ is restored but before Metadata/ ends with rules matching what's installed")
+    func compiledOldMetadataNew() async throws {
+        let h = try await interruptedRollback { saved, live in
+            if live.lastPathComponent != "Compiled" { throw CocoaError(.fileWriteUnknown) }
+            try FilterStore.swapPathsAtomically(saved, live)
+        }
+        #expect(try await installedIDs(h) == ["easylist", "easyprivacy", "ads-second"])
+        #expect(try await adsSidecarSources(h) == ["easylist"])
+
+        _ = await h.reconciler.reconcile()
+
+        #expect(try await adsSidecarSources(h) == ["easylist", "ads-second"])
+        #expect(try await ruleCount("Ads.json", h) == 2)
+        #expect(try await ruleCount("Privacy.json", h) == 1)
+    }
+
+    @Test("Metadata/ restored with Compiled/ still new ends with rules matching what's installed")
+    func compiledNewMetadataOld() async throws {
+        let h = try await interruptedRollback { saved, live in
+            guard live.lastPathComponent != "Compiled" else { return }
+            try FilterStore.swapPathsAtomically(saved, live)
+        }
+        #expect(try await installedIDs(h) == ["easylist", "easyprivacy"])
+        #expect(try await adsSidecarSources(h) == ["easylist", "ads-second"])
+
+        _ = await h.reconciler.reconcile()
+
+        #expect(try await adsSidecarSources(h) == ["easylist"])
+        #expect(try await ruleCount("Ads.json", h) == 1)
+        #expect(try await ruleCount("Privacy.json", h) == 1)
     }
 
     // Partial failure: Ads compiles and is written before Privacy throws.

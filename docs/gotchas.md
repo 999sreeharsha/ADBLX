@@ -329,7 +329,10 @@ The same error comes from a new main-actor-isolated type (the default for a plai
 `enum`/`struct` in the app target) used in a `nonisolated` protocol's requirements: adding
 `AllowlistEditOutcome` as `SettingsService`'s return type produced it, on a clean build too,
 until the enum was declared `nonisolated`. Look at changed protocol signatures as well as new
-test doubles.
+test doubles. A nested `private struct` inside a `nonisolated struct` didn't trigger it, but a
+reference to an actor's `nonisolated static` method used as a default argument
+(`swapPaths: ... = FilterStore.swapPathsAtomically`) did; wrapping it in a closure
+(`{ try FilterStore.swapPathsAtomically($0, $1) }`) fixed it.
 
 Found in: entitlement purchase-bug fix (`FakeStoreEntitlementSource`), bisected 2026-10-30
 
@@ -441,22 +444,23 @@ Found in: cookiebot.com banner investigation, iPhone 14, 2026-11-03
 ## A corrupt `installed_filters.json` recovers from the bundle, and a failed read must not
 
 `writeMetadata` is already atomic (`.atomic`, guarded by
-`concurrentWriteNeverProducesTornRead`), so an interrupted write isn't the likely
-cause. The non-atomic path is `FilterStore.restore`, which deletes each directory and
-then copies files back: a crash there can leave a truncated or missing file.
+`concurrentWriteNeverProducesTornRead`). `FilterStore.restore` used to delete each
+directory and copy files back; it now swaps each one in with a rename, so a directory is
+never half-restored. A crash between two swaps can still leave `Compiled/` and
+`Metadata/` from different points.
 
-- `PremiumEntitlementReconciler` treats a file that reads but won't decode as corrupt:
-  it reinstalls the free bundled lists, clears the ETag, then reconciles as usual.
+- `PremiumEntitlementReconciler` treats the file as lost when it reads but won't decode,
+  or when it's missing while compiled rules exist (the pipeline always writes it after
+  compiling). It reinstalls the free bundled lists, clears the ETag and the update
+  throttle, then reconciles as usual. Drift repair never runs from a lost file.
 - A failed read is left alone. It can be temporary (before first unlock) and the file
   may be fine.
 - Recovery is all-or-nothing. A partial install would make the other groups look
   sourceless, and drift repair would empty them.
 - It runs once per launch, because a full disk would otherwise repeat a full compile.
-- Lists from an update (Regional, say) are gone until the next update run. That run can
-  still be held back by `UpdateThrottle`.
-- Not covered: a crash mid-restore that leaves `installed_filters.json` missing while
-  `manifest.json` survives. Missing still means "nothing installed", so drift repair
-  empties the groups. The next launch's bootstrap restores Ads and Privacy.
+- Lists from an update (Regional, say) are gone until the next update run. Clearing the
+  throttle lets that run at the next opportunity: the same launch, since reconcile runs
+  before the throttle check.
 
 Found in: review of the empty-group repair, 2026-11-05
 

@@ -38,6 +38,12 @@ actor UpdateThrottle {
         try await store.writeMetadata(data, filename: Self.filename)
     }
 
+    /// Forgets the last success, so the next check runs an update whatever the interval. For a
+    /// caller that just lost the lists previous updates installed.
+    static func clear(in store: FilterStore) async {
+        try? await store.removeMetadata(filename: filename)
+    }
+
     private func loadRecord() async -> UpdateThrottleRecord? {
         guard let data = try? await store.read(Self.filename, in: .metadata) else { return nil }
         return try? JSONDecoder().decode(UpdateThrottleRecord.self, from: data)

@@ -149,7 +149,9 @@ struct CompiledSourcesDriftTests {
     @Test("rules on disk for a group with no installed sources and no sidecar are emptied")
     func emptyGroupWithoutSidecarIsRepaired() async throws {
         let h = makeHarness()
-        // What the old race left on an install that predates the sidecar.
+        // What the old race left on an install that predates the sidecar. The metadata lists
+        // nothing for the group; with no metadata at all the file counts as lost instead.
+        try await h.store.writeMetadata(Data("[]".utf8), filename: "installed_filters.json")
         try await writeCompiled(String(decoding: oneRule, as: UTF8.self), "Annoyances.json", in: h.store)
 
         let outcome = await h.reconciler.reconcile()
@@ -174,6 +176,7 @@ struct CompiledSourcesDriftTests {
     func emptyGroupKeepsAllowlistRules() async throws {
         let h = makeHarness()
         _ = try await AllowlistStore(store: h.store).add(domain: "example.com")
+        try await h.store.writeMetadata(Data("[]".utf8), filename: "installed_filters.json")
         try await writeCompiled(String(decoding: oneRule, as: UTF8.self), "Annoyances.json", in: h.store)
 
         _ = await h.reconciler.reconcile()

@@ -118,7 +118,7 @@ actor PremiumEntitlementReconciler {
     /// the run then restores premium lists or removes premium rules, as for any other state.
     /// Tried once per launch, since on a full disk it would repeat a full compile each time.
     private func recoverCorruptMetadata() async -> Bool {
-        guard !didAttemptMetadataRecovery, await installedMetadataIsCorrupt() else { return false }
+        guard !didAttemptMetadataRecovery, case .lost = await loadInstalledMetadata() else { return false }
         didAttemptMetadataRecovery = true
 
         let snapshot: RollbackSnapshot
@@ -145,15 +145,38 @@ actor PremiumEntitlementReconciler {
         if let cached = try? await manifestStore.load() {
             try? await manifestStore.save(cached.manifest, etag: nil)
         }
+        // And let it run at the next opportunity: lists that came from updates are gone until then.
+        await UpdateThrottle.clear(in: store)
         Self.logger.info("metadata recovered")
         return true
     }
 
     /// Only a file that reads but won't decode. A failed read may be temporary (before first
     /// unlock, say) and the file may be fine, so that must not replace anything.
-    private func installedMetadataIsCorrupt() async -> Bool {
-        guard let data = try? await store.read("installed_filters.json", in: .metadata) else { return false }
-        return (try? JSONDecoder().decode([InstalledFilter].self, from: data)) == nil
+    private enum InstalledMetadata {
+        case readable([InstalledFilter])
+        /// Reads but won't decode, or is gone while compiled rules are still on disk, which a
+        /// crash part-way through a restore can leave. Not the same as nothing installed.
+        case lost
+        /// Can't be read right now (before first unlock, for example). The file may be fine.
+        case unreadable
+    }
+
+    private func loadInstalledMetadata() async -> InstalledMetadata {
+        do {
+            let data = try await store.read("installed_filters.json", in: .metadata)
+            guard let decoded = try? JSONDecoder().decode([InstalledFilter].self, from: data) else { return .lost }
+            return .readable(decoded)
+        } catch let error as CocoaError where error.code == .fileReadNoSuchFile {
+            // The pipeline writes it after every compile, so rules without it mean it was lost.
+            for group in FilterGroup.allCases
+            where await store.compiledFileSize(CompiledSources.rulesFilename(for: group)) != nil {
+                return .lost
+            }
+            return .readable([])
+        } catch {
+            return .unreadable
+        }
     }
 
     // MARK: - Downgrade
@@ -291,17 +314,12 @@ actor PremiumEntitlementReconciler {
         return decoded
     }
 
-    /// `nil` when the file exists but can't be read or decoded. Repairing from that would treat
+    /// `nil` unless the file reads and decodes, or is absent with no rules on disk. Repairing
+    /// from a lost or unreadable file would treat
     /// every group as having no sources and empty them all.
     private func readInstalledIfTrustworthy() async -> [InstalledFilter]? {
-        do {
-            let data = try await store.read("installed_filters.json", in: .metadata)
-            return try JSONDecoder().decode([InstalledFilter].self, from: data)
-        } catch let error as CocoaError where error.code == .fileReadNoSuchFile {
-            return []
-        } catch {
-            return nil
-        }
+        guard case .readable(let installed) = await loadInstalledMetadata() else { return nil }
+        return installed
     }
 
     private func identifier(for group: FilterGroup) -> String {

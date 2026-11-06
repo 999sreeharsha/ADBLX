@@ -265,29 +265,17 @@ struct UpdateCoordinatorTests {
 
     @Test("restore failure during rollback surfaces .rollbackFailed with both errors, and does not throw")
     func restoreFailureDuringRollbackSurfacesRollbackFailed() async throws {
-        final class FailingOnMetadataFileManager: FileManager {
-            override func copyItem(at srcURL: URL, to dstURL: URL) throws {
-                // Only fail copies into the LIVE Metadata/ directory (i.e. restore()'s
-                // Metadata/ replacement), not copies into Previous/Metadata/ (which
-                // snapshotForRollback() performs first, and which also matches
-                // "/Metadata/" as a substring) — otherwise this throws during snapshot
-                // creation, before run()'s guarded catch block around restore() is ever
-                // reached, and the scenario this test exists for never gets exercised.
-                if dstURL.path.contains("/Metadata/") && !dstURL.path.contains("/Previous/") {
-                    throw NSError(domain: "test.restore-failure", code: 1)
-                }
-                try super.copyItem(at: srcURL, to: dstURL)
-            }
-        }
-
         struct AlwaysFailingCompiler: RuleCompiler {
             nonisolated func compile(source: Data, group: FilterGroup) async throws -> CompiledRuleSet {
                 throw RuleCompilerError.invalidSource
             }
         }
 
-        let failingFileManager = FailingOnMetadataFileManager()
-        let store = FilterStore.temporary(fileManager: failingFileManager)
+        // Fails restore()'s swap of the live Metadata/ directory, after Compiled/ is back.
+        let store = FilterStore.temporary(swapPaths: { saved, live in
+            if live.lastPathComponent == "Metadata" { throw NSError(domain: "test.restore-failure", code: 1) }
+            try FilterStore.swapPathsAtomically(saved, live)
+        })
         let compiledDir = try await store.directoryURL(.compiled)
         let metadataDir = try await store.directoryURL(.metadata)
         try Data("[\"prior-compiled\"]".utf8).write(to: compiledDir.appendingPathComponent("Ads.json"), options: .atomic)
@@ -317,9 +305,9 @@ struct UpdateCoordinatorTests {
             return
         }
 
-        // Previous/ must still exist — restore() only deletes it after success,
-        // so a failed restore leaves the snapshot recoverable.
-        let previousExists = failingFileManager.fileExists(
+        // Previous/ must still exist: restore() only deletes it after success. It now holds the
+        // swapped-out Compiled/ and the unrestored rest, for inspection, not for a second restore.
+        let previousExists = FileManager.default.fileExists(
             atPath: try await store.directoryURL(.compiled).deletingLastPathComponent()
                 .appendingPathComponent("Previous").path
         )

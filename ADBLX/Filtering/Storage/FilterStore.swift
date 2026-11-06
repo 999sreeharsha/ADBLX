@@ -25,15 +25,27 @@ actor FilterStore {
     private let appGroupIdentifier: String
     private let fileManager: FileManager
     private let overrideBaseURL: URL?
+    private let swapPaths: @Sendable (URL, URL) throws -> Void
 
     init(
         appGroupIdentifier: String = AppGroup.identifier,
         fileManager: FileManager = .default,
-        overrideBaseURL: URL? = nil
+        overrideBaseURL: URL? = nil,
+        swapPaths: @escaping @Sendable (URL, URL) throws -> Void = { try FilterStore.swapPathsAtomically($0, $1) }
     ) {
         self.appGroupIdentifier = appGroupIdentifier
         self.fileManager = fileManager
         self.overrideBaseURL = overrideBaseURL
+        self.swapPaths = swapPaths
+    }
+
+    /// Exchanges two paths in one call (`renamex_np` with `RENAME_SWAP`, APFS), so a crash leaves
+    /// both as they were or both swapped. A plain rename can't replace a non-empty directory, and
+    /// moving one aside first would leave a window with neither in place.
+    nonisolated static func swapPathsAtomically(_ first: URL, _ second: URL) throws {
+        guard renamex_np(first.path, second.path, UInt32(RENAME_SWAP)) == 0 else {
+            throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
+        }
     }
 
     /// Root container URL for the App Group. Not exposed outside this type —
@@ -80,6 +92,13 @@ actor FilterStore {
     func writeMetadata(_ data: Data, filename: String) throws {
         let fileURL = try url(for: .metadata).appendingPathComponent(filename)
         try data.write(to: fileURL, options: .atomic)
+    }
+
+    /// Deletes a metadata file. Absent already is not an error.
+    func removeMetadata(filename: String) throws {
+        let fileURL = try url(for: .metadata).appendingPathComponent(filename)
+        guard fileManager.fileExists(atPath: fileURL.path) else { return }
+        try fileManager.removeItem(at: fileURL)
     }
 
     /// Persists one filter's verified raw source payload to `Filters/<filterID>.json` —
@@ -152,10 +171,15 @@ actor FilterStore {
     /// Replaces the entire current contents of `Compiled/`, `Metadata/`, and `Filters/` with the
     /// snapshot's contents (files present only in the current state and absent from the
     /// snapshot are removed), then discards the `Previous/` root.
+    /// Each directory is swapped in by one atomic rename, so a crash leaves it either as it was or
+    /// fully restored, never half-copied, and a full disk can't stop it. A crash between two swaps
+    /// can still leave the directories from different points; reconcile handles that. After a
+    /// failed restore the snapshot is spent: the directories already swapped hold the newer
+    /// contents in `Previous/`, so never restore it a second time.
     func restore(_ snapshot: RollbackSnapshot) throws {
-        try replaceDirectoryContents(at: try url(for: .compiled), with: snapshot.compiledSnapshotDir)
-        try replaceDirectoryContents(at: try url(for: .metadata), with: snapshot.metadataSnapshotDir)
-        try replaceDirectoryContents(at: try url(for: .filters), with: snapshot.filtersSnapshotDir)
+        try swapIntoPlace(snapshot.compiledSnapshotDir, at: try url(for: .compiled))
+        try swapIntoPlace(snapshot.metadataSnapshotDir, at: try url(for: .metadata))
+        try swapIntoPlace(snapshot.filtersSnapshotDir, at: try url(for: .filters))
 
         let previousRoot = try previousRootURL()
         try? fileManager.removeItem(at: previousRoot)
@@ -170,6 +194,12 @@ actor FilterStore {
         }
     }
 
+    /// The live directory's old contents end up at `saved`, inside `Previous/`, which `restore`
+    /// then deletes.
+    private func swapIntoPlace(_ saved: URL, at live: URL) throws {
+        try swapPaths(saved, live)
+    }
+
     private func previousRootURL() throws -> URL {
         try containerURL().appendingPathComponent("Previous", isDirectory: true)
     }
@@ -180,19 +210,6 @@ actor FilterStore {
         }
         try fileManager.createDirectory(at: destination, withIntermediateDirectories: true)
         guard fileManager.fileExists(atPath: source.path) else { return }
-        for name in try fileManager.contentsOfDirectory(atPath: source.path) {
-            try fileManager.copyItem(
-                at: source.appendingPathComponent(name),
-                to: destination.appendingPathComponent(name)
-            )
-        }
-    }
-
-    private func replaceDirectoryContents(at destination: URL, with source: URL) throws {
-        if fileManager.fileExists(atPath: destination.path) {
-            try fileManager.removeItem(at: destination)
-        }
-        try fileManager.createDirectory(at: destination, withIntermediateDirectories: true)
         for name in try fileManager.contentsOfDirectory(atPath: source.path) {
             try fileManager.copyItem(
                 at: source.appendingPathComponent(name),
