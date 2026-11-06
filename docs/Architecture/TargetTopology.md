@@ -199,7 +199,8 @@ group.com.ADBLX.shared/
 ├── Metadata/
 │   ├── installed_filters.json   [InstalledFilter] metadata
 │   ├── manifest.json            CachedManifest (FilterManifest + ETag)
-│   └── statistics.json          RuleStatistics
+│   ├── statistics.json          RuleStatistics
+│   └── pending_reloads.json     Enabled blockers whose last reload failed; retried by the next update run
 └── Previous/      Transient rollback snapshot root (Compiled/, Metadata/ copies)
 ```
 

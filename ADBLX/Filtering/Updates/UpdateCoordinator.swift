@@ -23,6 +23,7 @@ actor UpdateCoordinator {
     private let extensionIdentifiers: GroupExtensionIdentifiers
     private let entitlementService: EntitlementService
     private let gate: FilterTransactionGate
+    private let stateProvider: ContentBlockerStateProviding
     private var inFlightTask: Task<UpdateRunResult, Error>?
     // Bumped each time a NEW transaction task is created. `Task` is a struct with no
     // identity comparison, so this generation counter is what lets the creator of a
@@ -40,7 +41,8 @@ actor UpdateCoordinator {
         reloader: ReloadCoordinator,
         extensionIdentifiers: GroupExtensionIdentifiers,
         entitlementService: EntitlementService,
-        gate: FilterTransactionGate = .shared
+        gate: FilterTransactionGate = .shared,
+        stateProvider: ContentBlockerStateProviding = SystemContentBlockerStateProvider()
     ) {
         self.manifestClient = manifestClient
         self.manifestStore = manifestStore
@@ -51,6 +53,7 @@ actor UpdateCoordinator {
         self.extensionIdentifiers = extensionIdentifiers
         self.entitlementService = entitlementService
         self.gate = gate
+        self.stateProvider = stateProvider
     }
 
     /// `onPhaseChange` is additive — defaults to a no-op so existing callers (and
@@ -104,8 +107,9 @@ actor UpdateCoordinator {
         let etag: String?
         switch fetchResult {
         case .notModified:
+            let result = await upToDateResult()
             onPhaseChange(.complete)
-            return .upToDate
+            return result
         case .updated(let fetchedManifest, let fetchedETag):
             manifest = fetchedManifest
             etag = fetchedETag
@@ -131,8 +135,9 @@ actor UpdateCoordinator {
 
         guard !installGroups.isEmpty || !removals.isEmpty else {
             try await manifestStore.save(manifest, etag: etag)
+            let result = await upToDateResult()
             onPhaseChange(.complete)
-            return .upToDate
+            return result
         }
 
         onPhaseChange(.downloading)
@@ -187,6 +192,7 @@ actor UpdateCoordinator {
             try await manifestStore.save(manifest, etag: etag)
             try await store.discardRollbackSnapshot()
             let reloadResults = await reloader.reload(extensionIdentifiers: Array(affectedExtensionIDs))
+            await recordPendingReloads(after: reloadResults)
             onPhaseChange(.complete)
             return .updated(installedFilterIDs: installedFilterIDs, reloadResults: reloadResults)
         } catch {
@@ -204,6 +210,39 @@ actor UpdateCoordinator {
             return .rolledBack(reason: error)
         }
     }
+
+    /// No new rules, but an earlier reload may have failed. The manifest is committed by then,
+    /// so nothing else would ever reload that extension: a retry would get a 304 and report
+    /// success while Safari still ran the old rules.
+    private func upToDateResult() async -> UpdateRunResult {
+        let pending = await pendingReloads()
+        guard !pending.isEmpty else { return .upToDate }
+        let results = await reloader.reload(extensionIdentifiers: pending)
+        await recordPendingReloads(after: results)
+        return .updated(installedFilterIDs: [], reloadResults: results)
+    }
+
+    private func pendingReloads() async -> [String] {
+        guard let data = try? await store.read(Self.pendingReloadsFilename, in: .metadata) else { return [] }
+        return (try? JSONDecoder().decode([String].self, from: data)) ?? []
+    }
+
+    private func recordPendingReloads(after results: [ReloadCoordinator.ReloadResult]) async {
+        let previous = await pendingReloads()
+        let attempted = Set(results.map(\.extensionIdentifier))
+        var pending = previous.filter { !attempted.contains($0) }
+        // Only a blocker in use: one the user has turned off isn't, and retrying it would stop
+        // every later run reporting up to date.
+        for result in results where !result.success {
+            if await stateProvider.state(of: result.extensionIdentifier) == .enabled {
+                pending.append(result.extensionIdentifier)
+            }
+        }
+        guard pending != previous, let data = try? JSONEncoder().encode(pending) else { return }
+        try? await store.writeMetadata(data, filename: Self.pendingReloadsFilename)
+    }
+
+    private static let pendingReloadsFilename = "pending_reloads.json"
 
     private func currentInstalledFilters() async throws -> [InstalledFilter] {
         do {

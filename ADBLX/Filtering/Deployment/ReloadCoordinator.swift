@@ -27,10 +27,19 @@ actor ReloadCoordinator {
         case timedOut
     }
 
-    private let timeoutSeconds: Int
+    typealias ReloadOperation = @Sendable (_ extensionIdentifier: String, _ completion: @escaping @Sendable (Error?) -> Void) -> Void
 
-    init(timeoutSeconds: Int = 10) {
+    private let timeoutSeconds: Int
+    private let reloadOperation: ReloadOperation
+
+    init(
+        timeoutSeconds: Int = 10,
+        reloadOperation: @escaping ReloadOperation = { identifier, completion in
+            SFContentBlockerManager.reloadContentBlocker(withIdentifier: identifier) { completion($0) }
+        }
+    ) {
         self.timeoutSeconds = timeoutSeconds
+        self.reloadOperation = reloadOperation
     }
 
     /// Reloads a single Content Blocker extension by its bundle identifier.
@@ -52,7 +61,7 @@ actor ReloadCoordinator {
         return await withCheckedContinuation { (continuation: CheckedContinuation<ReloadResult, Never>) in
             let resumeGuard = ResumeOnce()
 
-            SFContentBlockerManager.reloadContentBlocker(withIdentifier: extensionIdentifier) { error in
+            reloadOperation(extensionIdentifier) { error in
                 guard resumeGuard.markAndCheckFirst() else { return }
                 continuation.resume(returning: ReloadResult(
                     extensionIdentifier: extensionIdentifier,

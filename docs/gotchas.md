@@ -432,6 +432,27 @@ cookiebot.com (classic dialog in the page DOM, no shadow root).
 
 Found in: cookiebot.com banner investigation, iPhone 14, 2026-11-03
 
+## WKErrorDomain code 6 can surface in two places, and they behave differently
+
+Code 6 is `WKErrorContentRuleListStoreCompileFailed` (`WKError.h`). Bad rules cause it;
+low disk is the suspected cause of the flaky `PayloadPersistenceTests` run.
+
+- **The WebKit gate in `FilterPipeline.installGroup`** runs before anything is written.
+  A rejection rolls back, the rule files stay byte-identical and the sheet reports
+  failure.
+- **`SFContentBlockerManager` reload** runs after commit, so the rule file has already
+  changed and can't be "unchanged". Don't roll back on it: a turned-off blocker can fail
+  here too. `UpdateProgressModel` reports it for any blocker not reported as off, and
+  `UpdateCoordinator` retries it for enabled ones through `pending_reloads.json`, even
+  on a 304.
+
+Whether Safari keeps the previous rules after a failed reload is assumed, not verified
+on a device. Reloads outside the update path (allowlist edits, reconcile) only reach
+the DEBUG diagnostics log. A failed compile during an allowlist edit reverts the edit
+with no message.
+
+Found in: `PayloadPersistenceTests` investigation, 2026-11-05
+
 ## Security findings live in `docs/Security/Findings.md`
 
 The open findings from the 2026-10-30 to 2026-11-04 security audit are tracked

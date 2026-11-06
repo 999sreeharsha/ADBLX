@@ -19,6 +19,11 @@ enum UpdatePhase: Equatable {
 @Observable
 final class UpdateProgressModel {
     var phase: UpdatePhase = .idle
+    private let stateProvider: ContentBlockerStateProviding
+
+    init(stateProvider: ContentBlockerStateProviding = SystemContentBlockerStateProvider()) {
+        self.stateProvider = stateProvider
+    }
 
     var progressDescription: String {
         switch phase {
@@ -34,16 +39,29 @@ final class UpdateProgressModel {
     func start(coordinator: UpdateCoordinator) async {
         do {
             let result = try await coordinator.run { [weak self] newPhase in
-                self?.phase = newPhase
+                // `.complete` is decided below, from the reload results.
+                if newPhase != .complete { self?.phase = newPhase }
             }
             switch result {
-            case .upToDate, .updated:
+            case .upToDate:
                 phase = .complete
+            case .updated(_, let reloadResults):
+                phase = await safariMissedRules(reloadResults)
+                    ? .failed(String(localized: "updateprogress.status.reloadFailed"))
+                    : .complete
             case .rolledBack, .rollbackFailed:
                 phase = .failed(String(localized: "updateprogress.status.failed"))
             }
         } catch {
             phase = .failed(String(localized: "updateprogress.status.failed"))
         }
+    }
+
+    /// A blocker the user has turned off isn't in use, so its failed reload doesn't matter.
+    private func safariMissedRules(_ results: [ReloadCoordinator.ReloadResult]) async -> Bool {
+        for result in results where !result.success {
+            if await stateProvider.state(of: result.extensionIdentifier) != .disabled { return true }
+        }
+        return false
     }
 }

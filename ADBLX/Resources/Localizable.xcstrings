@@ -2351,6 +2351,17 @@
         }
       }
     },
+    "updateprogress.status.reloadFailed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Safari couldn't apply the new filters. If your device is low on storage, free some up and try again."
+          }
+        }
+      }
+    },
     "updateprogress.status.ready" : {
       "localizations" : {
         "en" : {
