@@ -219,6 +219,7 @@ actor UpdateCoordinator {
         guard !pending.isEmpty else { return .upToDate }
         let results = await reloader.reload(extensionIdentifiers: pending)
         await pendingReloads.record(after: results)
+        guard await pendingReloads.includesEnabledFailure(results) else { return .upToDate }
         return .updated(installedFilterIDs: [], reloadResults: results)
     }
 

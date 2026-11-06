@@ -134,6 +134,49 @@ struct ReloadFailureSurfacingTests {
         #expect(reloads.calls.count == attemptsAfterUpdate + 2)
     }
 
+    private let unknown = ContentBlockerSettingsState.unavailable("state unreadable")
+
+    // The user may well be using it, so "try again" must reload it. But they can't act on an
+    // unknown state, so a retry that fails again still reports up to date.
+    @Test("a failed reload whose blocker state is unknown is retried, and the retry still reports up to date")
+    func unknownStateIsRetried() async throws {
+        let store = FilterStore.temporary()
+        let reloads = ReloadRecorder(failure: compileError)
+        _ = try await makeCoordinator(store: store, reloads: reloads, blockerState: unknown).run()
+        let attempts = reloads.calls.count
+
+        let retry = try await makeCoordinator(store: store, reloads: reloads, notModified: true, blockerState: unknown).run()
+
+        guard case .upToDate = retry else { Issue.record("expected .upToDate, got \(retry)"); return }
+        #expect(reloads.calls.count == attempts + 1)
+    }
+
+    @Test("a blocker whose state stays unknown is retried three times, then left alone")
+    func unknownStateRetriesAreCapped() async throws {
+        let store = FilterStore.temporary()
+        let reloads = ReloadRecorder(failure: compileError)
+        _ = try await makeCoordinator(store: store, reloads: reloads, blockerState: unknown).run()
+        let attempts = reloads.calls.count
+
+        for _ in 0..<5 {
+            _ = try await makeCoordinator(store: store, reloads: reloads, notModified: true, blockerState: unknown).run()
+        }
+
+        #expect(reloads.calls.count == attempts + 3)
+    }
+
+    // Written by the previous build, before entries carried a retry count.
+    @Test("a pending list in the old format is still retried")
+    func oldFormatIsRead() async throws {
+        let store = FilterStore.temporary()
+        try await store.writeMetadata(try JSONEncoder().encode([ids.ads]), filename: "pending_reloads.json")
+        let reloads = ReloadRecorder(failure: nil)
+
+        _ = try await makeCoordinator(store: store, reloads: reloads, notModified: true).run()
+
+        #expect(reloads.calls == [ids.ads])
+    }
+
     // Real WebKit, real code 6: this url-filter isn't a regex it can compile.
     @Test("rules WebKit won't compile roll back, leave the installed rules alone and report failure")
     @MainActor
