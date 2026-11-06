@@ -1,5 +1,6 @@
 import Testing
 import Foundation
+import UIKit
 @testable import ADBLX
 
 @Suite("Entitlement resolution", .serialized)
@@ -16,8 +17,15 @@ struct EntitlementResolutionTests {
         TrialManager(store: InMemoryTrialStore(record: TrialRecord(activatedAt: Date(), lastObservedDate: Date())))
     }
 
-    private func service(_ source: FakeStoreEntitlementSource, trial: TrialManager? = nil) -> StoreKitSubscriptionService {
-        StoreKitSubscriptionService(trialManager: trial ?? expiredTrial(), entitlementSource: source)
+    private func service(
+        _ source: FakeStoreEntitlementSource,
+        trial: TrialManager? = nil,
+        notificationCenter: NotificationCenter = NotificationCenter()
+    ) -> StoreKitSubscriptionService {
+        StoreKitSubscriptionService(
+            trialManager: trial ?? expiredTrial(), entitlementSource: source,
+            notificationCenter: notificationCenter
+        )
     }
 
     // MARK: 1. Paid always wins over trial / continue-free
@@ -230,10 +238,44 @@ struct EntitlementResolutionTests {
 
     // MARK: 4. One resolved entitlement, read by every consumer
 
+    // Every service observes the foreground notification, so one posted by anything else in the
+    // test process (the host app activating mid-run) used to add a StoreKit read and fail
+    // `singleSourceOfTruth` intermittently.
+    @Test("a foreground notification on the service's own center refreshes it")
+    func ownForegroundNotificationRefreshes() async {
+        let center = NotificationCenter()
+        let source = FakeStoreEntitlementSource([.annual()])
+        let sut = service(source, notificationCenter: center)
+        await sut.refreshEntitlements()
+        let readsAfterRefresh = source.readCount
+
+        center.post(name: UIApplication.willEnterForegroundNotification, object: nil)
+        await source.wait { $0.readCount > readsAfterRefresh }
+
+        #expect(source.readCount > readsAfterRefresh, "coming to the foreground did not refresh entitlements")
+    }
+
+    @Test("a foreground notification posted elsewhere does not make a test's service re-read StoreKit")
+    func strayForegroundNotificationIsIgnored() async throws {
+        let source = FakeStoreEntitlementSource([.annual()])
+        let sut = service(source)
+        await source.wait { $0.isListening }   // the listener's own startup refresh is done
+        await sut.refreshEntitlements()
+        let readsAfterRefresh = source.readCount
+
+        NotificationCenter.default.post(name: UIApplication.willEnterForegroundNotification, object: nil)
+        try await Task.sleep(for: .milliseconds(300))
+
+        #expect(source.readCount == readsAfterRefresh, "a stray foreground notification caused a StoreKit read")
+    }
+
     @Test("DNS gate, PlanStateProvider and the reconciler's entitlement read agree and never re-query StoreKit")
     func singleSourceOfTruth() async {
         let source = FakeStoreEntitlementSource([.annual()])
         let sut = service(source)
+        // The service refreshes once itself at startup, on a background task. Without waiting for
+        // it, that read can land after `readsAfterRefresh` is taken and look like a re-query.
+        await source.wait { $0.isListening }
         await sut.refreshEntitlements()
         let readsAfterRefresh = source.readCount
 

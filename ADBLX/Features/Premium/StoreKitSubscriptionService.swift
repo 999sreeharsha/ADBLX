@@ -16,6 +16,7 @@ public actor StoreKitSubscriptionService: SubscriptionService, EntitlementServic
 
     private let trialManager: TrialManagerProtocol
     private let entitlementSource: StoreEntitlementSource
+    private let notificationCenter: NotificationCenter
     private var state: EntitlementState = .free
     private var resolvedSnapshot = EntitlementSnapshot()
     private var refreshChain: Task<EntitlementState, Never>?
@@ -27,9 +28,16 @@ public actor StoreKitSubscriptionService: SubscriptionService, EntitlementServic
         self.init(trialManager: trialManager, entitlementSource: StoreKitEntitlementSource())
     }
 
-    init(trialManager: TrialManagerProtocol, entitlementSource: StoreEntitlementSource) {
+    /// `notificationCenter` is the one the foreground observer listens on. Tests pass their own,
+    /// so a foreground notification posted elsewhere in the process cannot add a StoreKit read.
+    init(
+        trialManager: TrialManagerProtocol,
+        entitlementSource: StoreEntitlementSource,
+        notificationCenter: NotificationCenter = .default
+    ) {
         self.trialManager = trialManager
         self.entitlementSource = entitlementSource
+        self.notificationCenter = notificationCenter
         startTransactionListener()
         setupForegroundObserver()
     }
@@ -37,12 +45,12 @@ public actor StoreKitSubscriptionService: SubscriptionService, EntitlementServic
     deinit {
         transactionUpdatesTask?.cancel()
         if let observer = foregroundObserver {
-            NotificationCenter.default.removeObserver(observer)
+            notificationCenter.removeObserver(observer)
         }
     }
 
     private func setupForegroundObserver() {
-        foregroundObserver = NotificationCenter.default.addObserver(
+        foregroundObserver = notificationCenter.addObserver(
             forName: UIApplication.willEnterForegroundNotification,
             object: nil,
             queue: nil
