@@ -342,7 +342,12 @@ On 2026-11-06 a fresh arm64 build of an already-green commit failed because
 `nonisolated` protocol, declared on the actor itself, made the compiler infer `nonisolated`
 for the actor and reject it. Declaring the conformance in an extension
 (`extension MockContentBlockerStateProvider: ContentBlockerStateProviding {}`) fixed it.
-Do the same for any new actor that conforms to a `nonisolated` protocol.
+
+**Standing rule:** a test double declares its conformance to a `nonisolated` protocol in an
+extension, never in its own declaration (`actor Stub {…}` then `extension Stub: SomeService {}`).
+Otherwise a later, unrelated test change can reshuffle the batches and bring the error back on
+someone else's build. Every existing test double follows it except the two in
+`BrokenSiteReporterTests.swift`, which wait on another session's uncommitted work.
 
 Found in: entitlement purchase-bug fix (`FakeStoreEntitlementSource`), bisected 2026-10-30
 
@@ -404,7 +409,7 @@ cancelled earlier Ads rules on every page load, and Annoyances applied nothing
 on ordinary pages, so any ad-blocking or AdBlock-Tester / G1 measurement taken
 before `8b07893` is invalid. Re-measure G1 on a device after this fix.
 
-Pre-launch item (before App Store submission, not now): store a compiler
+Before the first TestFlight build (testers will update across compiler fixes): store a compiler
 version alongside the installed compiled rules, and on launch recompile every
 group from its stored lists when it differs from the app's compiler version.
 Today an existing install keeps rules from the old compiler until a list
