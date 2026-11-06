@@ -8,6 +8,7 @@
 
 trust="${1:-$SRCROOT/ADBLX/Filtering/Updates/ManifestTrust.swift}"
 debug="${2:-$SRCROOT/ADBLX/Filtering/Updates/ManifestTrust+Debug.swift}"
+manifest="${3:-$SRCROOT/ADBLX/Resources/Filters/bundled-manifest.json}"
 
 fail() {
     echo "error: $1 See docs/Security/ManifestTrust.md (Keys)." >&2
@@ -38,4 +39,17 @@ for test_key in $(grep -oE "$key" "$debug" 2>/dev/null | tr -d '"'); do
         fail "The Debug test key is in ManifestTrust.productionPublicKeys."
     fi
 done
+
+# The bundled manifest's version is the oldest manifest the app accepts, so a stale one
+# weakens fresh installs' protection against rollback with every release.
+version=$(sed -nE 's/^[[:space:]]*"manifestVersion":[[:space:]]*"([^"]*)".*/\1/p' "$manifest" 2>/dev/null)
+case "$version" in
+    ????-??-??) version="${version}T00:00:00Z" ;;
+esac
+published=$(date -j -u -f "%Y-%m-%dT%H:%M:%SZ" "$version" +%s 2>/dev/null) ||
+    fail "Can't read the bundled manifest's version. Run Scripts/refresh-bundled-manifest.sh."
+now="${MANIFEST_TRUST_NOW:-$(date -u +%s)}"
+if [ $((now - published)) -gt $((30 * 86400)) ]; then
+    fail "The bundled manifest is over 30 days old. Run Scripts/refresh-bundled-manifest.sh before archiving."
+fi
 exit 0

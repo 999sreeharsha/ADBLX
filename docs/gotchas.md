@@ -433,10 +433,12 @@ cookiebot.com (classic dialog in the page DOM, no shadow root).
 - **Bundled too.** The entry is in `BundledPremiumCatalog` and
   `installBundledPremiumSnapshot`; the reconciler installs it for an entitled user
   who has Fanboy but not the fixes, at the next launch or foreground.
-- **Three copies to keep equal:** the backend payload, the bundled copy in
-  `ADBLX/Resources/Filters/`, and the manifest checksum
-  (`ShieldFixesListTests` checks the first two). After editing the list, bump
-  `backend/metadata/shield-fixes.json` and run the Publisher.
+- **Four copies to keep equal:** the backend payload, the bundled copy in
+  `ADBLX/Resources/Filters/`, the manifest checksum, and the bundled manifest
+  (`ShieldFixesListTests` checks the first two; `BundledManifestTests` the bundled
+  list against the bundled manifest). After editing the list, bump
+  `backend/metadata/shield-fixes.json`, run the Publisher, sign and deploy, then run
+  `Scripts/refresh-bundled-manifest.sh` (next entry).
 - **Not deployed.** The registry, manifest and docs are regenerated locally;
   nothing is on gh-pages until someone runs `backend/tools/publish-pages.sh`.
 - **`sourceURL` layout (decided 2026-11-06): `<base>/filters/<group>/<id>.txt`,
@@ -567,3 +569,24 @@ Any future automation must follow `docs/Security/PublishingAutomation.md`: no AI
 has access to a signing key.
 
 Found in: manifest signing key decision, 2026-11-06
+
+## The bundled manifest is the app's rollback floor; refresh it before every archive
+
+`ADBLX/Resources/Filters/bundled-manifest.json` is the manifest the bundled lists came
+from. Its `manifestVersion` is the oldest manifest the app accepts, so a fresh install
+can't be served an older, still validly signed one (`BundledManifest`,
+`docs/Security/ManifestTrust.md`, Rollback).
+
+- Don't edit it or the bundled `.txt` lists by hand. `Scripts/refresh-bundled-manifest.sh`
+  downloads the live manifest, verifies its signature against the keys pinned in
+  `ManifestTrust.swift`, checks every bundled list against its checksum, and only then
+  copies them in. It needs the keys pinned and a signed manifest live.
+- The archive fails if the bundled manifest is over 30 days old
+  (`Scripts/check-manifest-trust.sh`), so the floor keeps up with releases.
+- Missing or unreadable, the minimum is `.distantFuture`: every manifest is rejected.
+- The enclave keygen test in the Publisher
+  (`test_keygenWithSecureEnclaveWritesAKeyThatLoadsAsTheSameEnclaveKey`) fails with
+  `-25308` while the Mac's screen is locked. That is the keychain refusing a user-presence
+  key in a locked session, not a regression.
+
+Found in: iOS manifest verification, Task 3, 2026-11-07

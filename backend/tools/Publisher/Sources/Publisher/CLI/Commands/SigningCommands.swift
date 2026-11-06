@@ -60,6 +60,12 @@ struct VerifyCommand: ParsableCommand {
     @Option(name: .customLong("public-key"), help: "A pinned public key (base64). Repeat for each.")
     var publicKeys: [String]
 
+    @Option(name: .customLong("manifest"), help: "The manifest to check. Defaults to backend/public/manifest.json.")
+    var manifestPath: String?
+
+    @Option(name: .customLong("signatures"), help: "The folder holding <sha256>.sig. Defaults to backend/public/signatures.")
+    var signaturesPath: String?
+
     func run() throws {
         let keys = try publicKeys.map { encoded -> P256.Signing.PublicKey in
             guard let raw = Data(base64Encoded: encoded),
@@ -69,8 +75,9 @@ struct VerifyCommand: ParsableCommand {
             return key
         }
         guard !keys.isEmpty else { throw ArgumentParser.ValidationError("Pass at least one --public-key.") }
-        let manifest = try Data(contentsOf: PublisherPaths.manifestOutput)
-        let signatureURL = PublisherPaths.signaturesOutput.appendingPathComponent(ManifestSigning.signatureFilename(for: manifest))
+        let manifest = try Data(contentsOf: manifestPath.map { URL(fileURLWithPath: $0) } ?? PublisherPaths.manifestOutput)
+        let signatures = signaturesPath.map { URL(fileURLWithPath: $0, isDirectory: true) } ?? PublisherPaths.signaturesOutput
+        let signatureURL = signatures.appendingPathComponent(ManifestSigning.signatureFilename(for: manifest))
         guard let signature = try? Data(contentsOf: signatureURL),
               ManifestSigning.verify(manifest: manifest, signatureFile: signature, trustedKeys: keys) else {
             print("✗ \(signatureURL.path) is missing or doesn't verify")

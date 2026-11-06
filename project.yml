@@ -39,6 +39,7 @@ targets:
         inputFiles:
           - $(SRCROOT)/ADBLX/Filtering/Updates/ManifestTrust.swift
           - $(SRCROOT)/ADBLX/Filtering/Updates/ManifestTrust+Debug.swift
+          - $(SRCROOT)/ADBLX/Resources/Filters/bundled-manifest.json
         basedOnDependencyAnalysis: false
     dependencies:
       - target: ADBLXAdsBlocker

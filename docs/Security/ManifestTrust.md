@@ -40,6 +40,10 @@ swift run --package-path backend/tools/Publisher Publisher keygen --output /Volu
 swift run --package-path backend/tools/Publisher Publisher publish --publish-base-url <url> --manifest-version <UTC now, e.g. 2026-11-06T09:30:00Z>
 swift run --package-path backend/tools/Publisher Publisher sign --signing-key-file ~/Keys/adblx-manifest-k1.key   # asks for Touch ID or the password
 swift run --package-path backend/tools/Publisher Publisher verify --public-key <K1> --public-key <K2>
+
+# Before every archive, once the signed manifest is deployed: copy it and the bundled lists
+# into the app (verifies with Publisher verify --manifest <file> --signatures <dir>).
+Scripts/refresh-bundled-manifest.sh
 ```
 
 ### Why the signature is named after the manifest
