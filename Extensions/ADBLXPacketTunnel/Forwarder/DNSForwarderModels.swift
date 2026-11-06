@@ -38,6 +38,11 @@ public struct PendingQuery {
     
     public let requestTimestamp: TimeInterval
     public var timeoutTask: Task<Void, Never>?
+
+    /// The query as the client sent it (DNS payload only), to build a SERVFAIL or retry over TCP.
+    public let clientQuery: Data
+    /// Set when the caller is waiting for the answer (`exchange`) rather than a client packet.
+    public var exchangeContinuation: CheckedContinuation<Data?, Never>?
 }
 
 public enum DNSForwarderResult: Equatable {

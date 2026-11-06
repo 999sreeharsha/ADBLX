@@ -136,4 +136,32 @@ public enum InternetChecksum {
         let checksum = ~UInt16(sum & 0xFFFF)
         return checksum == 0 ? 0xFFFF : checksum
     }
+
+    /// Computes the TCP checksum over an IPv4 pseudo-header and the TCP segment (header + payload).
+    public static func computeTCPChecksumIPv4(
+        srcIP: UInt32,
+        dstIP: UInt32,
+        tcpSegment: UnsafeBufferPointer<UInt8>
+    ) -> UInt16 {
+        guard let base = tcpSegment.baseAddress, tcpSegment.count >= 20 else { return 0 }
+        var sum: UInt32 = 0
+        sum &+= (srcIP >> 16) & 0xFFFF
+        sum &+= srcIP & 0xFFFF
+        sum &+= (dstIP >> 16) & 0xFFFF
+        sum &+= dstIP & 0xFFFF
+        sum &+= 6
+        sum &+= UInt32(tcpSegment.count)
+
+        var idx = 0
+        let count = tcpSegment.count
+        while idx + 1 < count {
+            if idx == 16 { idx += 2; continue }   // the checksum field counts as zero
+            sum &+= (UInt32(base[idx]) << 8) | UInt32(base[idx + 1])
+            idx += 2
+        }
+        if idx < count { sum &+= UInt32(base[idx]) << 8 }
+        while (sum >> 16) != 0 { sum = (sum & 0xFFFF) &+ (sum >> 16) }
+        let checksum = ~UInt16(sum & 0xFFFF)
+        return checksum == 0 ? 0xFFFF : checksum
+    }
 }

@@ -216,7 +216,8 @@ final class DNSWireParserTests: XCTestCase {
         let q1 = truncated.withUnsafeBytes { DNSPacketParser.parse(packet: $0.bindMemory(to: UInt8.self)) }
         XCTAssertNil(q1)
         
-        // 2. Non-UDP protocol (e.g. TCP = 6)
+        // 2. The UDP parser takes only UDP. TCP is no longer *rejected* by the tunnel: it goes to the
+        //    TCP path (TunnelPacketClassifierTests.tcpIsAccepted), where it used to be dropped silently.
         packet[9] = 6
         let q2 = packet.withUnsafeBytes { DNSPacketParser.parse(packet: $0.bindMemory(to: UInt8.self)) }
         XCTAssertNil(q2)

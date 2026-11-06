@@ -9,6 +9,8 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
     private var generationLoader: DNSGenerationLoader?
     private var lookupEngine: DNSLookupEngine?
     private var forwarder: DNSUpstreamForwarder?
+    private var tcpServer: DNSTCPServer?
+    private var payloadResolver: DNSPayloadResolver?
     
     // Aggregate diagnostic counters (zero private browsing history retained)
     private var totalIngressQueries: UInt64 = 0
@@ -67,11 +69,18 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
             ipv4Address: upstreamIPv4,
             ipv6Address: upstreamIPv6,
             port: 53,
-            timeoutSeconds: 5.0,
+            timeoutSeconds: 2.0,
             maxInFlightQueries: 512
         )
         let fwd = DNSUpstreamForwarder(config: forwarderConfig)
         self.forwarder = fwd
+        // TCP clients (the retry after a truncated UDP answer) are answered by a small TCP server
+        // on the fake DNS address, resolving through the same engine and forwarder as UDP.
+        self.tcpServer = DNSTCPServer(
+            serverIP: Self.ipv4Value(TunnelNetworkSettingsFactory.fakeDNSServer),
+            clock: SystemDNSClock()
+        )
+        self.payloadResolver = DNSPayloadResolver(engine: engine, forwarder: fwd)
         
         Task {
             do {
@@ -136,45 +145,78 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
                 self.totalIngressQueries &+= 1
                 let proto = protocols[index]
                 
-                packetData.withUnsafeBytes { (raw: UnsafeRawBufferPointer) in
-                    let buffer = raw.bindMemory(to: UInt8.self)
-                    guard let query = DNSPacketParser.parse(packet: buffer) else {
-                        return
-                    }
-                    
-                    // Periodically check for generation update
-                    if (self.totalIngressQueries % 100) == 0 {
-                        self.checkForGenerationUpdate()
-                    }
-                    
-                    // Check DNS Lookup Engine
-                    guard let engine = self.lookupEngine else { return }
-                    let decision = query.reversedDomain.withUnsafeBufferPointer { engine.lookup(reversedBytes: $0) }
-                    
-                    switch decision {
-                    case .block:
-                        self.totalBlockedQueries &+= 1
-                        if let response = NXDOMAINResponseBuilder.buildResponse(
-                            for: query,
-                            originalPacket: buffer,
-                            rcode: 3 // NXDOMAIN
-                        ) {
-                            self.totalResponsesEgress &+= 1
-                            self.packetFlow.writePackets([response], withProtocols: [proto])
-                        }
-                        
-                    case .allow:
-                        self.totalForwardedQueries &+= 1
-                        Task {
-                            guard let forwarder = self.forwarder else { return }
-                            _ = await forwarder.forward(query: query, originalPacket: packetData)
-                        }
-                    }
+                switch TunnelPacketClassifier.classify(packetData) {
+                case .tcp(let segment):
+                    self.handleTCP(segment)
+                case .unparsable:
+                    break
+                case .udpQuery(let query):
+                    self.handleUDP(query, packetData: packetData, proto: proto)
                 }
             }
             
             self.readPackets()
         }
+    }
+    
+    private func handleUDP(_ query: ParsedDNSQuery, packetData: Data, proto: NSNumber) {
+        // Periodically check for generation update
+        if (totalIngressQueries % 100) == 0 {
+            checkForGenerationUpdate()
+        }
+        
+        // Check DNS Lookup Engine
+        guard let engine = lookupEngine else { return }
+        let decision = query.reversedDomain.withUnsafeBufferPointer { engine.lookup(reversedBytes: $0) }
+        
+        switch decision {
+        case .block:
+            totalBlockedQueries &+= 1
+            let response = packetData.withUnsafeBytes {
+                NXDOMAINResponseBuilder.buildResponse(
+                    for: query,
+                    originalPacket: $0.bindMemory(to: UInt8.self),
+                    rcode: 3 // NXDOMAIN
+                )
+            }
+            if let response {
+                totalResponsesEgress &+= 1
+                packetFlow.writePackets([response], withProtocols: [proto])
+            }
+            
+        case .allow:
+            totalForwardedQueries &+= 1
+            Task {
+                guard let forwarder = self.forwarder else { return }
+                _ = await forwarder.forward(query: query, originalPacket: packetData)
+            }
+        }
+    }
+    
+    private func handleTCP(_ segment: ParsedTCPSegment) {
+        guard let server = tcpServer, let resolver = payloadResolver else { return }
+        let output = server.receive(segment)
+        writeIPv4(output.packets)
+        for pending in output.queries {
+            Task { [weak self] in
+                // An unreadable question closes the connection, as a resolver would.
+                let answer = await resolver.resolve(pending.message)
+                guard let self, let server = self.tcpServer else { return }
+                if let answer {
+                    self.writeIPv4(server.respond(to: pending.key, with: answer))
+                }
+            }
+        }
+    }
+    
+    private func writeIPv4(_ packets: [Data]) {
+        guard !packets.isEmpty else { return }
+        totalResponsesEgress &+= UInt64(packets.count)
+        packetFlow.writePackets(packets, withProtocols: packets.map { _ in NSNumber(value: AF_INET) })
+    }
+    
+    private static func ipv4Value(_ address: String) -> UInt32 {
+        address.split(separator: ".").reduce(UInt32(0)) { ($0 << 8) | (UInt32($1) ?? 0) }
     }
     
     private func checkForGenerationUpdate() {

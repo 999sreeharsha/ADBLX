@@ -11,15 +11,21 @@ public actor DNSUpstreamForwarder {
     private var packetWriter: (@Sendable (Data, IPVersion) -> Void)?
     
     private let socketFactory: @Sendable (String, UInt16, Bool) throws -> any DNSUpstreamSocketProtocol
+    private let clock: DNSClock
+    private let tcpTransport: DNSUpstreamTCPTransport?
     
     public init(
         config: UpstreamResolverConfig = UpstreamResolverConfig(),
         socketFactory: @escaping @Sendable (String, UInt16, Bool) throws -> any DNSUpstreamSocketProtocol = { host, port, isIPv6 in
             try BSDUDPUpstreamSocket(host: host, port: port, isIPv6: isIPv6)
-        }
+        },
+        clock: DNSClock = SystemDNSClock(),
+        tcpTransport: DNSUpstreamTCPTransport? = NWDNSUpstreamTCPTransport()
     ) {
         self.config = config
         self.socketFactory = socketFactory
+        self.clock = clock
+        self.tcpTransport = tcpTransport
     }
     
     public var activeInFlightCount: Int {
@@ -33,10 +39,16 @@ public actor DNSUpstreamForwarder {
         try initializeSockets()
     }
     
+    /// Where answers go. `start` sets it; this exists so a caller (or test) can set it alone.
+    public func setPacketWriter(_ writer: @escaping @Sendable (Data, IPVersion) -> Void) {
+        self.packetWriter = writer
+    }
+    
     public func stop() {
         let activeCount = pendingTransactions.count
         for (_, pending) in pendingTransactions {
             pending.timeoutTask?.cancel()
+            pending.exchangeContinuation?.resume(returning: nil)
         }
         pendingTransactions.removeAll()
         
@@ -83,6 +95,11 @@ public actor DNSUpstreamForwarder {
         query: ParsedDNSQuery,
         originalPacket: Data
     ) async -> DNSForwarderResult {
+        guard query.dnsHeaderOffset + 12 <= originalPacket.count else {
+            return .socketUnavailable("Malformed DNS header offset")
+        }
+        let clientQuery = originalPacket.subdata(in: query.dnsHeaderOffset..<originalPacket.count)
+        
         // 1. Check Capacity Limit
         guard pendingTransactions.count < config.maxInFlightQueries else {
             // Synthesize immediate SERVFAIL response to prevent client retry storms
@@ -99,37 +116,8 @@ public actor DNSUpstreamForwarder {
             return .capacityExceeded
         }
         
-        guard query.dnsHeaderOffset + 12 <= originalPacket.count else {
-            return .socketUnavailable("Malformed DNS header offset")
-        }
-        
-        // 2. Select Socket
-        let targetSocket: (any DNSUpstreamSocketProtocol)?
-        switch query.ipVersion {
-        case .v4:
-            targetSocket = ipv4Socket
-        case .v6:
-            targetSocket = ipv6Socket ?? ipv4Socket
-        }
-        
-        guard let socket = targetSocket else {
-            return .socketUnavailable("No socket available for \(query.ipVersion)")
-        }
-        
-        // 3. Allocate Unique Upstream Transaction ID (Collision-Safe)
+        // 2. Allocate Unique Upstream Transaction ID (Collision-Safe)
         let upstreamTxID = allocateNextUpstreamTxID()
-        
-        // 4. Extract and rewrite DNS payload
-        let dnsLen = originalPacket.count - query.dnsHeaderOffset
-        var dnsPayload = originalPacket.subdata(in: query.dnsHeaderOffset..<originalPacket.count)
-        dnsPayload.withUnsafeMutableBytes { raw in
-            let base = raw.baseAddress!.assumingMemoryBound(to: UInt8.self)
-            base[0] = UInt8((upstreamTxID >> 8) & 0xFF)
-            base[1] = UInt8(upstreamTxID & 0xFF)
-        }
-        
-        // 5. Record Pending Transaction & Schedule Timeout BEFORE send to eliminate fast-response race condition
-        let now = Date().timeIntervalSince1970
         var pending = PendingQuery(
             upstreamTxID: upstreamTxID,
             clientTxID: query.transactionID,
@@ -140,16 +128,35 @@ public actor DNSUpstreamForwarder {
             clientDstIPv6: query.dstIPv6,
             clientSrcPort: query.srcPort,
             clientDstPort: query.dstPort,
-            requestTimestamp: now,
-            timeoutTask: nil
+            requestTimestamp: clock.now,
+            timeoutTask: nil,
+            clientQuery: clientQuery,
+            exchangeContinuation: nil
         )
         
-        let timeoutSec = config.timeoutSeconds
-        pending.timeoutTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: UInt64(timeoutSec * 1_000_000_000))
-            await self?.handleTimeout(upstreamTxID: upstreamTxID)
+        // 3. Select Socket. A client is never left waiting: no socket is a SERVFAIL.
+        let targetSocket: (any DNSUpstreamSocketProtocol)?
+        switch query.ipVersion {
+        case .v4:
+            targetSocket = ipv4Socket
+        case .v6:
+            targetSocket = ipv6Socket ?? ipv4Socket
+        }
+        guard let socket = targetSocket else {
+            emitServfail(for: pending)
+            return .socketUnavailable("No socket available for \(query.ipVersion)")
         }
         
+        // 4. Rewrite the DNS payload with the upstream transaction ID
+        var dnsPayload = clientQuery
+        dnsPayload.withUnsafeMutableBytes { raw in
+            let base = raw.baseAddress!.assumingMemoryBound(to: UInt8.self)
+            base[0] = UInt8((upstreamTxID >> 8) & 0xFF)
+            base[1] = UInt8(upstreamTxID & 0xFF)
+        }
+        
+        // 5. Record Pending Transaction & Schedule Timeout BEFORE send to eliminate fast-response race condition
+        pending.timeoutTask = scheduleTimeout(upstreamTxID: upstreamTxID)
         pendingTransactions[upstreamTxID] = pending
         DNSForwarderMetrics.logForwardedUpstream(upstreamTxID: upstreamTxID)
         
@@ -159,11 +166,56 @@ public actor DNSUpstreamForwarder {
         } catch {
             if let dropped = pendingTransactions.removeValue(forKey: upstreamTxID) {
                 dropped.timeoutTask?.cancel()
+                emitServfail(for: dropped)
             }
             return .socketUnavailable(error.localizedDescription)
         }
         
         return .forwarded(upstreamTxID: upstreamTxID)
+    }
+    
+    // MARK: - Exchange (a bare DNS message in, the answer out; used for TCP clients)
+    
+    /// Asks the upstream over UDP, following a truncated answer to TCP. Nil if there is no answer
+    /// (timeout, send failure, no usable TCP fallback): the caller turns that into a SERVFAIL.
+    public func exchange(dnsPayload: Data) async -> Data? {
+        guard dnsPayload.count >= 12,
+              pendingTransactions.count < config.maxInFlightQueries,
+              let socket = ipv4Socket else { return nil }
+        let upstreamTxID = allocateNextUpstreamTxID()
+        let clientTxID = UInt16(dnsPayload[dnsPayload.startIndex]) << 8 | UInt16(dnsPayload[dnsPayload.startIndex + 1])
+        var upstreamPayload = dnsPayload
+        upstreamPayload.withUnsafeMutableBytes { raw in
+            let base = raw.baseAddress!.assumingMemoryBound(to: UInt8.self)
+            base[0] = UInt8((upstreamTxID >> 8) & 0xFF)
+            base[1] = UInt8(upstreamTxID & 0xFF)
+        }
+        
+        return await withCheckedContinuation { (continuation: CheckedContinuation<Data?, Never>) in
+            var pending = PendingQuery(
+                upstreamTxID: upstreamTxID, clientTxID: clientTxID, ipVersion: .v4,
+                clientSrcIPv4: 0, clientDstIPv4: 0, clientSrcIPv6: (0, 0), clientDstIPv6: (0, 0),
+                clientSrcPort: 0, clientDstPort: 0,
+                requestTimestamp: clock.now, timeoutTask: nil,
+                clientQuery: dnsPayload, exchangeContinuation: continuation
+            )
+            pending.timeoutTask = scheduleTimeout(upstreamTxID: upstreamTxID)
+            pendingTransactions[upstreamTxID] = pending
+            let payload = upstreamPayload
+            Task { [weak self] in
+                do {
+                    try await socket.send(payload: payload)
+                } catch {
+                    await self?.failPending(upstreamTxID: upstreamTxID)
+                }
+            }
+        }
+    }
+    
+    private func failPending(upstreamTxID: UInt16) {
+        guard let pending = pendingTransactions.removeValue(forKey: upstreamTxID) else { return }
+        pending.timeoutTask?.cancel()
+        fail(pending)
     }
     
     // MARK: - Handling Upstream Response
@@ -188,34 +240,86 @@ public actor DNSUpstreamForwarder {
         
         pending.timeoutTask?.cancel()
         
-        let now = Date().timeIntervalSince1970
-        let latencyMs = (now - pending.requestTimestamp) * 1000.0
+        let latencyMs = (clock.now - pending.requestTimestamp) * 1000.0
         DNSForwarderMetrics.logResponseCorrelated(upstreamTxID: upstreamTxID, clientTxID: pending.clientTxID, latencyMs: latencyMs)
         
-        // Rewrite response payload TxID to clientTxID
-        var clientDNSPayload = data
-        clientDNSPayload.withUnsafeMutableBytes { raw in
+        // The upstream cut its own answer short: get the whole one over TCP rather than hand the
+        // client a truncated answer it would retry over a connection we'd otherwise not answer.
+        if DNSMessage.isTruncated(data) {
+            Task { [weak self] in await self?.completeTruncated(pending) }
+            return
+        }
+        deliver(data, for: pending)
+    }
+    
+    private func completeTruncated(_ pending: PendingQuery) async {
+        guard let transport = tcpTransport else { return fail(pending) }
+        do {
+            let full = try await transport.exchange(query: pending.clientQuery, host: config.ipv4Address, port: config.port)
+            guard full.count >= 12 else { return fail(pending) }
+            deliver(full, for: pending)
+        } catch {
+            fail(pending)
+        }
+    }
+    
+    /// Hands `response` to whoever asked: a waiting `exchange`, or the client as a UDP packet
+    /// (cut to what its UDP limit allows, with TC set, so it comes back over TCP).
+    private func deliver(_ response: Data, for pending: PendingQuery) {
+        var answer = response
+        answer.withUnsafeMutableBytes { raw in
             let base = raw.baseAddress!.assumingMemoryBound(to: UInt8.self)
             base[0] = UInt8((pending.clientTxID >> 8) & 0xFF)
             base[1] = UInt8(pending.clientTxID & 0xFF)
         }
-        
-        // Synthesize full IP packet and deliver to packetFlow
-        let synthesizedPacket: Data
-        switch pending.ipVersion {
-        case .v4:
-            synthesizedPacket = buildIPv4ResponsePacket(pending: pending, dnsPayload: clientDNSPayload)
-        case .v6:
-            synthesizedPacket = buildIPv6ResponsePacket(pending: pending, dnsPayload: clientDNSPayload)
+        if let continuation = pending.exchangeContinuation {
+            continuation.resume(returning: answer)
+            return
         }
-        
-        packetWriter?(synthesizedPacket, pending.ipVersion)
+        if answer.count > DNSMessage.clientUDPLimit(of: pending.clientQuery) {
+            answer = DNSMessage.truncated(answer)
+        }
+        writeClientPacket(pending, dnsPayload: answer)
+    }
+    
+    /// No answer is coming. A waiting `exchange` gets nil; a client gets a SERVFAIL.
+    private func fail(_ pending: PendingQuery) {
+        if let continuation = pending.exchangeContinuation {
+            continuation.resume(returning: nil)
+        } else {
+            emitServfail(for: pending)
+        }
+    }
+    
+    private func emitServfail(for pending: PendingQuery) {
+        guard let servfail = DNSMessage.errorResponse(for: pending.clientQuery, rcode: 2) else { return }
+        writeClientPacket(pending, dnsPayload: servfail)
+    }
+    
+    private func writeClientPacket(_ pending: PendingQuery, dnsPayload: Data) {
+        let packet: Data
+        switch pending.ipVersion {
+        case .v4: packet = buildIPv4ResponsePacket(pending: pending, dnsPayload: dnsPayload)
+        case .v6: packet = buildIPv6ResponsePacket(pending: pending, dnsPayload: dnsPayload)
+        }
+        packetWriter?(packet, pending.ipVersion)
+    }
+    
+    // MARK: - Timeout
+    
+    private func scheduleTimeout(upstreamTxID: UInt16) -> Task<Void, Never> {
+        let seconds = config.timeoutSeconds
+        let clock = self.clock
+        return Task { [weak self] in
+            do { try await clock.sleep(seconds: seconds) } catch { return }
+            await self?.handleTimeout(upstreamTxID: upstreamTxID)
+        }
     }
     
     private func handleTimeout(upstreamTxID: UInt16) {
-        if let pending = pendingTransactions.removeValue(forKey: upstreamTxID) {
-            DNSForwarderMetrics.logQueryTimeout(upstreamTxID: upstreamTxID, clientTxID: pending.clientTxID)
-        }
+        guard let pending = pendingTransactions.removeValue(forKey: upstreamTxID) else { return }
+        DNSForwarderMetrics.logQueryTimeout(upstreamTxID: upstreamTxID, clientTxID: pending.clientTxID)
+        fail(pending)
     }
     
     private func allocateNextUpstreamTxID() -> UInt16 {
