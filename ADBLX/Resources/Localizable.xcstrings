@@ -609,6 +609,266 @@
         }
       }
     },
+    "home.plan.chip.free" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Free plan · Upgrade"
+          }
+        }
+      }
+    },
+    "home.plan.chip.trial.one" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Premium trial · 1 day left"
+          }
+        }
+      }
+    },
+    "home.plan.chip.trial.other" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Premium trial · %lld days left"
+          }
+        }
+      }
+    },
+    "home.plan.dismiss" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dismiss"
+          }
+        }
+      }
+    },
+    "home.plan.free.subtitle" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Get more with Premium"
+          }
+        }
+      }
+    },
+    "home.plan.free.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Free plan"
+          }
+        }
+      }
+    },
+    "home.plan.getPremium" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Get Premium"
+          }
+        }
+      }
+    },
+    "home.plan.item.allowlist" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Allowlist"
+          }
+        }
+      }
+    },
+    "home.plan.item.cookieBanners" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cookie banners & pop-ups"
+          }
+        }
+      }
+    },
+    "home.plan.item.filterUpdates" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filter updates when you open the app"
+          }
+        }
+      }
+    },
+    "home.plan.item.iCloudSync" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud sync"
+          }
+        }
+      }
+    },
+    "home.plan.item.indianSites" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Indian sites list"
+          }
+        }
+      }
+    },
+    "home.plan.item.safariAdsTrackers" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Safari ads & trackers"
+          }
+        }
+      }
+    },
+    "home.plan.item.systemWideBlocking" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "System-wide blocking"
+          }
+        }
+      }
+    },
+    "home.plan.item.youtubeAds" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "YouTube ads in Safari"
+          }
+        }
+      }
+    },
+    "home.plan.later" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Later"
+          }
+        }
+      }
+    },
+    "home.plan.price.annual" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Annual %@"
+          }
+        }
+      }
+    },
+    "home.plan.price.lifetime" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lifetime %@"
+          }
+        }
+      }
+    },
+    "home.plan.protection.stillOn" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Still on (free)"
+          }
+        }
+      }
+    },
+    "home.plan.protection.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your protection"
+          }
+        }
+      }
+    },
+    "home.plan.protection.turnedOff" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turned off"
+          }
+        }
+      }
+    },
+    "home.plan.seePlans" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "See plans"
+          }
+        }
+      }
+    },
+    "home.plan.status.off" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "off"
+          }
+        }
+      }
+    },
+    "home.plan.status.on" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "on"
+          }
+        }
+      }
+    },
+    "home.plan.trialEnding.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your trial ends %@"
+          }
+        }
+      }
+    },
+    "home.plan.unresolved" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Checking your plan"
+          }
+        }
+      }
+    },
     "home.section.monitoring" : {
       "localizations" : {
         "en" : {
@@ -1818,6 +2078,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Applying your change…"
+          }
+        }
+      }
+    },
+    "settings.allowlist.compileFailed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't update rules. Your allowlist wasn't changed."
           }
         }
       }

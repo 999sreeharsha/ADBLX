@@ -26,7 +26,7 @@ struct SettingsViewModelTests {
     }
 }
 
-private actor StubSettingsService: SettingsService {
+private actor StubSettingsService {
     let snapshotToReturn: SettingsSnapshot
     private(set) var addedDomains: [String] = []
 
@@ -35,6 +35,11 @@ private actor StubSettingsService: SettingsService {
     }
 
     func fetchSnapshot() async -> SettingsSnapshot { snapshotToReturn }
-    func addAllowlistEntry(domain: String) async { addedDomains.append(domain) }
-    func removeAllowlistEntry(id: String) async {}
+    func addAllowlistEntry(domain: String) async -> AllowlistEditOutcome {
+        addedDomains.append(domain)
+        return .applied
+    }
+    func removeAllowlistEntry(id: String) async -> AllowlistEditOutcome { .applied }
 }
+
+extension StubSettingsService: SettingsService {}

@@ -18,6 +18,7 @@ actor FilterPipeline {
     private let reloader: ReloadCoordinator
     private let allowlistStore: AllowlistStore?
     private let gate: FilterTransactionGate
+    private let pendingReloads: PendingReloads
 
     private static let signposter = OSSignposter(subsystem: "com.ADBLX", category: "FilterPipeline")
 
@@ -30,7 +31,8 @@ actor FilterPipeline {
         writer: AtomicRuleWriter,
         reloader: ReloadCoordinator,
         allowlistStore: AllowlistStore? = nil,
-        gate: FilterTransactionGate = .shared
+        gate: FilterTransactionGate = .shared,
+        stateProvider: ContentBlockerStateProviding = SystemContentBlockerStateProvider()
     ) {
         self.validator = validator
         self.compiler = compiler
@@ -41,6 +43,7 @@ actor FilterPipeline {
         self.reloader = reloader
         self.allowlistStore = allowlistStore
         self.gate = gate
+        self.pendingReloads = PendingReloads(store: store, stateProvider: stateProvider)
     }
 
     /// Installs an entire group's composition in one pass: validate every source, persist
@@ -134,8 +137,23 @@ actor FilterPipeline {
     /// atomic-writes to `Compiled/<Group>.json`, and reloads affected extensions.
     /// Takes the transaction gate, so callers must not already hold it: it recompiles from a
     /// filter list it read earlier, and overlapping a downgrade would restore removed rules.
+    /// All or nothing: if a later group fails, the groups already written are restored, so a
+    /// caller that reverts the allowlist leaves no rules built from the reverted one.
     func syncAllowlist(reloadStrategy: ReloadStrategy = .immediate) async throws -> [PipelineResult] {
-        try await gate.run { try await recomposeInstalledGroups(reloadStrategy: reloadStrategy) }
+        try await gate.run {
+            let snapshot = try await store.snapshotForRollback()
+            let results: [PipelineResult]
+            do {
+                results = try await recomposeInstalledGroups(reloadStrategy: reloadStrategy)
+            } catch {
+                try await store.restore(snapshot)
+                throw error
+            }
+            try? await store.discardRollbackSnapshot()
+            // The next update run retries a reload that failed here.
+            await pendingReloads.record(after: results.first?.reloadResults ?? [])
+            return results
+        }
     }
 
     private func recomposeInstalledGroups(reloadStrategy: ReloadStrategy) async throws -> [PipelineResult] {

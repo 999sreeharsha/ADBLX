@@ -23,7 +23,7 @@ actor UpdateCoordinator {
     private let extensionIdentifiers: GroupExtensionIdentifiers
     private let entitlementService: EntitlementService
     private let gate: FilterTransactionGate
-    private let stateProvider: ContentBlockerStateProviding
+    private let pendingReloads: PendingReloads
     private var inFlightTask: Task<UpdateRunResult, Error>?
     // Bumped each time a NEW transaction task is created. `Task` is a struct with no
     // identity comparison, so this generation counter is what lets the creator of a
@@ -53,7 +53,7 @@ actor UpdateCoordinator {
         self.extensionIdentifiers = extensionIdentifiers
         self.entitlementService = entitlementService
         self.gate = gate
-        self.stateProvider = stateProvider
+        self.pendingReloads = PendingReloads(store: store, stateProvider: stateProvider)
     }
 
     /// `onPhaseChange` is additive — defaults to a no-op so existing callers (and
@@ -192,18 +192,17 @@ actor UpdateCoordinator {
             try await manifestStore.save(manifest, etag: etag)
             try await store.discardRollbackSnapshot()
             let reloadResults = await reloader.reload(extensionIdentifiers: Array(affectedExtensionIDs))
-            await recordPendingReloads(after: reloadResults)
+            await pendingReloads.record(after: reloadResults)
             onPhaseChange(.complete)
             return .updated(installedFilterIDs: installedFilterIDs, reloadResults: reloadResults)
         } catch {
             do {
                 try await store.restore(snapshot)
             } catch let restoreError {
-                // `store.restore` only deletes `Previous/` after both directory
-                // replacements succeed, so a thrown restoreError here means the
-                // snapshot is still on disk — do not attempt a second automatic
-                // retry; surface both failures distinctly instead of losing the
-                // original install failure or crashing the caller with a raw throw.
+                // A restore that stops part-way spends the snapshot (`store.restore`
+                // refuses it again), so there is no automatic retry; surface both
+                // failures distinctly instead of losing the original install
+                // failure or crashing the caller with a raw throw.
                 return .rollbackFailed(originalReason: error, restoreError: restoreError)
             }
             _ = await reloader.reload(extensionIdentifiers: Array(affectedExtensionIDs))
@@ -215,34 +214,13 @@ actor UpdateCoordinator {
     /// so nothing else would ever reload that extension: a retry would get a 304 and report
     /// success while Safari still ran the old rules.
     private func upToDateResult() async -> UpdateRunResult {
-        let pending = await pendingReloads()
+        let pending = await pendingReloads.identifiers()
         guard !pending.isEmpty else { return .upToDate }
         let results = await reloader.reload(extensionIdentifiers: pending)
-        await recordPendingReloads(after: results)
+        await pendingReloads.record(after: results)
+        guard await pendingReloads.includesEnabledFailure(results) else { return .upToDate }
         return .updated(installedFilterIDs: [], reloadResults: results)
     }
-
-    private func pendingReloads() async -> [String] {
-        guard let data = try? await store.read(Self.pendingReloadsFilename, in: .metadata) else { return [] }
-        return (try? JSONDecoder().decode([String].self, from: data)) ?? []
-    }
-
-    private func recordPendingReloads(after results: [ReloadCoordinator.ReloadResult]) async {
-        let previous = await pendingReloads()
-        let attempted = Set(results.map(\.extensionIdentifier))
-        var pending = previous.filter { !attempted.contains($0) }
-        // Only a blocker in use: one the user has turned off isn't, and retrying it would stop
-        // every later run reporting up to date.
-        for result in results where !result.success {
-            if await stateProvider.state(of: result.extensionIdentifier) == .enabled {
-                pending.append(result.extensionIdentifier)
-            }
-        }
-        guard pending != previous, let data = try? JSONEncoder().encode(pending) else { return }
-        try? await store.writeMetadata(data, filename: Self.pendingReloadsFilename)
-    }
-
-    private static let pendingReloadsFilename = "pending_reloads.json"
 
     private func currentInstalledFilters() async throws -> [InstalledFilter] {
         do {

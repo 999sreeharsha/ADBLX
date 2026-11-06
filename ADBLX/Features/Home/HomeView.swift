@@ -3,12 +3,21 @@ import SwiftUI
 
 struct HomeView: View {
     @State var viewModel: HomeViewModel
+    @State var planCard: HomePlanCardViewModel
+    let subscriptionService: SubscriptionService
     let updateCoordinator: UpdateCoordinator
+    @Environment(PlanStateModel.self) private var planStateModel: PlanStateModel?
     @State private var isShowingUpdateProgress = false
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: DesignSpacing.sectionGap) {
+                HomePlanCardView(
+                    viewModel: planCard,
+                    subscriptionService: subscriptionService,
+                    plan: planStateModel?.state ?? .free,
+                    isResolved: planStateModel?.isResolved ?? false
+                )
                 if let status = viewModel.status {
                     heroCard(for: status)
                     monitoringGrid(for: status)
@@ -217,7 +226,7 @@ struct HomeView: View {
                 }
                 .foregroundStyle(DesignColors.onPrimary)
                 .padding(DesignSpacing.containerPadding)
-                .background(DesignColors.primaryContainer)
+                .background(DesignColors.primary)
                 .clipShape(RoundedRectangle(cornerRadius: DesignShape.defaultCornerRadius * 2))
             }
 
@@ -315,6 +324,12 @@ struct HomeView: View {
     let store = AppCompositionRoot.makeFilterStore()
     HomeView(
         viewModel: HomeViewModel(service: MockHomeService()),
+        planCard: HomePlanCardViewModel(
+            stateProvider: SystemContentBlockerStateProvider(),
+            extensionIdentifiers: AppCompositionRoot.extensionIdentifiers,
+            subscriptionService: MockSubscriptionService()
+        ),
+        subscriptionService: MockSubscriptionService(),
         updateCoordinator: AppCompositionRoot.makeUpdateCoordinator(
             pipeline: AppCompositionRoot.makeFilterPipeline(store: store), store: store
         )

@@ -58,12 +58,14 @@ struct HomeViewModelTests {
     }
 }
 
-private struct StubHomeService: HomeService {
+private struct StubHomeService {
     let statusToReturn: HomeStatus
     func fetchStatus() async -> HomeStatus { statusToReturn }
 }
 
-private actor SequencedStubHomeService: HomeService {
+extension StubHomeService: HomeService {}
+
+private actor SequencedStubHomeService {
     private var statuses: [HomeStatus]
     private(set) var callCount = 0
 
@@ -79,3 +81,5 @@ private actor SequencedStubHomeService: HomeService {
         return statuses[0]
     }
 }
+
+extension SequencedStubHomeService: HomeService {}

@@ -74,6 +74,11 @@ struct SettingsView: View {
                             }
                             .accessibilityElement(children: .combine)
                         }
+                        if let error = viewModel.allowlistEditError {
+                            Text(error)
+                                .font(DesignTypography.bodySmall)
+                                .foregroundStyle(DesignColors.error)
+                        }
                     }
 
                     Button {
