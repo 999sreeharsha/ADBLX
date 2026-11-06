@@ -192,7 +192,7 @@ Found in: `docs/superpowers/plans/2026-07-27-sprint7-publisher-implementation.md
 ## StoreKit Local Configuration does not activate under headless `xcodebuild test` — one test permanently skipped, not a code bug
 
 `StoreKitSubscriptionServiceTests.fetchStatusReturnsTwoPlans` (which exercises
-`StoreKitSubscriptionService.fetchStatus()` against the local `Products.storekit`
+`StoreKitSubscriptionService.fetchStatus()` against the local `Config/Configuration.storekit`
 configuration bundled in Task 12's scheme) fails only when run via CLI
 `xcodebuild test`, on this project's Xcode 26.6 toolchain (build 17F113). It
 does not indicate a bug in `StoreKitSubscriptionService`:
@@ -334,6 +334,16 @@ reference to an actor's `nonisolated static` method used as a default argument
 (`swapPaths: ... = FilterStore.swapPathsAtomically`) did; wrapping it in a closure
 (`{ try FilterStore.swapPathsAtomically($0, $1) }`) fixed it.
 
+It is also batch-dependent, so it can appear when no isolation changed at all. The compiler
+type-checks test files in batches, and which files share a batch shifts as files are added.
+On 2026-11-06 a fresh arm64 build of an already-green commit failed because
+`RealProtectionServiceTests` (which uses the mock) was checked before
+`ContentBlockerStateProvidingTests` in the same batch. Then the actor's conformance to the
+`nonisolated` protocol, declared on the actor itself, made the compiler infer `nonisolated`
+for the actor and reject it. Declaring the conformance in an extension
+(`extension MockContentBlockerStateProvider: ContentBlockerStateProviding {}`) fixed it.
+Do the same for any new actor that conforms to a `nonisolated` protocol.
+
 Found in: entitlement purchase-bug fix (`FakeStoreEntitlementSource`), bisected 2026-10-30
 
 ## DNS Protection breaks app connectivity and payments (OPEN — blocks shipping DNS)
@@ -446,8 +456,14 @@ Found in: cookiebot.com banner investigation, iPhone 14, 2026-11-03
 `writeMetadata` is already atomic (`.atomic`, guarded by
 `concurrentWriteNeverProducesTornRead`). `FilterStore.restore` used to delete each
 directory and copy files back; it now swaps each one in with a rename, so a directory is
-never half-restored. A crash between two swaps can still leave `Compiled/` and
-`Metadata/` from different points.
+never half-restored, then flushes the container (`F_FULLFSYNC`) so the renames survive a
+power loss. A crash between two swaps can still leave `Compiled/` and `Metadata/` from
+different points.
+
+A restore that stops after a swap spends the snapshot: `Previous/` then holds the newer
+contents of the directories already swapped. It is renamed to `Previous.spent/`, and
+`restore` throws `snapshotSpent` for it rather than putting the newer state back. Only a
+restore that fails on its first swap, having changed nothing, can be tried again.
 
 - `PremiumEntitlementReconciler` treats the file as lost when it reads but won't decode,
   or when it's missing while compiled rules exist (the pipeline always writes it after
@@ -502,6 +518,16 @@ look like a pass.
   count is a lost test, not a pass.
 
 Found in: corrupt-metadata recovery tests, 2026-11-05
+
+## Some tests still wait with fixed sleeps (follow-up)
+
+`CrossFeatureEntitlementSyncTests`, `EntitlementTeardownTests` and `PlanStateTests`
+still `Task.sleep` for a fixed time and then assume a background task has run. Under
+load they will fail the way the `Transaction.updates` test did (fixed on
+`fix/metadata-recovery` with `FakeStoreEntitlementSource.wait(until:)`). Replace each sleep with
+a wait on the condition the test is waiting for, and give the test a `.timeLimit`.
+
+Found in: review of the `Transaction.updates` test fix, 2026-11-06
 
 ## Security findings live in `docs/Security/Findings.md`
 

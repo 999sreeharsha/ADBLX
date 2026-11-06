@@ -66,6 +66,10 @@ Reports are sent from the user's own mail app to `BrokenSiteReport.recipient`. B
 
 ## Release Checklist
 
+Before the first TestFlight upload:
+
+- [ ] **Signed manifest live on the site,** with both public keys (K1 and K2) pinned in the build. Every build requires a signature, with no unsigned transition, so a build reading an unsigned site can never update. `publisher verify` checks the committed files; then fetch the deployed `manifest.json` and confirm its SHA-256 names a file under `signatures/` on the site. See `docs/Security/ManifestTrust.md`.
+
 Before each App Store submission:
 
 - [ ] **Report recipient** set to the product-domain alias (see Broken Site Reports). An archive fails until it is.
