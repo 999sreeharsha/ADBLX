@@ -484,3 +484,10 @@ or the web extension. Two fixes first proposed in the audit were wrong; use the
 corrected versions there.
 
 Found in: security audit and review, 2026-11-05
+
+## Manifest publishing is manual (Option B, 2026-11-06)
+
+Any future automation must follow `docs/Security/PublishingAutomation.md`: no AI agent ever
+has access to a signing key.
+
+Found in: manifest signing key decision, 2026-11-06

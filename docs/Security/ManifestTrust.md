@@ -71,31 +71,18 @@ the manifest: it is public, and the deploy copies `backend/public/` verbatim.
 
 ### Generation and storage
 
-**Decision pending (owner): where K1 lives.** It must be settled before the keys are generated,
-because it decides what happens to K1's key file afterwards.
+**K1: offline, manual signing (decided 2026-11-06, Option B).** Both keys are ordinary key
+files kept offline: never in the repository, CI, a cloud session or any folder an AI session
+can read. Each publish is a manual step on the owner's Mac (`publisher generate`, then
+`publisher sign --signing-key-file <K1>`, review, deploy), so lists update only when the owner
+publishes. Any future automation must follow
+[`PublishingAutomation.md`](PublishingAutomation.md); its first rule is that no AI agent ever
+has access to a signing key.
 
-PRD §6.2 has a server cron republishing the upstream lists, so the manifest changes about
-daily. A key that exists only offline can't sign that without the maintainer at their Mac.
+Open, before the first TestFlight build: whether K1 (and K2) move to P-256, which the Secure
+Enclave supports and Ed25519 doesn't. See `PublishingAutomation.md`, Open decisions.
 
-- **Recommended: K1 online for routine signing, K2 offline for recovery.**
-  - K1 is a GitHub Actions secret, `ADBLX_MANIFEST_SIGNING_KEY`, in a protected environment
-    that only the publish workflow on the protected branch can use (deployment branch rule,
-    required reviewers optional).
-  - **Accepted risk:** K1 is online. Anyone who can run that workflow, or who compromises
-    GitHub or the runner, can sign a manifest. The mitigations: the environment protection,
-    the rules below that limit what any signed manifest can make the app do, and K2 for
-    recovery.
-  - After pasting K1 into the secret, keep one offline backup (in the password manager),
-    so a lost secret doesn't force a rotation, and delete the generated file.
-  - The publish workflow must run on `macos-latest`, or the Publisher must switch to
-    `swift-crypto`: CryptoKit isn't available on the Linux runners `deploy-pages.yml` uses.
-- **Alternative: both keys offline.** Publishing becomes a manual step on the maintainer's Mac
-  and lists are only as fresh as the last time someone ran it. That contradicts §6.2's daily
-  updates, so choosing it means amending the PRD.
-
-For both options:
-
-- Generate each key with `publisher keygen` on the maintainer's own Mac, not in CI.
+- Generate each key with `publisher keygen` on the owner's own Mac, not in CI.
 - **K2, the recovery key:** generated now, with K1, not at the first rotation. Rotation only
   works if K2's public key is already pinned in every installed app, so it must ship in the
   first build. Kept offline only, stored separately from K1 (a different place, such as an
@@ -229,8 +216,8 @@ manifest replaces it.
    `verify`. **Done.**
 2. Publisher: signature pruning (7 days, `signatures/index.json`). **Done.** Still to do: the
    `manifestVersion` change and the ID-pattern check in `Validator`.
-3. Decide where K1 lives (above). Then generate K1 and K2 together, store them accordingly,
-   and record both public keys in the app.
+3. Settle the algorithm (Ed25519 or P-256, above). Then generate K1 and K2 together, store
+   them offline and separately, and record both public keys in the app.
 4. App: download cap and streaming (SEC-09 size cap), then signature fetch and verification,
    then the rollback rule (cached version and built-in minimum), ID, duplicate, group and
    `sourceURL` rules, each with a test that the whole manifest is rejected and the installed
