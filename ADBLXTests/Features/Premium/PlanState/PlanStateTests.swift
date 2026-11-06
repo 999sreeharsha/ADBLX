@@ -206,3 +206,45 @@ struct PremiumKindMappingTests {
         #expect(StoreKitSubscriptionService.premiumKind(forProductID: "com.example.other") == nil)
     }
 }
+
+#if DEBUG
+@Suite("PlanState debug override")
+@MainActor
+struct PlanStateDebugOverrideTests {
+    private func makeModel() -> PlanStateModel {
+        PlanStateModel(
+            provider: PlanStateProvider(trial: StubTrialSource(.notStarted), paid: StubPaidSource(nil), now: { Date() }),
+            entitlementService: MockSubscriptionService(state: .free)
+        )
+    }
+
+    @Test("an override replaces the derived plan, and clearing it restores the real one")
+    func overrideAndClear() async {
+        let model = makeModel()
+        await model.refresh()
+        #expect(model.state == .free)
+
+        await model.setDebugOverride(.premium(.lifetime))
+        #expect(model.state == .premium(.lifetime))
+
+        await model.refresh()
+        #expect(model.state == .premium(.lifetime), "a refresh keeps the override")
+
+        await model.setDebugOverride(nil)
+        #expect(model.state == .free)
+    }
+
+    @Test("each option maps to its own plan state")
+    func optionMapping() {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let states = DebugPlanOverride.allCases.map { $0.state(now: now) }
+        #expect(states == [
+            .premium(.subscription), .premium(.lifetime),
+            .trial(daysRemaining: 9, endsAt: now.addingTimeInterval(9 * 86_400)),
+            .trial(daysRemaining: 2, endsAt: now.addingTimeInterval(2 * 86_400)),
+            .trialExpired(endedAt: now.addingTimeInterval(-86_400)),
+            .free
+        ])
+    }
+}
+#endif

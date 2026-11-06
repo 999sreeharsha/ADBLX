@@ -17,6 +17,19 @@ struct DeveloperDiagnosticsView: View {
                 row("validUntil", diagnostics?.validUntil.map { $0.formatted(date: .abbreviated, time: .shortened) } ?? "none")
                 row("Trial", diagnostics?.trial ?? "…")
             }
+            Section {
+                Picker("Show as", selection: overrideBinding) {
+                    Text(verbatim: "Real plan").tag(DebugPlanOverride?.none)
+                    ForEach(DebugPlanOverride.allCases) { option in
+                        Text(verbatim: option.label).tag(DebugPlanOverride?.some(option))
+                    }
+                }
+            } header: {
+                Text(verbatim: "Override PlanState")
+            } footer: {
+                Text(verbatim: "Changes what Home and Premium display until the app relaunches. "
+                     + "Entitlement and filters still follow the real plan.")
+            }
             Section("StoreKit") {
                 row("Paid product", diagnostics?.paidProductID ?? "none")
                 row("Verified", "\(diagnostics?.verifiedCount ?? 0)")
@@ -53,6 +66,19 @@ struct DeveloperDiagnosticsView: View {
         }
         .navigationTitle("Developer")
         .task { await load() }
+    }
+
+    /// Resets to the real plan on relaunch, so a forced state never outlives the session.
+    @State private var selectedOverride: DebugPlanOverride?
+
+    private var overrideBinding: Binding<DebugPlanOverride?> {
+        Binding(
+            get: { selectedOverride },
+            set: { option in
+                selectedOverride = option
+                Task { await planStateModel?.setDebugOverride(option?.state()) }
+            }
+        )
     }
 
     private func load() async {

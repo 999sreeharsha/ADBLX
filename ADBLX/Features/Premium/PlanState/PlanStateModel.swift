@@ -12,6 +12,11 @@ final class PlanStateModel {
     private(set) var state: PlanState = .free
     private(set) var isResolved = false
 
+    #if DEBUG
+    /// Forced by the Developer screen; `nil` shows the real plan. Display only.
+    private(set) var debugOverride: PlanState?
+    #endif
+
     @ObservationIgnored private let provider: PlanStateProvider
     @ObservationIgnored private let entitlementService: EntitlementService
     @ObservationIgnored private var observationTask: Task<Void, Never>?
@@ -22,10 +27,20 @@ final class PlanStateModel {
     }
 
     func refresh() async {
-        let derived = await provider.current()
+        var derived = await provider.current()
+        #if DEBUG
+        if let debugOverride { derived = debugOverride }
+        #endif
         if derived != state { state = derived }
         isResolved = true
     }
+
+    #if DEBUG
+    func setDebugOverride(_ state: PlanState?) async {
+        debugOverride = state
+        await refresh()
+    }
+    #endif
 
     /// Re-derives whenever entitlement changes (purchase, lapse, refund while open).
     func startObserving() {
