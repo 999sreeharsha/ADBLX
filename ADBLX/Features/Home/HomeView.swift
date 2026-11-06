@@ -217,7 +217,7 @@ struct HomeView: View {
                 }
                 .foregroundStyle(DesignColors.onPrimary)
                 .padding(DesignSpacing.containerPadding)
-                .background(DesignColors.primaryContainer)
+                .background(DesignColors.primary)
                 .clipShape(RoundedRectangle(cornerRadius: DesignShape.defaultCornerRadius * 2))
             }
 
