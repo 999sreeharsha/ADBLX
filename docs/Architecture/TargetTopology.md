@@ -7,7 +7,7 @@
 The project is generated from `project.yml` via [XcodeGen](https://github.com/yonaskolb/XcodeGen) (2.45.4+). **`ADBLX.xcodeproj` is a build artifact, not a source of truth** — never hand-edit it. To make any project-structure change: edit `project.yml`, run `xcodegen generate`, commit both. See [`README.md`](../../README.md) for the quickstart.
 
 - Project-level build settings (compiler warnings, `CLANG_*`/`GCC_*`, Debug/Release differences) live in `Config/Base.xcconfig`, `Config/Debug.xcconfig`, `Config/Release.xcconfig`, wired in via `project.yml`'s `configFiles:`.
-- `DEVELOPMENT_TEAM` (`93F78RF6FG`, the Personal Team for `sreeharsha999@icloud.com`) is declared once in `project.yml`'s top-level `settings.base`, so every target inherits it through Xcode's standard build-setting resolution — confirmed via `xcodebuild -showBuildSettings` on multiple targets. It is **not** set anywhere in the generated `project.pbxproj` on disk after `xcodegen generate` for any individual target; only the project-level Debug/Release configs carry it, by design. Before this was added, Team had to be manually re-selected in Xcode's Signing & Capabilities per target, and any subsequent `xcodegen generate` (which happens on every `project.yml` change) silently wiped it again — the same Team ID isn't secret (it ships inside every provisioning profile and signed binary anyway), so committing it directly here is intentional, not an oversight.
+- `DEVELOPMENT_TEAM` (`93F78RF6FG`, the paid Apple Developer Program team is declared once in `project.yml`'s top-level `settings.base`, so every target inherits it through Xcode's standard build-setting resolution — confirmed via `xcodebuild -showBuildSettings` on multiple targets. It is **not** set anywhere in the generated `project.pbxproj` on disk after `xcodegen generate` for any individual target; only the project-level Debug/Release configs carry it, by design. Before this was added, Team had to be manually re-selected in Xcode's Signing & Capabilities per target, and any subsequent `xcodegen generate` (which happens on every `project.yml` change) silently wiped it again — the same Team ID isn't secret (it ships inside every provisioning profile and signed binary anyway), so committing it directly here is intentional, not an oversight.
 - Target-level settings (bundle ID, deployment targets, capabilities) are declared inline per target in `project.yml`.
 - All source folders use XcodeGen's `type: syncedFolder`, matching Xcode 16's `PBXFileSystemSynchronizedRootGroup` — the project file's group structure always mirrors the filesystem, no explicit file lists to maintain.
 - The `ADBLX` target declares all 6 extensions as `dependencies:` with `embed: true`, so XcodeGen generates the Embed App Extensions build phase copying each `.appex` into `ADBLX.app/PlugIns/`. Without this, extensions build standalone (as Commits 3–4's CI does) but are never actually part of the installed app and are invisible to Safari/Settings — this was fixed in Commit 5 after discovering the app previously shipped with an empty `PlugIns/` folder.
@@ -169,7 +169,7 @@ Identifier: `group.com.ADBLX.shared` — follows the `com.ADBLX.*` bundle ID nam
 | `ADBLXAnnoyancesBlocker` | ✅ |
 | `ADBLXRegionalBlocker` | ✅ |
 | `ADBLXSafariWebExtension` | ✅ |
-| `ADBLXPacketTunnel` | ⏸ Deferred — see "Development environment limitations" |
+| `ADBLXPacketTunnel` | ✅ (Debug only; not embedded or signed in Release) |
 | `ADBLXTests` / `ADBLXUITests` | ❌ Not needed |
 
 Configured via `entitlements:` in `project.yml` per target, generating a `.entitlements` file at build time. `REGISTER_APP_GROUPS: YES` is set alongside on each entitled target.
@@ -208,7 +208,9 @@ All directories are created on demand by `FilterStore`. `Compiled/*.json` is wri
 
 ## Development environment limitations
 
-Current development uses an Apple Personal Team. Network Extension entitlement is deferred until paid Apple Developer Program provisioning.
+Development uses the paid Apple Developer Program team, so the Network Extension capability is available. `ADBLXPacketTunnel` carries `com.apple.developer.networking.networkextension` = `packet-tunnel-provider` and the App Group, both generated from `project.yml` (`entitlements:`). A signed Debug build installs on a device with all 6 extensions.
+
+**DNS Protection stays out of Release.** The tunnel isn't embedded, compiled or signed in Release and `DNS_PROTECTION_ENABLED` is set in `Config/Debug.xcconfig` only, until the connectivity bug in `docs/gotchas.md` is closed. `Scripts/check-release-no-dns.sh` checks a built Release `.app` (no tunnel appex, no Network Extension entitlement, no `packet-tunnel-provider` in the binary) and CI runs it on every push. The DNS screens' code is still compiled into Release but unreachable behind `BuildFeatures`; `DNSVisibilityTests` covers what a user can see.
 
 ## Continuous Integration
 
@@ -216,7 +218,6 @@ Current development uses an Apple Personal Team. Network Extension entitlement i
 
 ## What's deliberately not here yet
 
-- **Network Extension entitlement** — `ADBLXPacketTunnel` capability configured upon paid team transition.
 - **CI caching, build artifacts, release automation** — unit-test only currently.
 - **Live remote manifest endpoint** — tested against mocked sessions; live CDN hosting in progress.
 - **Background scheduling** — `BGAppRefreshTask` wiring in progress.

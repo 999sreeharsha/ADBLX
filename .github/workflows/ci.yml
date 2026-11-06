@@ -85,6 +85,13 @@ jobs:
           xcodebuild -project ADBLX.xcodeproj -scheme ADBLX \
             -destination "id=${{ steps.simulator.outputs.udid }}" build
 
+      - name: Release build has no DNS Protection
+        run: |
+          xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -configuration Release \
+            -destination 'generic/platform=iOS' -derivedDataPath build/release \
+            CODE_SIGNING_ALLOWED=NO build
+          Scripts/check-release-no-dns.sh build/release/Build/Products/Release-iphoneos/ADBLX.app
+
       - name: Run unit tests (ADBLXTests only)
         run: |
           xcodebuild -project ADBLX.xcodeproj -scheme ADBLX \
