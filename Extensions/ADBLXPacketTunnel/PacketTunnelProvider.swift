@@ -43,37 +43,9 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
         let upstreamIPv4 = (resolverOption == .quad9Default) ? "9.9.9.9" : customIPv4
         let upstreamIPv6 = (resolverOption == .quad9Default) ? "2620:fe::fe" : customIPv6
         
-        // 2. Configure Scoped DNS Routing & Route Exclusions (Loop Prevention)
-        let fakeDNSServer = "198.51.100.1"
-        let settings = NEPacketTunnelNetworkSettings(tunnelRemoteAddress: "127.0.0.1")
-        
-        let dnsSettings = NEDNSSettings(servers: [fakeDNSServer])
-        dnsSettings.matchDomains = [""]
-        settings.dnsSettings = dnsSettings
-        
-        // IPv4 Settings: Scoped fake DNS route + explicit upstream excluded route
-        let ipv4Settings = NEIPv4Settings(addresses: ["192.0.2.2"], subnetMasks: ["255.255.255.255"])
-        ipv4Settings.includedRoutes = [
-            NEIPv4Route(destinationAddress: fakeDNSServer, subnetMask: "255.255.255.255")
-        ]
-        var excludedV4Routes = [
-            NEIPv4Route(destinationAddress: upstreamIPv4, subnetMask: "255.255.255.255")
-        ]
-        if upstreamIPv4 != "9.9.9.9" {
-            excludedV4Routes.append(NEIPv4Route(destinationAddress: "9.9.9.9", subnetMask: "255.255.255.255"))
-        }
-        ipv4Settings.excludedRoutes = excludedV4Routes
-        settings.ipv4Settings = ipv4Settings
-        
-        // IPv6 Settings: Exclude upstream IPv6
-        if let v6 = upstreamIPv6 {
-            let ipv6Settings = NEIPv6Settings(addresses: ["fd00::2"], networkPrefixLengths: [128])
-            ipv6Settings.excludedRoutes = [
-                NEIPv6Route(destinationAddress: v6, networkPrefixLength: 128)
-            ]
-            settings.ipv6Settings = ipv6Settings
-        }
-        
+        // 2. Scoped DNS routing and route exclusions (loop prevention); see TunnelNetworkSettingsFactory.
+        let settings = TunnelNetworkSettingsFactory.make(upstreamIPv4: upstreamIPv4, upstreamIPv6: upstreamIPv6)
+
         // 3. Initialize Runtime Engine & Generation Loader
         let loader = DNSGenerationLoader()
         self.generationLoader = loader

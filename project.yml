@@ -112,6 +112,8 @@ targets:
         type: syncedFolder
       - path: Extensions/ADBLXPacketTunnel/Forwarder
         type: syncedFolder
+      - path: Extensions/ADBLXPacketTunnel/Settings
+        type: syncedFolder
     dependencies:
       - target: ADBLX
       - package: ADBLXShared

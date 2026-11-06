@@ -275,6 +275,15 @@
 			path = Extensions/ADBLXPacketTunnel;
 			sourceTree = "<group>";
 		};
+		D250AD4553F29F1BBC79C262 /* Extensions/ADBLXPacketTunnel/Settings */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			explicitFileTypes = {
+			};
+			explicitFolders = (
+			);
+			path = Extensions/ADBLXPacketTunnel/Settings;
+			sourceTree = "<group>";
+		};
 		D3984DF576CCEBB0D50C8A9E /* Extensions/ADBLXAdsBlocker */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
@@ -379,6 +388,7 @@
 				CD03B46135A235F678846099 /* Extensions/ADBLXPacketTunnel */,
 				148CF6E017153490F6E36F85 /* Extensions/ADBLXPacketTunnel/DNSRuntime */,
 				85BF56B0E585A2AAEC6C2D4A /* Extensions/ADBLXPacketTunnel/Forwarder */,
+				D250AD4553F29F1BBC79C262 /* Extensions/ADBLXPacketTunnel/Settings */,
 				6CBB8C117B4C92F015138261 /* Extensions/ADBLXPacketTunnel/WireEngine */,
 				6E55DB98411B229448E7F2A9 /* Extensions/ADBLXPrivacyBlocker */,
 				11126BC11D41F3B6FC5A8F2E /* Extensions/ADBLXRegionalBlocker */,
@@ -410,6 +420,7 @@
 				D74724C2B3B54BDCCA7407D3 /* Extensions/ContentBlockerShared */,
 				148CF6E017153490F6E36F85 /* Extensions/ADBLXPacketTunnel/DNSRuntime */,
 				85BF56B0E585A2AAEC6C2D4A /* Extensions/ADBLXPacketTunnel/Forwarder */,
+				D250AD4553F29F1BBC79C262 /* Extensions/ADBLXPacketTunnel/Settings */,
 				6CBB8C117B4C92F015138261 /* Extensions/ADBLXPacketTunnel/WireEngine */,
 			);
 			name = ADBLXTests;
