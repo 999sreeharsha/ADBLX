@@ -36,7 +36,7 @@ A deterministic local script, not an AI agent, scheduled on the owner's Mac.
 |---|---|
 | Scheduler | `launchd` job on the owner's Mac (runs missed jobs after wake) |
 | Pipeline | Existing Publisher: fetch upstream lists → `validate` → `generate` → compare with last published manifest |
-| Signing key K1 | Secure Enclave key: usable by the job, never exportable |
+| Signing key K1 | The existing Secure Enclave K1: never exportable. Its user-presence check means the job needs the owner, or a separate enclave key without it (decide with Open decision 3) |
 | Recovery key K2 | Ordinary key file, offline, stored separately from the Mac |
 | Deploy credential | GitHub deploy key with write access to the Pages repository only |
 | Notification | Local macOS notification for any held publish |
@@ -71,11 +71,11 @@ which is never publishable.
 
 ## Open decisions
 
-1. **Algorithm, decide before the first TestFlight build.** The Secure Enclave
-   supports P-256, not Ed25519 (the Publisher's current algorithm). Automation needs a
-   Secure Enclave K1, so either switch K1 to P-256 now, or stay on Ed25519 and rotate
-   to a P-256 key through K2 when automation is built (needs an app update with new
-   pinned keys). Recommendation: switch now, while nothing has shipped.
+1. **Algorithm: decided 2026-11-06.** P-256, with K1 made inside the signing Mac's Secure
+   Enclave now (`keygen --secure-enclave`), so automation later uses the same K1 and nothing
+   needs re-pinning. A P-256 key *file* would not have helped: an enclave key can't be
+   imported. Each signature asks for user presence (Touch ID, or the login password on a Mac
+   without it). See `ManifestTrust.md`, Keys.
 2. **Premium update wording.** With manual publishing, PRD §5.1's "daily" premium
    updates is not guaranteed. Change it to "frequent updates" (and in marketing copy)
    unless the owner commits to daily manual publishes.

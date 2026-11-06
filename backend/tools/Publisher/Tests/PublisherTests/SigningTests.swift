@@ -24,14 +24,14 @@ final class SigningTests: XCTestCase {
     // MARK: - Signing
 
     func test_signatureVerifiesAgainstThePublicKey() throws {
-        let key = Curve25519.Signing.PrivateKey()
+        let key = P256.Signing.PrivateKey()
         let signature = try ManifestSigning.signatureFile(for: manifest, key: key)
 
         XCTAssertTrue(ManifestSigning.verify(manifest: manifest, signatureFile: signature, trustedKeys: [key.publicKey]))
     }
 
     func test_changingAnyManifestByteFailsVerification() throws {
-        let key = Curve25519.Signing.PrivateKey()
+        let key = P256.Signing.PrivateKey()
         let signature = try ManifestSigning.signatureFile(for: manifest, key: key)
 
         for index in manifest.indices {
@@ -45,7 +45,7 @@ final class SigningTests: XCTestCase {
     }
 
     func test_changingAnySignatureByteFailsVerification() throws {
-        let key = Curve25519.Signing.PrivateKey()
+        let key = P256.Signing.PrivateKey()
         let raw = try XCTUnwrap(Data(base64Encoded: String(decoding: try ManifestSigning.signatureFile(for: manifest, key: key), as: UTF8.self).trimmingCharacters(in: .newlines)))
 
         for index in raw.indices {
@@ -60,17 +60,17 @@ final class SigningTests: XCTestCase {
     }
 
     func test_aKeyThatIsNotPinnedFailsVerification() throws {
-        let signature = try ManifestSigning.signatureFile(for: manifest, key: Curve25519.Signing.PrivateKey())
+        let signature = try ManifestSigning.signatureFile(for: manifest, key: P256.Signing.PrivateKey())
 
         XCTAssertFalse(ManifestSigning.verify(
-            manifest: manifest, signatureFile: signature, trustedKeys: [Curve25519.Signing.PrivateKey().publicKey]
+            manifest: manifest, signatureFile: signature, trustedKeys: [P256.Signing.PrivateKey().publicKey]
         ))
     }
 
     // Rotation: the app pins the current key and the next one, so either verifies.
     func test_eitherPinnedKeyVerifies() throws {
-        let current = Curve25519.Signing.PrivateKey()
-        let next = Curve25519.Signing.PrivateKey()
+        let current = P256.Signing.PrivateKey()
+        let next = P256.Signing.PrivateKey()
         let pinned = [current.publicKey, next.publicKey]
 
         for key in [current, next] {
@@ -80,16 +80,16 @@ final class SigningTests: XCTestCase {
     }
 
     func test_aMalformedSignatureFileFailsVerification() {
-        let key = Curve25519.Signing.PrivateKey()
+        let key = P256.Signing.PrivateKey()
         for file in ["", "not base64!\n", Data(count: 64).base64EncodedString()] {
             XCTAssertFalse(ManifestSigning.verify(manifest: manifest, signatureFile: Data(file.utf8), trustedKeys: [key.publicKey]))
         }
     }
 
-    // CryptoKit's Ed25519 signatures are randomized, so the signature file differs between runs.
+    // ECDSA signatures are randomized, so the signature file differs between runs.
     // What must not differ is the signed manifest, and every run's signature must verify.
     func test_manifestStaysByteIdenticalAndEveryRunsSignatureVerifies() throws {
-        let key = Curve25519.Signing.PrivateKey()
+        let key = P256.Signing.PrivateKey()
         let directory = try temporaryDirectory()
         let manifestURL = directory.appendingPathComponent("manifest.json")
         let signatures = directory.appendingPathComponent("signatures", isDirectory: true)
@@ -116,7 +116,7 @@ final class SigningTests: XCTestCase {
         try manifest.write(to: manifestURL)
 
         let signatureURL = try ManifestPublication.sign(
-            manifestAt: manifestURL, key: Curve25519.Signing.PrivateKey(),
+            manifestAt: manifestURL, key: P256.Signing.PrivateKey(),
             signaturesDirectory: directory.appendingPathComponent("signatures", isDirectory: true)
         )
 
@@ -128,7 +128,7 @@ final class SigningTests: XCTestCase {
 
     // A device whose CDN edge still serves the previous manifest must still find its signature.
     func test_signingANewManifestKeepsTheEarlierSignature() throws {
-        let key = Curve25519.Signing.PrivateKey()
+        let key = P256.Signing.PrivateKey()
         let directory = try temporaryDirectory()
         let manifestURL = directory.appendingPathComponent("manifest.json")
         let signatures = directory.appendingPathComponent("signatures", isDirectory: true)
@@ -148,7 +148,7 @@ final class SigningTests: XCTestCase {
     // Old signatures keep old manifests valid, and a fresh install has no cached version to
     // reject one with. A stale CDN edge lasts minutes or hours, so a week is plenty.
     func test_signingDeletesSignaturesOlderThanTheRetention() throws {
-        let key = Curve25519.Signing.PrivateKey()
+        let key = P256.Signing.PrivateKey()
         let directory = try temporaryDirectory()
         let manifestURL = directory.appendingPathComponent("manifest.json")
         let signatures = directory.appendingPathComponent("signatures", isDirectory: true)
@@ -180,7 +180,7 @@ final class SigningTests: XCTestCase {
         try Data("x\n".utf8).write(to: undated)
         try manifest.write(to: manifestURL)
 
-        let current = try ManifestPublication.sign(manifestAt: manifestURL, key: Curve25519.Signing.PrivateKey(), signaturesDirectory: signatures)
+        let current = try ManifestPublication.sign(manifestAt: manifestURL, key: P256.Signing.PrivateKey(), signaturesDirectory: signatures)
 
         XCTAssertFalse(FileManager.default.fileExists(atPath: undated.path))
         XCTAssertTrue(FileManager.default.fileExists(atPath: current.path))
@@ -196,16 +196,53 @@ final class SigningTests: XCTestCase {
 
         var indexes: [Data] = []
         for _ in 0..<3 {
-            try ManifestPublication.sign(manifestAt: manifestURL, key: Curve25519.Signing.PrivateKey(), signaturesDirectory: signatures, now: now)
+            try ManifestPublication.sign(manifestAt: manifestURL, key: P256.Signing.PrivateKey(), signaturesDirectory: signatures, now: now)
             indexes.append(try Data(contentsOf: signatures.appendingPathComponent("index.json")))
         }
         XCTAssertEqual(Set(indexes).count, 1)
     }
 
+    // Recovery: K1 is tied to one Mac's Secure Enclave. When that Mac is gone, K2, an ordinary
+    // key file, signs instead, and an app pinning both must accept it.
+    func test_aManifestSignedWithTheRecoveryKeyFileVerifiesAgainstBothPinnedKeys() throws {
+        let k1 = P256.Signing.PrivateKey()
+        let k2File = try temporaryDirectory().appendingPathComponent("k2.key")
+        let k2Public = try SigningKeyGenerator.generate(to: k2File, repositoryRoot: try temporaryDirectory(), secureEnclave: false)
+        let k2 = try SigningKeySource.load(keyFile: k2File, environment: [:], repositoryRoot: try temporaryDirectory())
+
+        let signature = try ManifestSigning.signatureFile(for: manifest, key: k2)
+
+        XCTAssertTrue(ManifestSigning.verify(manifest: manifest, signatureFile: signature, trustedKeys: [k1.publicKey, k2Public]))
+    }
+
+    func test_aSecureEnclaveKeySignsManifestsThatVerify() throws {
+        try XCTSkipUnless(SecureEnclave.isAvailable, "no Secure Enclave on this machine")
+        // No access control, so the test needs no password; keygen's keys require user presence.
+        let key = try SecureEnclave.P256.Signing.PrivateKey()
+
+        let signature = try ManifestSigning.signatureFile(for: manifest, key: key)
+
+        XCTAssertTrue(ManifestSigning.verify(manifest: manifest, signatureFile: signature, trustedKeys: [key.publicKey]))
+    }
+
+    // Loading needs no password, only signing does, so this runs unattended.
+    func test_keygenWithSecureEnclaveWritesAKeyThatLoadsAsTheSameEnclaveKey() throws {
+        try XCTSkipUnless(SecureEnclave.isAvailable, "no Secure Enclave on this machine")
+        let file = try temporaryDirectory().appendingPathComponent("k1.key")
+
+        let publicKey = try SigningKeyGenerator.generate(to: file, repositoryRoot: try temporaryDirectory(), secureEnclave: true)
+
+        let loaded = try SigningKeySource.load(keyFile: file, environment: [:], repositoryRoot: try temporaryDirectory())
+        XCTAssertTrue(loaded is SecureEnclave.P256.Signing.PrivateKey)
+        XCTAssertEqual(loaded.publicKey.rawRepresentation, publicKey.rawRepresentation)
+        let permissions = try FileManager.default.attributesOfItem(atPath: file.path)[.posixPermissions] as? NSNumber
+        XCTAssertEqual(permissions?.intValue, 0o600)
+    }
+
     // MARK: - Keys
 
     func test_keyLoadsFromTheEnvironment() throws {
-        let key = Curve25519.Signing.PrivateKey()
+        let key = P256.Signing.PrivateKey()
         let loaded = try SigningKeySource.load(
             keyFile: nil,
             environment: [SigningKeySource.environmentVariable: key.rawRepresentation.base64EncodedString()],
@@ -216,7 +253,7 @@ final class SigningTests: XCTestCase {
     }
 
     func test_keyLoadsFromAFileOutsideTheRepository() throws {
-        let key = Curve25519.Signing.PrivateKey()
+        let key = P256.Signing.PrivateKey()
         let file = try temporaryDirectory().appendingPathComponent("manifest-signing.key")
         try Data((key.rawRepresentation.base64EncodedString() + "\n").utf8).write(to: file)
 
@@ -226,7 +263,7 @@ final class SigningTests: XCTestCase {
     }
 
     func test_givingBothAFileAndTheEnvironmentIsRefused() throws {
-        let key = Curve25519.Signing.PrivateKey().rawRepresentation.base64EncodedString()
+        let key = P256.Signing.PrivateKey().rawRepresentation.base64EncodedString()
         let file = try temporaryDirectory().appendingPathComponent("manifest-signing.key")
         try Data(key.utf8).write(to: file)
 
@@ -245,7 +282,7 @@ final class SigningTests: XCTestCase {
         let repository = try temporaryDirectory()
         let file = repository.appendingPathComponent("backend/manifest-signing.key")
         try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try Data(Curve25519.Signing.PrivateKey().rawRepresentation.base64EncodedString().utf8).write(to: file)
+        try Data(P256.Signing.PrivateKey().rawRepresentation.base64EncodedString().utf8).write(to: file)
 
         XCTAssertThrowsError(try SigningKeySource.load(keyFile: file, environment: [:], repositoryRoot: repository)) {
             guard case .insideRepository = $0 as? SigningKeyError else { return XCTFail("got \($0)") }
@@ -267,7 +304,7 @@ final class SigningTests: XCTestCase {
     func test_keygenWritesAnOwnerOnlyKeyThatLoads() throws {
         let file = try temporaryDirectory().appendingPathComponent("manifest-signing.key")
 
-        let publicKey = try SigningKeyGenerator.generate(to: file, repositoryRoot: try temporaryDirectory())
+        let publicKey = try SigningKeyGenerator.generate(to: file, repositoryRoot: try temporaryDirectory(), secureEnclave: false)
 
         let permissions = try FileManager.default.attributesOfItem(atPath: file.path)[.posixPermissions] as? NSNumber
         XCTAssertEqual(permissions?.intValue, 0o600)
@@ -279,7 +316,7 @@ final class SigningTests: XCTestCase {
         let file = try temporaryDirectory().appendingPathComponent("manifest-signing.key")
         try Data("existing".utf8).write(to: file)
 
-        XCTAssertThrowsError(try SigningKeyGenerator.generate(to: file, repositoryRoot: try temporaryDirectory())) {
+        XCTAssertThrowsError(try SigningKeyGenerator.generate(to: file, repositoryRoot: try temporaryDirectory(), secureEnclave: false)) {
             guard case .alreadyExists = $0 as? SigningKeyError else { return XCTFail("got \($0)") }
         }
         XCTAssertEqual(try Data(contentsOf: file), Data("existing".utf8))
@@ -289,7 +326,7 @@ final class SigningTests: XCTestCase {
         let repository = try temporaryDirectory()
 
         XCTAssertThrowsError(try SigningKeyGenerator.generate(
-            to: repository.appendingPathComponent("manifest-signing.key"), repositoryRoot: repository
+            to: repository.appendingPathComponent("manifest-signing.key"), repositoryRoot: repository, secureEnclave: false
         )) {
             guard case .insideRepository = $0 as? SigningKeyError else { return XCTFail("got \($0)") }
         }

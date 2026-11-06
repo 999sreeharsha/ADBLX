@@ -14,25 +14,31 @@ touches GitHub removes that dependency.
 
 ## What is signed
 
-- **Algorithm:** Ed25519 (CryptoKit `Curve25519.Signing`, iOS 13+ and macOS 10.15+).
+- **Algorithm:** ECDSA P-256 with SHA-256 (CryptoKit `P256.Signing`, iOS 13+ and macOS
+  10.15+). P-256, not Ed25519, because the Secure Enclave only holds P-256 keys, and K1 lives
+  there (decided 2026-11-06).
 - **Message:** the exact bytes of `manifest.json` as `ManifestJSONWriter` writes them. The app
   verifies those bytes before parsing, never a re-encoding of the parsed value.
 - **File:** `signatures/<sha256>.sig` beside the manifest, where `<sha256>` is the lowercase hex
-  SHA-256 of the manifest bytes. It holds the base64 of the 64-byte signature and a newline. It
+  SHA-256 of the manifest bytes. It holds the base64 of the 64-byte raw (r ‖ s) signature, not
+  DER, and a newline. It
   has no key ID; the app tries each pinned key.
-- **Not deterministic:** CryptoKit randomizes Ed25519 signatures, so signing the same manifest
+- **Not deterministic:** ECDSA signatures are randomized, so signing the same manifest
   twice gives different signature files. Both verify. The manifest itself stays byte-identical
   for the same inputs.
 
 ### Publisher commands
 
 ```bash
-# Once, on the maintainer's machine. Refuses a path inside the repository or an existing file.
-swift run --package-path backend/tools/Publisher Publisher keygen --output ~/Keys/adblx-manifest-1.key
+# Once, on the signing Mac. Each refuses a path inside the repository or an existing file.
+# K1, inside this Mac's Secure Enclave: the file is only a handle this enclave can use.
+swift run --package-path backend/tools/Publisher Publisher keygen --secure-enclave --output ~/Keys/adblx-manifest-k1.key
+# K2, an ordinary key file: move it to offline storage at once (see Keys).
+swift run --package-path backend/tools/Publisher Publisher keygen --output /Volumes/<offline drive>/adblx-manifest-k2.key
 
 # Every publish, from the repository root.
 swift run --package-path backend/tools/Publisher Publisher publish --publish-base-url <url>
-swift run --package-path backend/tools/Publisher Publisher sign --signing-key-file ~/Keys/adblx-manifest-1.key
+swift run --package-path backend/tools/Publisher Publisher sign --signing-key-file ~/Keys/adblx-manifest-k1.key   # asks for Touch ID or the password
 swift run --package-path backend/tools/Publisher Publisher verify --public-key <K1> --public-key <K2>
 ```
 
@@ -71,24 +77,36 @@ the manifest: it is public, and the deploy copies `backend/public/` verbatim.
 
 ### Generation and storage
 
-**K1: offline, manual signing (decided 2026-11-06, Option B).** Both keys are ordinary key
-files kept offline: never in the repository, CI, a cloud session or any folder an AI session
-can read. Each publish is a manual step on the owner's Mac (`publisher generate`, then
-`publisher sign --signing-key-file <K1>`, review, deploy), so lists update only when the owner
-publishes. Any future automation must follow
+**Manual signing (decided 2026-11-06, Option B).** Each publish is a manual step on the owner's
+Mac (`publisher generate`, then `publisher sign --signing-key-file <K1>`, review, deploy), so
+lists update only when the owner publishes. No key is ever in the repository, CI, a cloud
+session or any folder an AI session can read. Any future automation must follow
 [`PublishingAutomation.md`](PublishingAutomation.md); its first rule is that no AI agent ever
 has access to a signing key.
 
-Open, before the first TestFlight build: whether K1 (and K2) move to P-256, which the Secure
-Enclave supports and Ed25519 doesn't. See `PublishingAutomation.md`, Open decisions.
-
-- Generate each key with `publisher keygen` on the owner's own Mac, not in CI.
-- **K2, the recovery key:** generated now, with K1, not at the first rotation. Rotation only
-  works if K2's public key is already pinned in every installed app, so it must ship in the
-  first build. Kept offline only, stored separately from K1 (a different place, such as an
-  encrypted drive, never K1's folder or vault entry). It never signs anything until K1 is
-  retired or leaks.
+- Generate each key with `publisher keygen` on the signing Mac, not in CI.
+- **K1, the signing key, is made inside that Mac's Secure Enclave** (`keygen --secure-enclave`).
+  The private key never leaves the enclave and can't be copied by anyone, including the owner.
+  The file `keygen` writes holds only a handle (the key's `dataRepresentation`) that this one
+  enclave can use, so it is useless anywhere else; keep it out of the repository anyway.
+  - Every signature asks for **user presence**: Touch ID, or the login password on a Mac
+    without Touch ID. Checked on 2026-11-06 on the signing Mac, a Mac mini with no
+    fingerprints enrolled: an ad-hoc-signed command-line build can make, reload and sign with
+    an enclave key, with no entitlements. A key that requires biometrics can't even be made
+    there.
+  - Not biometrics-only on any Mac: such a key becomes unusable for good when the enrolled
+    fingerprints change, which would lose K1.
+  - When automation is built, it uses this same K1, so no new key needs pinning.
+- **K2, the recovery key:** an ordinary P-256 key file, generated now, with K1, not at the first
+  rotation. Rotation only works if K2's public key is already pinned in every installed app,
+  so it must ship in the first build. Write it straight to offline storage (an encrypted drive
+  kept apart from the Mac), never to the signing Mac's own disk. It never signs anything until
+  K1 is retired, lost or leaks.
 - Both public keys are pinned before the first TestFlight build.
+- **Test recovery before the first TestFlight build:** sign a manifest with K2 and confirm the
+  app accepts it. It is the one path normal use never exercises. The Publisher side is covered
+  by `test_aManifestSignedWithTheRecoveryKeyFileVerifiesAgainstBothPinnedKeys`; the app needs
+  the same test with its real pinned keys, plus a manual run against a K2-signed deploy.
 - The public keys are not secret. Both ship in the app.
 - `.gitignore` ignores `*.key` as a backstop, and `keygen` refuses repository paths, but the
   key file should never be inside a checkout in the first place.
@@ -98,7 +116,16 @@ Enclave supports and Ed25519 doesn't. See `PublishingAutomation.md`, Open decisi
 The app pins **K1 and K2** and accepts a manifest signed by either. Old app versions can't
 learn new keys, so rotation always moves to a key every installed version already trusts.
 
-- **Planned rotation (or K1 lost):**
+- **The signing Mac is lost, replaced or its enclave reset.** K1 is tied to that one Mac and
+  is gone with it; `sign` then reports that the key file isn't a key this Mac can use.
+  1. Sign with K2, from its offline copy, on whichever Mac publishes now. Every installed app
+     accepts it. Put K2 back offline after each publish.
+  2. On the new signing Mac, run `keygen --secure-enclave` to make a new enclave key, K3.
+  3. Ship an app update pinning K3 and K2.
+  4. Once that update is out, sign with K3 again. K2 goes back to recovery only. Versions that
+     still pin K1 also pin K2, so they keep updating with K2 until they update.
+  Nothing has to be rushed: K2 signs for as long as the update takes.
+- **Planned rotation:**
   1. Start signing with K2. Every installed app accepts it.
   2. Generate K3 and store it offline as the new standby.
   3. Ship an app update pinning K2 and K3.
@@ -216,8 +243,8 @@ manifest replaces it.
    `verify`. **Done.**
 2. Publisher: signature pruning (7 days, `signatures/index.json`). **Done.** Still to do: the
    `manifestVersion` change and the ID-pattern check in `Validator`.
-3. Settle the algorithm (Ed25519 or P-256, above). Then generate K1 and K2 together, store
-   them offline and separately, and record both public keys in the app.
+3. Generate K1 (`keygen --secure-enclave`) and K2 (a key file, written to offline storage)
+   together, and record both public keys in the app. The algorithm is settled: P-256.
 4. App: download cap and streaming (SEC-09 size cap), then signature fetch and verification,
    then the rollback rule (cached version and built-in minimum), ID, duplicate, group and
    `sourceURL` rules, each with a test that the whole manifest is rejected and the installed

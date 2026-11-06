@@ -11,11 +11,18 @@ struct KeygenCommand: ParsableCommand {
     @Option(name: .customLong("output"), help: "Where to write the private key. Must be outside the repository.")
     var output: String
 
+    @Flag(name: .customLong("secure-enclave"), help: "Make the key inside this Mac's Secure Enclave (K1). Each signature then asks for Touch ID or the login password.")
+    var secureEnclave = false
+
     func run() throws {
         let publicKey = try SigningKeyGenerator.generate(
-            to: URL(fileURLWithPath: output), repositoryRoot: PublisherPaths.repositoryRoot
+            to: URL(fileURLWithPath: output), repositoryRoot: PublisherPaths.repositoryRoot, secureEnclave: secureEnclave
         )
-        print("✓ Wrote the private key to \(output) (owner read/write only)")
+        if secureEnclave {
+            print("✓ Made a Secure Enclave key; its handle is in \(output) (usable only on this Mac)")
+        } else {
+            print("✓ Wrote the private key to \(output) (owner read/write only)")
+        }
         print("  Store it offline; see docs/Security/ManifestTrust.md.")
         print("Public key (pin this in the app): \(publicKey.rawRepresentation.base64EncodedString())")
     }
@@ -54,10 +61,10 @@ struct VerifyCommand: ParsableCommand {
     var publicKeys: [String]
 
     func run() throws {
-        let keys = try publicKeys.map { encoded -> Curve25519.Signing.PublicKey in
+        let keys = try publicKeys.map { encoded -> P256.Signing.PublicKey in
             guard let raw = Data(base64Encoded: encoded),
-                  let key = try? Curve25519.Signing.PublicKey(rawRepresentation: raw) else {
-                throw ArgumentParser.ValidationError("Not a base64 Ed25519 public key: \(encoded)")
+                  let key = try? P256.Signing.PublicKey(rawRepresentation: raw) else {
+                throw ArgumentParser.ValidationError("Not a base64 raw P-256 public key: \(encoded)")
             }
             return key
         }
