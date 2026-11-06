@@ -335,10 +335,14 @@ targets:
         TARGETED_DEVICE_FAMILY: "1,2,7"
         XROS_DEPLOYMENT_TARGET: "26.5"
       configs:
-        # Debug only: Release still builds this as an app dependency but never embeds it, so
-        # it must not need the Network Extension capability to sign.
+        # XcodeGen can't drop a dependency per configuration, so in Release the target stays in
+        # the graph but compiles nothing and is never signed. See the ADBLX target's Release.
         Debug:
           CODE_SIGN_ENTITLEMENTS: Extensions/ADBLXPacketTunnel/ADBLXPacketTunnel.entitlements
+        Release:
+          CODE_SIGNING_ALLOWED: NO
+          EXCLUDED_SOURCE_FILE_NAMES: "*"
+          SKIP_INSTALL: YES
   ADBLXSafariWebExtension:
     type: app-extension
     platform: auto
@@ -392,7 +396,7 @@ schemes:
         ADBLXPrivacyBlocker: [build]
         ADBLXAnnoyancesBlocker: [build]
         ADBLXRegionalBlocker: [build]
-        ADBLXPacketTunnel: [build]
+        ADBLXPacketTunnel: [running, testing]
         ADBLXSafariWebExtension: [build]
     test:
       targets:
