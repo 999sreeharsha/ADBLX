@@ -46,7 +46,7 @@ final class UpdateProgressModel {
             case .upToDate:
                 phase = .complete
             case .updated(_, let reloadResults):
-                phase = await safariMissedRules(reloadResults)
+                phase = await PendingReloads.safariMissedRules(reloadResults, stateProvider: stateProvider)
                     ? .failed(String(localized: "updateprogress.status.reloadFailed"))
                     : .complete
             case .rolledBack, .rollbackFailed:
@@ -55,13 +55,5 @@ final class UpdateProgressModel {
         } catch {
             phase = .failed(String(localized: "updateprogress.status.failed"))
         }
-    }
-
-    /// A blocker the user has turned off isn't in use, so its failed reload doesn't matter.
-    private func safariMissedRules(_ results: [ReloadCoordinator.ReloadResult]) async -> Bool {
-        for result in results where !result.success {
-            if await stateProvider.state(of: result.extensionIdentifier) != .disabled { return true }
-        }
-        return false
     }
 }
