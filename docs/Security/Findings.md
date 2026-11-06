@@ -17,7 +17,7 @@ Scan reports are in the gitignored `CLAUDE-SECURITY-*` folders at the repo root.
 | **Fix now** | | | | |
 | SEC-01 | `syncAllowlist` race restores premium rules | LOW | Panel | Fixed |
 | SEC-02 | Content-blocker handlers parse the whole rules file | HIGH | Manual | Fixed; memory measurement pending |
-| SEC-03 | Broken-site report silently allowlists the domain | MEDIUM | Manual | Fixed; recipient address open |
+| SEC-03 | Broken-site report silently allowlists the domain | MEDIUM | Manual | Fixed; recipient address open, and an archive fails without one |
 | SEC-04 | Paywall advertises "Encrypted DNS" | MEDIUM | Manual | Fixed; DNS hidden in Release; signed archive untested |
 | SEC-05 | `deploy-pages.yml` publishes the dispatching branch | LOW | Overruled | Fixed |
 | SEC-06 | JS tests don't run in CI; `DIAG_VERBOSE` is on | LOW | Manual | Fixed |
@@ -75,7 +75,7 @@ The call sits inside a `logger.info` interpolation, but info messages are normal
 - "Review Report" shows the whole report. Nothing is sent until the user taps "Send by Mail", which opens a `mailto:` URL rather than `MFMailComposeViewController`, because `canSendMail()` is false unless Apple Mail is set up. If no mail app opens, the report is copied to the clipboard and the user is told.
 - The POST is gone. The report holds only the registrable domain, the issue category, the app version and the enabled groups. The category goes beyond the original list because a report is little use without it; notes are gone, since the user can add them in the mail app. PRD FR-14 says mail until a backend exists.
 
-**Still open:** `BrokenSiteReport.recipient` is `nil`, so To is empty until a reporting address is chosen. Opening a real mail app hasn't been tried on a device.
+**Still open:** `BrokenSiteReport.recipient` is `nil`, so To is empty until a reporting address is chosen: a reports alias on the product's domain, once the name is settled (PRD Open Question 6). `Scripts/check-report-recipient.sh` fails any archive until then. Opening a real mail app hasn't been tried on a device, including a phone with only Gmail installed.
 
 ### SEC-04: Paywall advertises "Encrypted DNS"
 

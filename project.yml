@@ -27,6 +27,12 @@ targets:
             echo "warning: SwiftLint not installed. Run: brew install swiftlint"
           fi
         basedOnDependencyAnalysis: false
+      - name: "Check Report Recipient"
+        script: |
+          "$SRCROOT/Scripts/check-report-recipient.sh"
+        inputFiles:
+          - $(SRCROOT)/ADBLX/Features/BrokenSite/BrokenSiteModels.swift
+        basedOnDependencyAnalysis: false
     dependencies:
       - target: ADBLXAdsBlocker
         embed: true
