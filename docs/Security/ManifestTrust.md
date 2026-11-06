@@ -143,7 +143,9 @@ On a `200` response:
 
 1. **Fetch `signatures/<sha256 of the downloaded bytes>.sig`** from the same base URL, with its
    own size cap. A missing or unreadable signature is a verification failure. On a `304` the
-   cached manifest was verified when it was stored, so no signature is fetched.
+   cached manifest was verified when it was stored, so no signature is fetched. A cache
+   written before verification existed has no `signatureVerified` mark; its ETag is dropped,
+   so the next request is unconditional and the manifest is verified.
 2. **Verify** the downloaded bytes against the pinned keys, before parsing.
 3. **Parse,** then apply every rule below to the whole manifest. Any failure rejects the whole
    manifest. Nothing is kept from it.
@@ -163,8 +165,14 @@ list we since removed or that has an older checksum.
   `ADBLX/Resources/Filters/`, with a test that the bundled lists match its checksums, so the
   minimum can't drift from what actually ships. A manifest rejected this way is a failed
   update like any other, and the bundled rules stay installed.
-- **Equal version:** accept only if the bytes are identical to the cached manifest (nothing
-  changed). Equal version with different bytes is rejected.
+- **The minimum is refreshed every release.** Before archiving,
+  `Scripts/refresh-bundled-manifest.sh` copies the live signed manifest and its lists into the
+  bundle, after verifying the signature and checksums. The pre-archive check fails if the
+  bundled manifest is more than 30 days old, so fresh-install protection doesn't weaken as
+  releases go by.
+- **Equal version:** if the decoded manifest equals the cached one, nothing changed: it is
+  treated like a `304` (no install, no failure). Equal version with different content is
+  rejected. Decoded rather than raw bytes, because `ManifestStore` keeps the decoded form.
 - **The version changes on every publish that changes the manifest** (built 2026-11-06,
   `ManifestVersion.resolve`):
   - `manifestVersion` is a UTC timestamp, `YYYY-MM-DDTHH:MM:SSZ`. It is fixed width, so
@@ -175,7 +183,9 @@ list we since removed or that has an older checksum.
     entries differ, and keeps the committed value when they don't. A committed date-only
     version is never kept: the next publish needs a timestamp.
   - The first signed manifest must use this format, since the app's rollback check compares it.
-- The app parses the version strictly and rejects anything that doesn't match the format.
+- The app parses an incoming manifest's version strictly and rejects anything that doesn't
+  match the format. The cached version and the built-in minimum are parsed leniently (a
+  date-only value counts as midnight UTC), since the committed manifest is still date-only.
 
 ### Filter IDs
 
@@ -204,7 +214,8 @@ the manifest instead of being skipped.
   directory the manifest was fetched from. This is the layout decided on 2026-11-06
   (`docs/gotchas.md`). Any other host, path or scheme rejects the manifest.
 - The app pins the allowed bases: today `https://999sreeharsha.github.io/ADBLX`, later the
-  brand domain. Moving hosts means shipping both in one app version first.
+  brand domain. Moving hosts means adding the brand domain to `allowedBases` in a release
+  *before* the site moves, and moving only once that release is what users run.
 - Downloads refuse redirects to a different host (a `URLSessionTaskDelegate` that cancels a
   cross-host redirect). `URLSession` follows redirects by default.
 - The payload checksum is checked as today. With a signed manifest, that checksum is now
@@ -222,12 +233,15 @@ Treat it as temporary. The likeliest cause is a deploy still reaching the CDN (t
 not there yet), not an attack, and the safe response to both is the same.
 
 - Keep every installed rule and the cached manifest and ETag exactly as they are. Nothing is
-  downloaded or compiled. Not saving the ETag means the next run fetches the manifest again.
+  downloaded or compiled. Not saving the ETag means the next allowed check fetches the whole
+  manifest again. Pending Safari reloads (`pending_reloads.json`) are still retried, as on a
+  `304`.
 - Don't show it as an error. An automatic update says nothing and retries on the next run. A
   manual update shows the neutral "Couldn't check for filter updates right now. Your current
   filters are still on.", the same as a network failure. It does not mention verification.
-- Retry at the next opportunity (the next launch, foreground or scheduled run), not in a loop,
-  and don't let the failure advance the update throttle.
+- Retry at the next allowed check, not in a loop. A rejection **advances** the update
+  throttle, like a success: otherwise a bad publish or a missing signature would make every
+  launch on every phone refetch the manifest for as long as the problem lasts.
 - Log the reason as a case name and a count only (`docs/Architecture/Logging.md`): for example
   `manifest rejected reason=signature`, never a URL or ID. The DEBUG diagnostics screen shows
   consecutive failures, so one that lasts past a deploy can be seen during testing.
