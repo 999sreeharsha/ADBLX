@@ -320,6 +320,13 @@ targets:
         NSExtension:
           NSExtensionPointIdentifier: com.apple.networkextension.packet-tunnel
           NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).PacketTunnelProvider
+    entitlements:
+      path: Extensions/ADBLXPacketTunnel/ADBLXPacketTunnel.entitlements
+      properties:
+        com.apple.developer.networking.networkextension:
+          - packet-tunnel-provider
+        com.apple.security.application-groups:
+          - group.com.ADBLX.shared
     settings:
       base:
         CODE_SIGN_STYLE: Automatic
@@ -337,8 +344,6 @@ targets:
       configs:
         # XcodeGen can't drop a dependency per configuration, so in Release the target stays in
         # the graph but compiles nothing and is never signed. See the ADBLX target's Release.
-        Debug:
-          CODE_SIGN_ENTITLEMENTS: Extensions/ADBLXPacketTunnel/ADBLXPacketTunnel.entitlements
         Release:
           CODE_SIGNING_ALLOWED: NO
           EXCLUDED_SOURCE_FILE_NAMES: "*"

@@ -1486,6 +1486,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGN_ENTITLEMENTS = Extensions/ADBLXPacketTunnel/ADBLXPacketTunnel.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				EXCLUDED_SOURCE_FILE_NAMES = "*";
