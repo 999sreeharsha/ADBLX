@@ -346,8 +346,7 @@ for the actor and reject it. Declaring the conformance in an extension
 **Standing rule:** a test double declares its conformance to a `nonisolated` protocol in an
 extension, never in its own declaration (`actor Stub {…}` then `extension Stub: SomeService {}`).
 Otherwise a later, unrelated test change can reshuffle the batches and bring the error back on
-someone else's build. Every existing test double follows it except the two in
-`BrokenSiteReporterTests.swift`, which wait on another session's uncommitted work.
+someone else's build. Every existing test double follows it.
 
 Found in: entitlement purchase-bug fix (`FakeStoreEntitlementSource`), bisected 2026-10-30
 

@@ -268,7 +268,7 @@ struct BrokenSiteReporterTests {
     }
 }
 
-private nonisolated final class RecordingSettingsService: SettingsService, @unchecked Sendable {
+private nonisolated final class RecordingSettingsService: @unchecked Sendable {
     private let lock = NSLock()
     private var domains: [String] = []
     private let rejectsAdds: Bool
@@ -288,10 +288,14 @@ private nonisolated final class RecordingSettingsService: SettingsService, @unch
     func removeAllowlistEntry(id: String) async -> AllowlistEditOutcome { .applied }
 }
 
-private nonisolated struct FixedStateProvider: ContentBlockerStateProviding {
+extension RecordingSettingsService: SettingsService {}
+
+private nonisolated struct FixedStateProvider {
     let enabled: Set<String>
 
     func state(of extensionIdentifier: String) async -> ContentBlockerSettingsState {
         enabled.contains(extensionIdentifier) ? .enabled : .disabled
     }
 }
+
+extension FixedStateProvider: ContentBlockerStateProviding {}
