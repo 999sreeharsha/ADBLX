@@ -145,6 +145,63 @@ final class SigningTests: XCTestCase {
         XCTAssertTrue(ManifestSigning.verify(manifest: newer, signatureFile: try Data(contentsOf: second), trustedKeys: [key.publicKey]))
     }
 
+    // Old signatures keep old manifests valid, and a fresh install has no cached version to
+    // reject one with. A stale CDN edge lasts minutes or hours, so a week is plenty.
+    func test_signingDeletesSignaturesOlderThanTheRetention() throws {
+        let key = Curve25519.Signing.PrivateKey()
+        let directory = try temporaryDirectory()
+        let manifestURL = directory.appendingPathComponent("manifest.json")
+        let signatures = directory.appendingPathComponent("signatures", isDirectory: true)
+        let start = Date(timeIntervalSince1970: 1_800_000_000)
+        func publish(_ bytes: Data, daysLater days: Double) throws -> URL {
+            try bytes.write(to: manifestURL)
+            return try ManifestPublication.sign(
+                manifestAt: manifestURL, key: key, signaturesDirectory: signatures,
+                now: start.addingTimeInterval(days * 86_400)
+            )
+        }
+
+        let old = try publish(Data("old".utf8), daysLater: 0)
+        let recent = try publish(Data("recent".utf8), daysLater: 2)
+        let current = try publish(Data("current".utf8), daysLater: 8)
+
+        XCTAssertFalse(FileManager.default.fileExists(atPath: old.path), "8 days old, kept")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: recent.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: current.path))
+    }
+
+    // A file's date in a fresh checkout is the checkout time, so age comes from the index.
+    func test_aSignatureWithNoRecordedDateIsDeleted() throws {
+        let directory = try temporaryDirectory()
+        let manifestURL = directory.appendingPathComponent("manifest.json")
+        let signatures = directory.appendingPathComponent("signatures", isDirectory: true)
+        try FileManager.default.createDirectory(at: signatures, withIntermediateDirectories: true)
+        let undated = signatures.appendingPathComponent(String(repeating: "0", count: 64) + ".sig")
+        try Data("x\n".utf8).write(to: undated)
+        try manifest.write(to: manifestURL)
+
+        let current = try ManifestPublication.sign(manifestAt: manifestURL, key: Curve25519.Signing.PrivateKey(), signaturesDirectory: signatures)
+
+        XCTAssertFalse(FileManager.default.fileExists(atPath: undated.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: current.path))
+    }
+
+    // The index is committed and deployed, so it must not churn between identical runs.
+    func test_theSignatureIndexIsStableForTheSameInputs() throws {
+        let directory = try temporaryDirectory()
+        let manifestURL = directory.appendingPathComponent("manifest.json")
+        let signatures = directory.appendingPathComponent("signatures", isDirectory: true)
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        try manifest.write(to: manifestURL)
+
+        var indexes: [Data] = []
+        for _ in 0..<3 {
+            try ManifestPublication.sign(manifestAt: manifestURL, key: Curve25519.Signing.PrivateKey(), signaturesDirectory: signatures, now: now)
+            indexes.append(try Data(contentsOf: signatures.appendingPathComponent("index.json")))
+        }
+        XCTAssertEqual(Set(indexes).count, 1)
+    }
+
     // MARK: - Keys
 
     func test_keyLoadsFromTheEnvironment() throws {

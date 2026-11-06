@@ -55,8 +55,9 @@ exactly. It is not signed yet.
 
 `publisher sign` then writes `backend/public/signatures/<sha256>.sig`, an
 Ed25519 signature over the manifest's exact bytes, named after their SHA-256,
-with a key kept outside the repository. Earlier signatures stay, for devices
-whose CDN edge still serves an older manifest. Signatures are randomized, so
+with a key kept outside the repository. Earlier signatures stay for 7 days, for
+devices whose CDN edge still serves an older manifest, then `sign` deletes them;
+`signatures/index.json` records when each was written. Signatures are randomized, so
 the `.sig` file differs between runs even though the manifest doesn't. See `docs/Security/ManifestTrust.md` for the
 commands, keys and what the app checks.
 

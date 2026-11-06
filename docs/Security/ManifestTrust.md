@@ -52,8 +52,16 @@ one. The other fixes considered:
 - **One envelope file holding both:** removes the race too, but the signed bytes would have to
   sit base64-encoded inside JSON, and the manifest format would change.
 
-Earlier signatures are never deleted, so a device on a stale cached manifest can still verify
-it. Each is under 100 bytes.
+### Old signatures are pruned after 7 days
+
+Every published signature keeps its manifest valid, and the rollback rule only protects a
+device that already has a cached version. So `sign` deletes signatures written more than
+7 days ago (`ManifestPublication.signatureRetention`). That is long enough for a device whose
+CDN edge still serves the previous manifest, which takes minutes or hours. Each signature's date
+is recorded in `signatures/index.json`, because a file's date in a fresh checkout is the checkout
+time. Any signature not in the index is deleted. The deploy replaces the whole Pages root, so a
+pruned signature is gone from the site too. Pruning narrows replay; the built-in minimum below
+closes it for fresh installs.
 
 `sign` also reads the key from `ADBLX_MANIFEST_SIGNING_KEY` (base64), and refuses when both are
 given. No command prints the private key, and no error contains it. Commit the signature with
@@ -63,15 +71,36 @@ the manifest: it is public, and the deploy copies `backend/public/` verbatim.
 
 ### Generation and storage
 
+**Decision pending (owner): where K1 lives.** It must be settled before the keys are generated,
+because it decides what happens to K1's key file afterwards.
+
+PRD §6.2 has a server cron republishing the upstream lists, so the manifest changes about
+daily. A key that exists only offline can't sign that without the maintainer at their Mac.
+
+- **Recommended: K1 online for routine signing, K2 offline for recovery.**
+  - K1 is a GitHub Actions secret, `ADBLX_MANIFEST_SIGNING_KEY`, in a protected environment
+    that only the publish workflow on the protected branch can use (deployment branch rule,
+    required reviewers optional).
+  - **Accepted risk:** K1 is online. Anyone who can run that workflow, or who compromises
+    GitHub or the runner, can sign a manifest. The mitigations: the environment protection,
+    the rules below that limit what any signed manifest can make the app do, and K2 for
+    recovery.
+  - After pasting K1 into the secret, keep one offline backup (in the password manager),
+    so a lost secret doesn't force a rotation, and delete the generated file.
+  - The publish workflow must run on `macos-latest`, or the Publisher must switch to
+    `swift-crypto`: CryptoKit isn't available on the Linux runners `deploy-pages.yml` uses.
+- **Alternative: both keys offline.** Publishing becomes a manual step on the maintainer's Mac
+  and lists are only as fresh as the last time someone ran it. That contradicts §6.2's daily
+  updates, so choosing it means amending the PRD.
+
+For both options:
+
 - Generate each key with `publisher keygen` on the maintainer's own Mac, not in CI.
-- **K1, the signing key:** an encrypted copy in the maintainer's password manager, which is
-  where `sign` reads it from at publish time. Publishing is a local step
-  (`backend/tools/publish-pages.sh`), so CI never needs the private key. If signing ever moves
-  to CI, the key goes in the CI secret store as `ADBLX_MANIFEST_SIGNING_KEY` and nowhere else.
-- **K2, the standby key:** generated now, with K1, not at the first rotation. Rotation only
+- **K2, the recovery key:** generated now, with K1, not at the first rotation. Rotation only
   works if K2's public key is already pinned in every installed app, so it must ship in the
-  first build. Kept offline only, in two places separate from K1 (for example, an encrypted
-  USB drive and a printed copy in a safe). It is never used until a rotation.
+  first build. Kept offline only, stored separately from K1 (a different place, such as an
+  encrypted drive, never K1's folder or vault entry). It never signs anything until K1 is
+  retired or leaks.
 - Both public keys are pinned before the first TestFlight build.
 - The public keys are not secret. Both ship in the app.
 - `.gitignore` ignores `*.key` as a backstop, and `keygen` refuses repository paths, but the
@@ -113,6 +142,13 @@ A valid signature still allows replaying an old signed manifest, for example one
 list we since removed or that has an older checksum.
 
 - **Reject** a `manifestVersion` lower than the cached one.
+- **Reject** a `manifestVersion` lower than the app's built-in minimum, the version of the
+  manifest its bundled snapshot came from. A fresh install has no cached version, so without
+  this an old manifest that is still validly signed would install older rules on it. The
+  bundle doesn't record that version today: ship the snapshot's `manifest.json` in
+  `ADBLX/Resources/Filters/`, with a test that the bundled lists match its checksums, so the
+  minimum can't drift from what actually ships. A manifest rejected this way is a failed
+  update like any other, and the bundled rules stay installed.
 - **Equal version:** accept only if the bytes are identical to the cached manifest (nothing
   changed). Equal version with different bytes is rejected.
 - **The version must therefore change on every publish that changes the manifest.** Today it
@@ -191,12 +227,15 @@ manifest replaces it.
 
 1. Publisher: `keygen`, `sign` (to `signatures/<sha256>.sig`, keeping earlier ones) and
    `verify`. **Done.**
-2. Publisher: the `manifestVersion` change and the ID-pattern check in `Validator`.
-3. Generate K1 and K2 now, together, store them as above, and record both public keys in the
-   app.
+2. Publisher: signature pruning (7 days, `signatures/index.json`). **Done.** Still to do: the
+   `manifestVersion` change and the ID-pattern check in `Validator`.
+3. Decide where K1 lives (above). Then generate K1 and K2 together, store them accordingly,
+   and record both public keys in the app.
 4. App: download cap and streaming (SEC-09 size cap), then signature fetch and verification,
-   then the rollback, ID, duplicate, group and `sourceURL` rules, each with a test that the
-   whole manifest is rejected and the installed rules are unchanged.
+   then the rollback rule (cached version and built-in minimum), ID, duplicate, group and
+   `sourceURL` rules, each with a test that the whole manifest is rejected and the installed
+   rules are unchanged. That includes a fresh install served an old, validly signed manifest:
+   it keeps its bundled rules and reports a failed update.
 5. Sign and deploy the first signed manifest **before** the first TestFlight upload. Nothing has
    shipped, so there is no unsigned transition: every build requires a signature from the
    first release on. An app that requires a signature, reading a site that has none, can never

@@ -29,16 +29,56 @@ enum ManifestSigning {
 
 /// Writing and signing the files the Pages deploy serves.
 enum ManifestPublication {
+    /// How long a superseded signature stays published. A device whose CDN edge still serves an
+    /// older manifest needs its signature for minutes or hours; every day it stays, that old
+    /// manifest can be replayed to a fresh install.
+    static let signatureRetention: TimeInterval = 7 * 86_400
+
     /// Signs the manifest as it is on disk, the bytes devices will download, and returns where the
-    /// signature went. Earlier signatures stay: a device whose CDN edge still serves an older
-    /// manifest needs that manifest's signature, and each is under 100 bytes.
+    /// signature went. Signatures written more than `signatureRetention` ago are deleted, and so
+    /// is any without a date in `signatures/index.json`: a file's own date in a fresh checkout is
+    /// the checkout time.
     @discardableResult
-    static func sign(manifestAt manifestURL: URL, key: Curve25519.Signing.PrivateKey, signaturesDirectory: URL) throws -> URL {
+    static func sign(
+        manifestAt manifestURL: URL, key: Curve25519.Signing.PrivateKey, signaturesDirectory: URL, now: Date = Date()
+    ) throws -> URL {
         let manifest = try Data(contentsOf: manifestURL)
         try FileManager.default.createDirectory(at: signaturesDirectory, withIntermediateDirectories: true)
-        let signatureURL = signaturesDirectory.appendingPathComponent(ManifestSigning.signatureFilename(for: manifest))
+        let filename = ManifestSigning.signatureFilename(for: manifest)
+        let signatureURL = signaturesDirectory.appendingPathComponent(filename)
         try AtomicFileWriter().write(try ManifestSigning.signatureFile(for: manifest, key: key), to: signatureURL)
+
+        let indexURL = signaturesDirectory.appendingPathComponent(SignatureIndex.filename)
+        var signedAt = (try? SignatureIndex.read(from: indexURL)) ?? [:]
+        signedAt[filename] = now
+        signedAt = signedAt.filter { now.timeIntervalSince($0.value) <= signatureRetention || $0.key == filename }
+        for name in try FileManager.default.contentsOfDirectory(atPath: signaturesDirectory.path)
+        where name.hasSuffix(".sig") && signedAt[name] == nil {
+            try FileManager.default.removeItem(at: signaturesDirectory.appendingPathComponent(name))
+        }
+        try AtomicFileWriter().write(try SignatureIndex.encode(signedAt), to: indexURL)
         return signatureURL
+    }
+}
+
+/// `signatures/index.json`: when each published signature was written, as UTC seconds-precision
+/// ISO 8601, keys sorted so identical inputs give identical bytes. The app never reads it.
+enum SignatureIndex {
+    static let filename = "index.json"
+
+    static func read(from url: URL) throws -> [String: Date] {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return try decoder.decode([String: Date].self, from: Data(contentsOf: url))
+    }
+
+    static func encode(_ signedAt: [String: Date]) throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        var data = try encoder.encode(signedAt)
+        data.append(0x0A)
+        return data
     }
 }
 
