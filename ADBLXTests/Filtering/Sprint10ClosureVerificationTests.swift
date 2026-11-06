@@ -152,13 +152,8 @@ final class Sprint10ClosureVerificationTests: XCTestCase {
         print("Total End-to-End Pipeline Duration: \(String(format: "%.3f", totalPipelineDuration))s")
         print("==================================================================\n")
         
-        // Report-only on CI (shared runners make timing unreliable); enforced locally.
-        if PerformanceBudget.isReportOnly && totalPipelineDuration >= 20.0 {
-            let options = XCTExpectedFailure.Options()
-            options.isStrict = false
-            XCTExpectFailure("Pipeline duration budget exceeded on CI (report-only)", options: options)
-        }
-        XCTAssertLessThan(totalPipelineDuration, 20.0, "Total pipeline duration with in-process DFA gate must remain within 20.0s")
+        // Measured, not asserted: simulator timing on a shared machine says nothing about
+        // NFR-01. The device check is in docs/AppStoreSetup.md (Release Checklist).
     }
     
     private func getPhysicalFootprintMB() -> Double {
@@ -268,14 +263,7 @@ final class Sprint10ClosureVerificationTests: XCTestCase {
         print(String(format: "Peak Transient Memory Delta : %.2f MB (NFR-01 budget < 200.0 MB)", transientMemoryMB))
         print("==================================================================\n")
         
-        // Report-only on CI (shared runners make timing unreliable); enforced locally.
-        if PerformanceBudget.isReportOnly && (totalCompileDuration >= 10.0 || transientMemoryMB >= 200.0) {
-            let options = XCTExpectedFailure.Options()
-            options.isStrict = false
-            XCTExpectFailure("NFR-01 budget exceeded on CI (report-only)", options: options)
-        }
-        XCTAssertLessThan(totalCompileDuration, 10.0, "Total pure compile duration must remain < 10.0s")
-        XCTAssertLessThan(transientMemoryMB, 200.0, "Peak transient memory delta must remain < 200.0 MB")
+        // Measured, not asserted: see docs/AppStoreSetup.md (Release Checklist) for NFR-01.
     }
     
     private static var isSimulator: Bool {
@@ -344,8 +332,8 @@ final class Sprint10ClosureVerificationTests: XCTestCase {
             print(String(format: "  Warm Reload Average : %.4fs", warmAvg))
             print(String(format: "  Min / Max Duration  : %.4fs / %.4fs", minDuration, maxDuration))
             
+            // A reload past ReloadCoordinator's timeout comes back failed, so this covers it.
             XCTAssertTrue(allSucceeded, "All reload trials for \(extID) must succeed")
-            XCTAssertLessThan(maxDuration, 10.0, "Worst-case reload for \(extID) must complete within 10s timeout")
         }
         print("==================================================================\n")
     }
@@ -442,12 +430,10 @@ final class Sprint10ClosureVerificationTests: XCTestCase {
         let stdDev = sqrt(sumSquaredDiffs / Double(durations.count))
         
         print("------------------------------------------------------------------")
-        print(String(format: "Mean Cold-Start Duration : %.4fs (NFR-05 budget < 1.500s: PASS)", avg))
+        print(String(format: "Mean Cold-Start Duration : %.4fs (NFR-05 is checked on a device)", avg))
         print(String(format: "Min / Max Duration       : %.4fs / %.4fs", minD, maxD))
         print(String(format: "Standard Deviation       : ±%.4fs", stdDev))
         print("==================================================================\n")
-        
-        XCTAssertLessThan(avg, 1.5, "Mean launch setup duration must remain < 1.5s")
-        XCTAssertLessThan(maxD, 1.5, "Worst-case launch setup duration must remain < 1.5s")
+        // Measured, not asserted: see docs/AppStoreSetup.md (Release Checklist) for NFR-05.
     }
 }

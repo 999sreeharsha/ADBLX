@@ -86,10 +86,6 @@ jobs:
             -destination "id=${{ steps.simulator.outputs.udid }}" build
 
       - name: Run unit tests (ADBLXTests only)
-        env:
-          # xcodebuild forwards TEST_RUNNER_-prefixed variables to the test process (prefix
-          # stripped). CI=true makes performance budgets report-only (PerformanceBudget).
-          TEST_RUNNER_CI: "true"
         run: |
           xcodebuild -project ADBLX.xcodeproj -scheme ADBLX \
             -destination "id=${{ steps.simulator.outputs.udid }}" \

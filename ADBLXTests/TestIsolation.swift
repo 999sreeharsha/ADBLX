@@ -26,11 +26,3 @@ nonisolated enum DeviceHarness {
         ProcessInfo.processInfo.environment["ADBLX_DEVICE_HARNESS"] == "1"
     }
 }
-
-/// Wall-clock and memory budgets fail locally but are report-only on CI, where shared runners
-/// make timings unreliable. CI sets `TEST_RUNNER_CI=true`.
-nonisolated enum PerformanceBudget {
-    static var isReportOnly: Bool {
-        ProcessInfo.processInfo.environment["CI"] == "true"
-    }
-}
