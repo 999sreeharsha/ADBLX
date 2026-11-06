@@ -10,7 +10,9 @@ failures=0
 export MANIFEST_TRUST_NOW=1794009600
 fresh='  "manifestVersion": "2026-11-06T09:30:00Z",'
 
-k1='sN62bob0fFo4DrKj51F8Yo4ptABPsgpntoTlX58UwswxQFgcDSXSIUgtxy1H29p6+d59IcFSvV9eoYXEcgrwkw=='
+k1='6qGMsRsNwkSzp3EtjzwgLmXLAIiiSd6cEe52XAwqFhFe7AXLoHDRa2valf/ofNw2RyBSEGh7NzVZrRpEaLh50A=='
+# ManifestVerifierTests' PublisherFixture key, committed in the test suite.
+fixture_key='sN62bob0fFo4DrKj51F8Yo4ptABPsgpntoTlX58UwswxQFgcDSXSIUgtxy1H29p6+d59IcFSvV9eoYXEcgrwkw=='
 k2='kObOHjBnyHpXUs2trrvc5TCRSsGYhCyixqpoRmbFW9nU88rGKINFLmnGD/cqVmE+mMtxHZIU9EoBRKjNotrt2Q=='
 test_key='AAAAbob0fFo4DrKj51F8Yo4ptABPsgpntoTlX58UwswxQFgcDSXSIUgtxy1H29p6+d59IcFSvV9eoYXEcgrwkw=='
 
@@ -39,6 +41,7 @@ expect 1 install "        \"$k1\", // K1\n        \"$k1\", // K2\n" "$test_key" 
 expect 1 install "        \"$k1\", // K1\n        \"${k2%==}\", // K2\n" "$test_key" "a key that isn't 64 bytes"
 expect 1 install "        \"$k1\", // K1\n        Secrets.k2, // K2\n" "$test_key" "a line that isn't a key"
 expect 1 install "        \"$k1\", // K1\n        \"$test_key\", // K2\n" "$test_key" "the Debug test key in the production list"
+expect 1 install "        \"$fixture_key\", // K1\n        \"$k2\", // K2\n" "$test_key" "the test suite's fixture key in the production list"
 expect 0 build "" "$test_key" "no keys in an everyday build"
 expect 0 '' "" "$test_key" "no keys with no action"
 

@@ -12,7 +12,9 @@ set -eu
 
 root=$(cd "$(dirname "$0")/.." && pwd)
 base="${1:-https://999sreeharsha.github.io/ADBLX}"
-trust="${MANIFEST_TRUST_FILE:-$root/ADBLX/Filtering/Updates/ManifestTrust.swift}"
+# The app's own list, the same one the archive check reads. No other source of keys, so the
+# script can't accept a manifest the app would reject, or the reverse.
+trust="$root/ADBLX/Filtering/Updates/ManifestTrust.swift"
 filters="$root/ADBLX/Resources/Filters"
 publisher="$root/backend/tools/Publisher"
 

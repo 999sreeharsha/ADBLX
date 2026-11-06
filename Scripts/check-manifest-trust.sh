@@ -34,9 +34,13 @@ if [ "$distinct" -lt 2 ] || [ "$count" -ne "$distinct" ]; then
     fail "Pin both production public keys, K1 and K2, in ManifestTrust.productionPublicKeys before archiving."
 fi
 
-for test_key in $(grep -oE "$key" "$debug" 2>/dev/null | tr -d '"'); do
+# Test keys that must never be pinned: the Debug list's, and the one committed with
+# ManifestVerifierTests' PublisherFixture (its private half was deleted, but it is the key
+# most likely to be pasted here by mistake).
+fixture_key='sN62bob0fFo4DrKj51F8Yo4ptABPsgpntoTlX58UwswxQFgcDSXSIUgtxy1H29p6+d59IcFSvV9eoYXEcgrwkw=='
+for test_key in $(grep -oE "$key" "$debug" 2>/dev/null | tr -d '"') "$fixture_key"; do
     if printf '%s\n' "$keys" | grep -qxF "$test_key"; then
-        fail "The Debug test key is in ManifestTrust.productionPublicKeys."
+        fail "A test key is in ManifestTrust.productionPublicKeys."
     fi
 done
 

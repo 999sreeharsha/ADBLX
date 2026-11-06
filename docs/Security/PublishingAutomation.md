@@ -80,4 +80,7 @@ which is never publishable.
    updates is not guaranteed. Change it to "frequent updates" (and in marketing copy)
    unless the owner commits to daily manual publishes.
 3. **Auto-publish vs approve-every-publish** once automation exists. Approving every
-   publish with Touch ID is safer but needs the owner daily.
+   publish with Touch ID is safer but needs the owner daily. Either way, K1 can't sign while
+   the Mac's screen is locked (`errSecInteractionNotAllowed`, -25308, seen 2026-11-07), so a
+   scheduled job on the signing Mac fails whenever it is locked, which is most of the time it
+   would run.
