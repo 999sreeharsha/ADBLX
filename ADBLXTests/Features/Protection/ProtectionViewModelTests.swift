@@ -114,7 +114,7 @@ struct ProtectionViewModelTests {
     }
 }
 
-private actor StubProtectionService: ProtectionService {
+private actor StubProtectionService {
     let statusToReturn: ProtectionStatus
     private(set) var lastSetCall: (FilterCategoryID, Bool)?
 
@@ -131,7 +131,9 @@ private actor StubProtectionService: ProtectionService {
     func setFilterList(_ id: String, enabled: Bool) async {}
 }
 
-private actor SlowStubProtectionService: ProtectionService {
+extension StubProtectionService: ProtectionService {}
+
+private actor SlowStubProtectionService {
     let statusToReturn: ProtectionStatus
     private(set) var fetchCount = 0
 
@@ -148,6 +150,8 @@ private actor SlowStubProtectionService: ProtectionService {
     func setCategory(_ id: FilterCategoryID, enabled: Bool) async {}
     func setFilterList(_ id: String, enabled: Bool) async {}
 }
+
+extension SlowStubProtectionService: ProtectionService {}
 
 @Suite("ProtectionViewModel filter lists")
 struct ProtectionViewModelFilterListTests {
@@ -186,9 +190,11 @@ struct ProtectionViewModelFilterListTests {
     }
 }
 
-private struct StubFilterListService: ProtectionService {
+private struct StubFilterListService {
     let statusToReturn: ProtectionStatus
     func fetchStatus() async -> ProtectionStatus { statusToReturn }
     func setCategory(_ id: FilterCategoryID, enabled: Bool) async {}
     func setFilterList(_ id: String, enabled: Bool) async {}
 }
+
+extension StubFilterListService: ProtectionService {}

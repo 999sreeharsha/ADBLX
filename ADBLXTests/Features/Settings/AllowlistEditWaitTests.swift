@@ -112,7 +112,7 @@ private nonisolated final class HeldGate: @unchecked Sendable {
     }
 }
 
-private nonisolated final class HoldingSettingsService: SettingsService, @unchecked Sendable {
+private nonisolated final class HoldingSettingsService: @unchecked Sendable {
     private let held = HeldGate()
 
     func waitUntilHeld() async { await held.waitUntilHeld() }
@@ -130,3 +130,5 @@ private nonisolated final class HoldingSettingsService: SettingsService, @unchec
         return .applied
     }
 }
+
+extension HoldingSettingsService: SettingsService {}

@@ -3,7 +3,7 @@ import Foundation
 
 /// Scriptable stand-in for StoreKit. `currentEntitlements()` replays `script` in call order
 /// (each step has its own latency), then repeats `entitlements`.
-nonisolated final class FakeStoreEntitlementSource: StoreEntitlementSource, @unchecked Sendable {
+nonisolated final class FakeStoreEntitlementSource: @unchecked Sendable {
     struct Step { var entitlements: [StoreEntitlement]; var delayNanoseconds: UInt64 = 0 }
 
     private let lock = NSLock()
@@ -105,6 +105,8 @@ nonisolated final class FakeStoreEntitlementSource: StoreEntitlementSource, @unc
     }
     func sync() async throws {}
 }
+
+extension FakeStoreEntitlementSource: StoreEntitlementSource {}
 
 extension StoreEntitlement {
     static func annual(id: UInt64 = 1, expires: Date = Date().addingTimeInterval(86400 * 365)) -> StoreEntitlement {

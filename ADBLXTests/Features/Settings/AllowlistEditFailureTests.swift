@@ -173,6 +173,8 @@ private nonisolated final class FailingReloads: @unchecked Sendable {
     }
 }
 
-private nonisolated struct EnabledBlockers: ContentBlockerStateProviding {
+private nonisolated struct EnabledBlockers {
     func state(of extensionIdentifier: String) async -> ContentBlockerSettingsState { .enabled }
 }
+
+extension EnabledBlockers: ContentBlockerStateProviding {}

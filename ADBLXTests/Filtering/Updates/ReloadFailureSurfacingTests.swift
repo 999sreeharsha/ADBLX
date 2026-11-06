@@ -238,11 +238,13 @@ private nonisolated final class ReloadRecorder: @unchecked Sendable {
     }
 }
 
-private nonisolated struct FixedBlockerState: ContentBlockerStateProviding {
+private nonisolated struct FixedBlockerState {
     let value: ContentBlockerSettingsState
     init(_ value: ContentBlockerSettingsState) { self.value = value }
     func state(of extensionIdentifier: String) async -> ContentBlockerSettingsState { value }
 }
+
+extension FixedBlockerState: ContentBlockerStateProviding {}
 
 private nonisolated final class OutOfSpaceFileManager: FileManager, @unchecked Sendable {
     override func copyItem(at srcURL: URL, to dstURL: URL) throws {
