@@ -409,7 +409,7 @@ Swift + `swift-argument-parser`. Commands:
 |---|---|
 | `validate` | 1:1 consistency check across registry ↔ metadata ↔ payloads (accumulates all errors). Writes nothing. |
 | `generate-docs` | Regenerates `backend/docs/FilterRegistry.md`. |
-| `publish --publish-base-url <url>` | validate → for each filter: read payload, SHA-256, count rules (non-empty, non-`!` lines) → `ManifestBuilder` (sorts entries by id, `manifestVersion = max(entry.version)`) → `ManifestJSONWriter` (**hand-built JSON string, fixed key order** — ADR-0001, because `JSONEncoder` key order is non-deterministic on Swift 6.3) → atomic write to `backend/public/manifest.json`. |
+| `publish --publish-base-url <url>` | validate → for each filter: read payload, SHA-256, count rules (non-empty, non-`!` lines) → `ManifestBuilder` (sorts entries by id) → `ManifestVersion.resolve` (keeps the committed `manifestVersion` when entries are unchanged, otherwise requires a later `--manifest-version` UTC timestamp) → `ManifestJSONWriter` (**hand-built JSON string, fixed key order** — ADR-0001, because `JSONEncoder` key order is non-deterministic on Swift 6.3) → atomic write to `backend/public/manifest.json`. |
 | `generate --publish-base-url <url>` | validate + generate-docs + publish. |
 
 All-or-nothing; the existing `manifest.json` is untouched on any failure. **`PublisherPaths` are hardcoded** (no injection seam) → no true end-to-end CLI test. 44 unit/integration tests (golden fixtures use `cdn.adblx.com` and synthetic payloads).

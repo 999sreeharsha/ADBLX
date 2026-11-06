@@ -39,8 +39,8 @@ assumes it is invoked from the repository root.
 ```
 publisher validate                                    # validate only
 publisher generate-docs                                # regenerate FilterRegistry.md
-publisher publish --publish-base-url <url>              # validate, then write manifest.json
-publisher generate --publish-base-url <url>              # validate → generate-docs → publish
+publisher publish --publish-base-url <url> --manifest-version <UTC timestamp>   # validate, then write manifest.json
+publisher generate --publish-base-url <url> --manifest-version <UTC timestamp>  # validate → generate-docs → publish
 ```
 
 Exit codes: `0` success, `1` validation failure, `2` fatal error (unreadable

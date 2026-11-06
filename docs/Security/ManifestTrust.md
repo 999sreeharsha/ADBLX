@@ -37,7 +37,7 @@ swift run --package-path backend/tools/Publisher Publisher keygen --secure-encla
 swift run --package-path backend/tools/Publisher Publisher keygen --output /Volumes/<offline drive>/adblx-manifest-k2.key
 
 # Every publish, from the repository root.
-swift run --package-path backend/tools/Publisher Publisher publish --publish-base-url <url>
+swift run --package-path backend/tools/Publisher Publisher publish --publish-base-url <url> --manifest-version <UTC now, e.g. 2026-11-06T09:30:00Z>
 swift run --package-path backend/tools/Publisher Publisher sign --signing-key-file ~/Keys/adblx-manifest-k1.key   # asks for Touch ID or the password
 swift run --package-path backend/tools/Publisher Publisher verify --public-key <K1> --public-key <K2>
 ```
@@ -165,17 +165,16 @@ list we since removed or that has an older checksum.
   update like any other, and the bundled rules stay installed.
 - **Equal version:** accept only if the bytes are identical to the cached manifest (nothing
   changed). Equal version with different bytes is rejected.
-- **The version must therefore change on every publish that changes the manifest.** Today it
-  doesn't: `ManifestBuilder` sets it to the newest entry's `version`, so removing a list or
-  changing a name or premium flag keeps the same version, and two publishes on one day can't be
-  ordered. Change it before shipping verification:
-  - `manifestVersion` becomes a UTC timestamp, `YYYY-MM-DDTHH:MM:SSZ`. It is fixed width, so
-    string order is time order. A cached date-only value (`2026-11-05`) compares as that day
-    at `00:00:00Z`.
+- **The version changes on every publish that changes the manifest** (built 2026-11-06,
+  `ManifestVersion.resolve`):
+  - `manifestVersion` is a UTC timestamp, `YYYY-MM-DDTHH:MM:SSZ`. It is fixed width, so
+    string order is time order. A cached date-only value (`2026-11-05`, the format before this
+    change) compares as that day at `00:00:00Z`.
   - It is an input to `publish` (`--manifest-version`), not the clock, so the output stays
-    deterministic. `publish` refuses a value not greater than the committed manifest's when
-    the entries differ, and keeps the committed value when they don't.
-  - Update `backend/docs/ManifestSpecification.md` with the new format.
+    deterministic. `publish` refuses a value not later than the committed manifest's when the
+    entries differ, and keeps the committed value when they don't. A committed date-only
+    version is never kept: the next publish needs a timestamp.
+  - The first signed manifest must use this format, since the app's rollback check compares it.
 - The app parses the version strictly and rejects anything that doesn't match the format.
 
 ### Filter IDs
@@ -241,8 +240,8 @@ manifest replaces it.
 
 1. Publisher: `keygen`, `sign` (to `signatures/<sha256>.sig`, keeping earlier ones) and
    `verify`. **Done.**
-2. Publisher: signature pruning (7 days, `signatures/index.json`). **Done.** Still to do: the
-   `manifestVersion` change and the ID-pattern check in `Validator`.
+2. Publisher: signature pruning (7 days, `signatures/index.json`) and the `manifestVersion`
+   timestamp. **Done.** Still to do: the ID-pattern check in `Validator`.
 3. Generate K1 (`keygen --secure-enclave`) and K2 (a key file, written to offline storage)
    together, and record both public keys in the app. The algorithm is settled: P-256.
 4. App: download cap and streaming (SEC-09 size cap), then signature fetch and verification,
