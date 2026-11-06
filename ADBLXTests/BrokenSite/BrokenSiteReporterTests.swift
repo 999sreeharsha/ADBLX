@@ -160,6 +160,86 @@ struct BrokenSiteReporterTests {
         #expect(viewModel.errorMessage != nil)
     }
 
+    @Test("send before a report is prepared opens nothing and copies nothing")
+    @MainActor
+    func sendWithoutReport() async {
+        let viewModel = BrokenSiteReportViewModel(reporter: makeReporter(), initialDomain: "example.com")
+
+        var opened: [URL] = []
+        var copied: [String] = []
+        await viewModel.send(open: { opened.append($0); return true }, copy: { copied.append($0) })
+
+        #expect(opened.isEmpty)
+        #expect(copied.isEmpty)
+        #expect(viewModel.delivery == nil)
+    }
+
+    @Test("an invalid domain gives an error and no report", arguments: ["", "192.168.1.1", "localhost"])
+    @MainActor
+    func invalidDomainMakesNoReport(input: String) async {
+        let viewModel = BrokenSiteReportViewModel(reporter: makeReporter(), initialDomain: input)
+
+        await viewModel.prepareReport()
+
+        #expect(viewModel.report == nil)
+        #expect(viewModel.errorMessage != nil)
+    }
+
+    @Test("the report and its mail URL leave out the path, query and fragment the user typed")
+    func reportOmitsURLParts() async throws {
+        let report = try await makeReporter().makeReport(
+            domain: "https://sub.example.com/private/path?token=secret#frag", category: .other
+        )
+        let url = try #require(report.mailURL(recipient: nil)).absoluteString
+
+        for leaked in ["private", "token", "secret", "frag", "sub.example"] {
+            #expect(!report.bodyText.contains(leaked), "\(leaked) in body")
+            #expect(!url.contains(leaked), "\(leaked) in mail URL")
+        }
+    }
+
+    // The local allowlist is the real one here, not a recorder.
+    @Test("reviewing and sending a report leave the real allowlist untouched")
+    @MainActor
+    func reportLeavesRealAllowlistUntouched() async {
+        let store = FilterStore.temporary()
+        let allowlistStore = AllowlistStore(store: store)
+        let pipeline = FilterPipeline(
+            validator: FilterValidator(), compiler: PassthroughRuleCompiler(),
+            compositionService: JSONArrayCompositionService(),
+            partitioner: GroupPartitioner(extensionIdentifiers: ids),
+            store: store, writer: AtomicRuleWriter(), reloader: ReloadCoordinator(),
+            allowlistStore: allowlistStore, gate: FilterTransactionGate()
+        )
+        let settings = RealSettingsService(allowlistStore: allowlistStore, pipeline: pipeline)
+        let viewModel = BrokenSiteReportViewModel(reporter: makeReporter(settings: settings), initialDomain: "example.com")
+
+        await viewModel.prepareReport()
+        await viewModel.send(open: { _ in true }, copy: { _ in })
+        await viewModel.send(open: { _ in false }, copy: { _ in })
+
+        #expect(await allowlistStore.loadDomains().isEmpty)
+    }
+
+    // docs/Architecture/Logging.md forbids logging URLs and domains. The broken site feature
+    // handles both, so it must not log at all.
+    @Test("the broken site feature has no logging calls")
+    func noLoggingInFeature() throws {
+        let directory = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("ADBLX/Features/BrokenSite")
+        let files = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
+            .filter { $0.pathExtension == "swift" }
+        #expect(!files.isEmpty, "no sources found at \(directory.path)")
+
+        for file in files {
+            let source = try String(contentsOf: file, encoding: .utf8)
+            for call in ["Logger(", "print(", "os_log", "NSLog", "debugPrint(", "dump("] {
+                #expect(!source.contains(call), "\(file.lastPathComponent) contains \(call)")
+            }
+        }
+    }
+
     // A store-only write used to leave the compiled rules blocking the site.
     @Test("allowing a site recompiles the rules")
     @MainActor
