@@ -101,12 +101,21 @@ actor UpdateCoordinator {
     private func runTransaction(onPhaseChange: (UpdatePhase) -> Void) async throws -> UpdateRunResult {
         onPhaseChange(.checking)
         let cached = try await manifestStore.load()
-        let fetchResult = try await manifestClient.fetch(previousETag: cached?.etag)
+        // Only a manifest that passed verification can set the floor for the rollback rule.
+        let verifiedCache = cached?.signatureVerified == true ? cached : nil
+        let fetchResult = try await manifestClient.fetch(previousETag: cached?.etag, cached: verifiedCache?.manifest)
 
         let manifest: FilterManifest
         let etag: String?
         switch fetchResult {
         case .notModified:
+            let result = await upToDateResult()
+            onPhaseChange(.complete)
+            return result
+        case .unchanged(let newETag):
+            if let verifiedCache {
+                try await manifestStore.save(verifiedCache.manifest, etag: newETag)
+            }
             let result = await upToDateResult()
             onPhaseChange(.complete)
             return result

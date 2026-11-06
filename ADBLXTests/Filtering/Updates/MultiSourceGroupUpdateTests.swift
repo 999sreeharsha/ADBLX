@@ -7,8 +7,8 @@ import Foundation
 @Suite("UpdateCoordinator multi-source groups", .serialized)
 struct MultiSourceGroupUpdateTests {
     private let manifestEndpoint = URL(string: "https://example.com/manifest.json")!
-    private let urlA = URL(string: "https://example.com/a.txt")!
-    private let urlB = URL(string: "https://example.com/b.txt")!
+    private let urlA = URL(string: "https://example.com/filters/annoyances/a.txt")!
+    private let urlB = URL(string: "https://example.com/filters/annoyances/b.txt")!
     private let ids = GroupExtensionIdentifiers(
         ads: "com.ADBLX.ADBLX.AdsBlocker", privacy: "com.ADBLX.ADBLX.PrivacyBlocker",
         annoyances: "com.ADBLX.ADBLX.AnnoyancesBlocker", regional: "com.ADBLX.ADBLX.RegionalBlocker"
@@ -45,7 +45,7 @@ struct MultiSourceGroupUpdateTests {
 
         var responses: [URL: Result<(Data, URLResponse), Error>] = [
             manifestEndpoint: .success((
-                try JSONEncoder().encode(FilterManifest(manifestVersion: "2", entries: entries)),
+                try JSONEncoder().encode(FilterManifest(manifestVersion: SignedManifests.version, entries: entries)),
                 HTTPURLResponse(url: manifestEndpoint, statusCode: 200, httpVersion: nil, headerFields: ["ETag": "\"v2\""])!
             ))
         ]
@@ -54,7 +54,7 @@ struct MultiSourceGroupUpdateTests {
         }
         let session = MockHTTPSession(responses: responses)
         let coordinator = UpdateCoordinator(
-            manifestClient: ManifestClient(session: session, endpoint: manifestEndpoint),
+            manifestClient: SignedManifests.signingClient(session: session, endpoint: manifestEndpoint),
             manifestStore: ManifestStore(filterStore: store),
             downloadClient: FilterDownloadClient(session: session),
             pipeline: pipeline, store: store, reloader: ReloadCoordinator(),

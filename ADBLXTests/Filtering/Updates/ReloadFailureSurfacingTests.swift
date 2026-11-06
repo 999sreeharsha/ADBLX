@@ -8,7 +8,7 @@ import WebKit
 @Suite("Compile and reload failures reach the user", .serialized)
 struct ReloadFailureSurfacingTests {
     private let manifestEndpoint = URL(string: "https://example.com/manifest.json")!
-    private let filterURL = URL(string: "https://example.com/easylist.txt")!
+    private let filterURL = URL(string: "https://example.com/filters/ads/easylist.txt")!
     private let ids = GroupExtensionIdentifiers(
         ads: "com.ADBLX.ADBLX.AdsBlocker", privacy: "com.ADBLX.ADBLX.PrivacyBlocker",
         annoyances: "com.ADBLX.ADBLX.AnnoyancesBlocker", regional: "com.ADBLX.ADBLX.RegionalBlocker"
@@ -35,7 +35,7 @@ struct ReloadFailureSurfacingTests {
                 version: Checksum.sha256Hex(of: rules), checksumSHA256: Checksum.sha256Hex(of: rules), ruleCount: 1,
                 enabledByDefault: true, premium: false
             )
-            let manifest = try JSONEncoder().encode(FilterManifest(manifestVersion: "1", entries: [entry]))
+            let manifest = try JSONEncoder().encode(FilterManifest(manifestVersion: SignedManifests.version, entries: [entry]))
             let ok = HTTPURLResponse(url: manifestEndpoint, statusCode: 200, httpVersion: nil, headerFields: ["ETag": "\"v1\""])!
             let filterOK = HTTPURLResponse(url: filterURL, statusCode: 200, httpVersion: nil, headerFields: nil)!
             responses[manifestEndpoint] = .success((manifest, ok))
@@ -49,7 +49,7 @@ struct ReloadFailureSurfacingTests {
             store: store, writer: AtomicRuleWriter(), reloader: reloader, gate: FilterTransactionGate()
         )
         return UpdateCoordinator(
-            manifestClient: ManifestClient(session: session, endpoint: manifestEndpoint),
+            manifestClient: SignedManifests.signingClient(session: session, endpoint: manifestEndpoint),
             manifestStore: ManifestStore(filterStore: store),
             downloadClient: FilterDownloadClient(session: session),
             pipeline: pipeline, store: store, reloader: reloader, extensionIdentifiers: ids,
@@ -186,7 +186,7 @@ struct ReloadFailureSurfacingTests {
         let first = try await makeCoordinator(store: store, reloads: reloads).run()
         guard case .updated = first else { Issue.record("expected the first update to install, got \(first)"); return }
         let rulesBefore = try await store.read("Ads.json", in: .compiled)
-        try await ManifestStore(filterStore: store).save(FilterManifest(manifestVersion: "0", entries: []), etag: nil)
+        try await ManifestStore(filterStore: store).save(FilterManifest(manifestVersion: "2026-11-06T00:00:00Z", entries: []), etag: nil)
 
         let rejected = Data("[{\"trigger\":{\"url-filter\":\"(\"},\"action\":{\"type\":\"block\"}}]".utf8)
         let direct = try await makeCoordinator(store: store, reloads: reloads, rules: rejected).run()

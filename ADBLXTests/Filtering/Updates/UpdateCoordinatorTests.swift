@@ -21,7 +21,7 @@ struct StubEntitlementService: EntitlementService {
 @Suite("UpdateCoordinator", .serialized)
 struct UpdateCoordinatorTests {
     private let manifestEndpoint = URL(string: "https://example.com/manifest.json")!
-    private let filterSourceURL = URL(string: "https://example.com/easylist.txt")!
+    private let filterSourceURL = URL(string: "https://example.com/filters/ads/easylist.txt")!
     private let adsExtensionIdentifier = "com.ADBLX.ADBLX.AdsBlocker"
     private let groupExtensionIdentifiers = GroupExtensionIdentifiers(
         ads: "com.ADBLX.ADBLX.AdsBlocker",
@@ -48,14 +48,15 @@ struct UpdateCoordinatorTests {
         pipeline: FilterPipeline,
         store: FilterStore,
         isPremiumEntitled: Bool = false,
-        delayNanoseconds: UInt64 = 0
+        delayNanoseconds: UInt64 = 0,
+        filterURL: URL? = nil
     ) -> UpdateCoordinator {
         let session = MockHTTPSession(responses: [
             manifestEndpoint: .success(manifestResponse),
-            filterSourceURL: .success(filterResponse),
+            filterURL ?? filterSourceURL: .success(filterResponse),
         ], delayNanoseconds: delayNanoseconds)
         return UpdateCoordinator(
-            manifestClient: ManifestClient(session: session, endpoint: manifestEndpoint),
+            manifestClient: SignedManifests.signingClient(session: session, endpoint: manifestEndpoint),
             manifestStore: ManifestStore(filterStore: store),
             downloadClient: FilterDownloadClient(session: session),
             pipeline: pipeline,
@@ -70,7 +71,7 @@ struct UpdateCoordinatorTests {
     func notModifiedShortCircuits() async throws {
         let store = FilterStore.temporary()
         let manifestStore = ManifestStore(filterStore: store)
-        let manifest = FilterManifest(manifestVersion: "1", entries: [manifestEntry(checksum: "irrelevant")])
+        let manifest = FilterManifest(manifestVersion: SignedManifests.version, entries: [manifestEntry(checksum: "irrelevant")])
         try await manifestStore.save(manifest, etag: "\"cached-etag\"")
 
         let manifestResponse = HTTPURLResponse(url: manifestEndpoint, statusCode: 304, httpVersion: nil, headerFields: nil)!
@@ -102,7 +103,7 @@ struct UpdateCoordinatorTests {
         try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("manifest.json"))
         try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("installed_filters.json"))
 
-        let manifest = FilterManifest(manifestVersion: "1", entries: [manifestEntry(checksum: Checksum.sha256Hex(of: filterSourceJSON()))])
+        let manifest = FilterManifest(manifestVersion: SignedManifests.version, entries: [manifestEntry(checksum: Checksum.sha256Hex(of: filterSourceJSON()))])
         let manifestData = try JSONEncoder().encode(manifest)
         let manifestResponse = HTTPURLResponse(
             url: manifestEndpoint, statusCode: 200, httpVersion: nil, headerFields: ["ETag": "\"v1\""]
@@ -145,7 +146,7 @@ struct UpdateCoordinatorTests {
         let compiledFile = compiledDir.appendingPathComponent("Ads.json")
         try Data("[\"prior\"]".utf8).write(to: compiledFile, options: .atomic)
 
-        let manifest = FilterManifest(manifestVersion: "1", entries: [manifestEntry(checksum: "wrong-checksum")])
+        let manifest = FilterManifest(manifestVersion: SignedManifests.version, entries: [manifestEntry(checksum: "wrong-checksum")])
         let manifestData = try JSONEncoder().encode(manifest)
         let manifestResponse = HTTPURLResponse(url: manifestEndpoint, statusCode: 200, httpVersion: nil, headerFields: nil)!
         let filterResponse = HTTPURLResponse(url: filterSourceURL, statusCode: 200, httpVersion: nil, headerFields: nil)!
@@ -186,7 +187,7 @@ struct UpdateCoordinatorTests {
         try Data("[\"prior-compiled\"]".utf8).write(to: compiledFile, options: .atomic)
         try Data("[]".utf8).write(to: metadataFile, options: .atomic)
 
-        let manifest = FilterManifest(manifestVersion: "1", entries: [manifestEntry(checksum: Checksum.sha256Hex(of: filterSourceJSON()))])
+        let manifest = FilterManifest(manifestVersion: SignedManifests.version, entries: [manifestEntry(checksum: Checksum.sha256Hex(of: filterSourceJSON()))])
         let manifestData = try JSONEncoder().encode(manifest)
         let manifestResponse = HTTPURLResponse(url: manifestEndpoint, statusCode: 200, httpVersion: nil, headerFields: nil)!
         let filterResponse = HTTPURLResponse(url: filterSourceURL, statusCode: 200, httpVersion: nil, headerFields: nil)!
@@ -230,7 +231,7 @@ struct UpdateCoordinatorTests {
         try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("manifest.json"))
         try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("installed_filters.json"))
 
-        let manifest = FilterManifest(manifestVersion: "1", entries: [manifestEntry(checksum: Checksum.sha256Hex(of: filterSourceJSON()))])
+        let manifest = FilterManifest(manifestVersion: SignedManifests.version, entries: [manifestEntry(checksum: Checksum.sha256Hex(of: filterSourceJSON()))])
         let manifestData = try JSONEncoder().encode(manifest)
         let manifestResponse = HTTPURLResponse(url: manifestEndpoint, statusCode: 200, httpVersion: nil, headerFields: nil)!
         let filterResponse = HTTPURLResponse(url: filterSourceURL, statusCode: 200, httpVersion: nil, headerFields: nil)!
@@ -281,7 +282,7 @@ struct UpdateCoordinatorTests {
         try Data("[\"prior-compiled\"]".utf8).write(to: compiledDir.appendingPathComponent("Ads.json"), options: .atomic)
         try Data("[]".utf8).write(to: metadataDir.appendingPathComponent("installed_filters.json"), options: .atomic)
 
-        let manifest = FilterManifest(manifestVersion: "1", entries: [manifestEntry(checksum: Checksum.sha256Hex(of: filterSourceJSON()))])
+        let manifest = FilterManifest(manifestVersion: SignedManifests.version, entries: [manifestEntry(checksum: Checksum.sha256Hex(of: filterSourceJSON()))])
         let manifestData = try JSONEncoder().encode(manifest)
         let manifestResponse = HTTPURLResponse(url: manifestEndpoint, statusCode: 200, httpVersion: nil, headerFields: nil)!
         let filterResponse = HTTPURLResponse(url: filterSourceURL, statusCode: 200, httpVersion: nil, headerFields: nil)!
@@ -329,9 +330,9 @@ struct UpdateCoordinatorTests {
             try? FileManager.default.removeItem(at: compiledDir.appendingPathComponent(filename))
         }
 
-        let privacyURL = URL(string: "https://example.com/easyprivacy.txt")!
-        let annoyancesURL = URL(string: "https://example.com/fanboy-annoyances.txt")!
-        let regionalURL = URL(string: "https://example.com/regional-fr.txt")!
+        let privacyURL = URL(string: "https://example.com/filters/privacy/easyprivacy.txt")!
+        let annoyancesURL = URL(string: "https://example.com/filters/annoyances/fanboy-annoyances.txt")!
+        let regionalURL = URL(string: "https://example.com/filters/regional/regional-fr.txt")!
         let ruleJSON = filterSourceJSON()
 
         let entries = [
@@ -352,7 +353,7 @@ struct UpdateCoordinatorTests {
                 enabledByDefault: true, premium: false
             ),
         ]
-        let manifest = FilterManifest(manifestVersion: "1", entries: entries)
+        let manifest = FilterManifest(manifestVersion: SignedManifests.version, entries: entries)
         let manifestData = try JSONEncoder().encode(manifest)
         let manifestResponse = HTTPURLResponse(url: manifestEndpoint, statusCode: 200, httpVersion: nil, headerFields: nil)!
         let okResponse = { (url: URL) in HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)! }
@@ -371,7 +372,7 @@ struct UpdateCoordinatorTests {
             store: store, writer: AtomicRuleWriter(), reloader: ReloadCoordinator()
         )
         let coordinator = UpdateCoordinator(
-            manifestClient: ManifestClient(session: session, endpoint: manifestEndpoint),
+            manifestClient: SignedManifests.signingClient(session: session, endpoint: manifestEndpoint),
             manifestStore: ManifestStore(filterStore: store),
             downloadClient: FilterDownloadClient(session: session),
             pipeline: pipeline,
@@ -446,8 +447,8 @@ struct UpdateCoordinatorTests {
         try priorPrivacy.write(to: compiledDir.appendingPathComponent("Privacy.json"), options: .atomic)
         try Data("[]".utf8).write(to: metadataDir.appendingPathComponent("installed_filters.json"), options: .atomic)
 
-        let privacyURL = URL(string: "https://example.com/easyprivacy-partial.txt")!
-        let annoyancesURL = URL(string: "https://example.com/fanboy-annoyances-partial.txt")!
+        let privacyURL = URL(string: "https://example.com/filters/privacy/easyprivacy.txt")!
+        let annoyancesURL = URL(string: "https://example.com/filters/annoyances/fanboy-annoyances.txt")!
         let ruleJSON = filterSourceJSON()
 
         let entries = [
@@ -463,7 +464,7 @@ struct UpdateCoordinatorTests {
                 enabledByDefault: true, premium: false
             ),
         ]
-        let manifest = FilterManifest(manifestVersion: "1", entries: entries)
+        let manifest = FilterManifest(manifestVersion: SignedManifests.version, entries: entries)
         let manifestData = try JSONEncoder().encode(manifest)
         let manifestResponse = HTTPURLResponse(url: manifestEndpoint, statusCode: 200, httpVersion: nil, headerFields: nil)!
         let okResponse = { (url: URL) in HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)! }
@@ -481,7 +482,7 @@ struct UpdateCoordinatorTests {
             store: store, writer: AtomicRuleWriter(), reloader: ReloadCoordinator()
         )
         let coordinator = UpdateCoordinator(
-            manifestClient: ManifestClient(session: session, endpoint: manifestEndpoint),
+            manifestClient: SignedManifests.signingClient(session: session, endpoint: manifestEndpoint),
             manifestStore: ManifestStore(filterStore: store),
             downloadClient: FilterDownloadClient(session: session),
             pipeline: pipeline,
@@ -518,7 +519,7 @@ struct UpdateCoordinatorTests {
         try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("manifest.json"))
         try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("installed_filters.json"))
 
-        let manifest = FilterManifest(manifestVersion: "1", entries: [manifestEntry(checksum: Checksum.sha256Hex(of: filterSourceJSON()))])
+        let manifest = FilterManifest(manifestVersion: SignedManifests.version, entries: [manifestEntry(checksum: Checksum.sha256Hex(of: filterSourceJSON()))])
         let manifestData = try JSONEncoder().encode(manifest)
         let manifestResponse = HTTPURLResponse(
             url: manifestEndpoint, statusCode: 200, httpVersion: nil, headerFields: ["ETag": "\"v1\""]
@@ -572,7 +573,7 @@ struct UpdateCoordinatorTests {
         try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("manifest.json"))
         try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("installed_filters.json"))
 
-        let manifest = FilterManifest(manifestVersion: "1", entries: [manifestEntry(checksum: Checksum.sha256Hex(of: filterSourceJSON()))])
+        let manifest = FilterManifest(manifestVersion: SignedManifests.version, entries: [manifestEntry(checksum: Checksum.sha256Hex(of: filterSourceJSON()))])
         let manifestData = try JSONEncoder().encode(manifest)
         let manifestResponse = HTTPURLResponse(
             url: manifestEndpoint, statusCode: 200, httpVersion: nil, headerFields: ["ETag": "\"v1\""]
@@ -652,7 +653,7 @@ struct UpdateCoordinatorTests {
         )
 
         // New manifest has zero entries — easylist should be removed, not ignored.
-        let manifest = FilterManifest(manifestVersion: "1", entries: [])
+        let manifest = FilterManifest(manifestVersion: SignedManifests.version, entries: [])
         let manifestData = try JSONEncoder().encode(manifest)
         let manifestResponse = HTTPURLResponse(
             url: manifestEndpoint, statusCode: 200, httpVersion: nil, headerFields: ["ETag": "\"v2\""]
@@ -700,21 +701,22 @@ struct UpdateCoordinatorTests {
         // download/verify phase, which happens entirely before the snapshot and before
         // any writes (see reasoning below), which is a valid, simpler way to prove
         // rollback-safety for install+remove combinations than forcing a mid-write failure.
+        let badURL = SignedManifests.sourceURL(manifestEndpoint, group: .privacy, id: "bad-checksum-entry")
         let badEntry = FilterManifest.Entry(
-            id: "bad-checksum-entry", name: "Bad", group: .privacy, sourceURL: filterSourceURL,
+            id: "bad-checksum-entry", name: "Bad", group: .privacy, sourceURL: badURL,
             version: "2026-07-19", checksumSHA256: "0000000000000000000000000000000000000000000000000000000000000",
             ruleCount: 1, enabledByDefault: true, premium: false
         )
-        let manifest = FilterManifest(manifestVersion: "1", entries: [badEntry])
+        let manifest = FilterManifest(manifestVersion: SignedManifests.version, entries: [badEntry])
         let manifestData = try JSONEncoder().encode(manifest)
         let manifestResponse = HTTPURLResponse(
             url: manifestEndpoint, statusCode: 200, httpVersion: nil, headerFields: ["ETag": "\"v2\""]
         )!
-        let filterResponse = HTTPURLResponse(url: filterSourceURL, statusCode: 200, httpVersion: nil, headerFields: nil)!
+        let filterResponse = HTTPURLResponse(url: badURL, statusCode: 200, httpVersion: nil, headerFields: nil)!
         let coordinator = makeCoordinator(
             manifestResponse: (manifestData, manifestResponse),
             filterResponse: (filterSourceJSON(), filterResponse),
-            pipeline: pipeline, store: store
+            pipeline: pipeline, store: store, filterURL: badURL
         )
 
         // Download/verify failure happens before `runTransaction`'s snapshot/rollback
@@ -735,6 +737,88 @@ struct UpdateCoordinatorTests {
         try? FileManager.default.removeItem(at: filtersDir.appendingPathComponent("easylist.json"))
     }
 
+    // Every other suite serves signed manifests; this is the end-to-end proof that the
+    // coordinator refuses one that isn't, before anything is downloaded or written.
+    @Test("An unsigned manifest is rejected and leaves rules, metadata, cached manifest and ETag unchanged")
+    func unsignedManifestChangesNothing() async throws {
+        let store = FilterStore.temporary()
+        let pipeline = FilterPipeline(
+            validator: FilterValidator(), compiler: PassthroughRuleCompiler(),
+            compositionService: JSONArrayCompositionService(),
+            partitioner: GroupPartitioner(extensionIdentifiers: groupExtensionIdentifiers),
+            store: store, writer: AtomicRuleWriter(), reloader: ReloadCoordinator()
+        )
+        _ = try await pipeline.install(
+            GroupComposition(group: .ads, sources: [FilterSource(
+                filterID: "easylist", version: "2026-07-18", checksumSHA256: Checksum.sha256Hex(of: filterSourceJSON()),
+                data: filterSourceJSON()
+            )]),
+            reloadStrategy: .deferred
+        )
+        let manifestStore = ManifestStore(filterStore: store)
+        try await manifestStore.save(
+            FilterManifest(manifestVersion: "2026-11-06T00:00:00Z", entries: [manifestEntry(checksum: Checksum.sha256Hex(of: filterSourceJSON()))]),
+            etag: "\"cached\""
+        )
+        let before = (
+            rules: try await store.read("Ads.json", in: .compiled),
+            installed: try await store.read("installed_filters.json", in: .metadata),
+            manifest: try await store.read("manifest.json", in: .metadata)
+        )
+
+        let newer = FilterManifest(manifestVersion: SignedManifests.version, entries: [manifestEntry(checksum: Checksum.sha256Hex(of: filterSourceJSON()))])
+        let session = MockHTTPSession(responses: [
+            manifestEndpoint: .success((try JSONEncoder().encode(newer), HTTPURLResponse(
+                url: manifestEndpoint, statusCode: 200, httpVersion: nil, headerFields: ["ETag": "\"new\""]
+            )!))
+        ])
+        let coordinator = UpdateCoordinator(
+            manifestClient: SignedManifests.client(session: session, endpoint: manifestEndpoint),
+            manifestStore: manifestStore,
+            downloadClient: FilterDownloadClient(session: session),
+            pipeline: pipeline,
+            store: store,
+            reloader: ReloadCoordinator(),
+            extensionIdentifiers: groupExtensionIdentifiers,
+            entitlementService: StubEntitlementService(isPremiumEntitled: false)
+        )
+
+        await #expect(throws: ManifestRejection.signature) {
+            _ = try await coordinator.run()
+        }
+
+        #expect(try await store.read("Ads.json", in: .compiled) == before.rules)
+        #expect(try await store.read("installed_filters.json", in: .metadata) == before.installed)
+        #expect(try await store.read("manifest.json", in: .metadata) == before.manifest)
+    }
+
+    @Test("An unchanged manifest at the same version installs nothing and saves the new ETag")
+    func unchangedManifestSavesTheNewETag() async throws {
+        let store = FilterStore.temporary()
+        let pipeline = FilterPipeline(
+            validator: FilterValidator(), compiler: PassthroughRuleCompiler(),
+            compositionService: JSONArrayCompositionService(),
+            partitioner: GroupPartitioner(extensionIdentifiers: groupExtensionIdentifiers),
+            store: store, writer: AtomicRuleWriter(), reloader: ReloadCoordinator()
+        )
+        let manifest = FilterManifest(manifestVersion: SignedManifests.version, entries: [manifestEntry(checksum: Checksum.sha256Hex(of: filterSourceJSON()))])
+        let manifestStore = ManifestStore(filterStore: store)
+        try await manifestStore.save(manifest, etag: "\"old\"")
+        let coordinator = makeCoordinator(
+            manifestResponse: (try JSONEncoder().encode(manifest), HTTPURLResponse(
+                url: manifestEndpoint, statusCode: 200, httpVersion: nil, headerFields: ["ETag": "\"new\""]
+            )!),
+            filterResponse: (filterSourceJSON(), HTTPURLResponse(url: filterSourceURL, statusCode: 200, httpVersion: nil, headerFields: nil)!),
+            pipeline: pipeline, store: store
+        )
+
+        let result = try await coordinator.run()
+
+        guard case .upToDate = result else { Issue.record("expected .upToDate, got \(result)"); return }
+        #expect(try await manifestStore.load() == CachedManifest(manifest: manifest, etag: "\"new\""))
+        await #expect(throws: (any Error).self) { _ = try await store.read("installed_filters.json", in: .metadata) }
+    }
+
     @Test("successful run leaves the download workspace empty")
     func successfulRunLeavesWorkspaceEmpty() async throws {
         let store = FilterStore.temporary()
@@ -742,7 +826,7 @@ struct UpdateCoordinatorTests {
         try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("manifest.json"))
         try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("installed_filters.json"))
 
-        let manifest = FilterManifest(manifestVersion: "1", entries: [manifestEntry(checksum: Checksum.sha256Hex(of: filterSourceJSON()))])
+        let manifest = FilterManifest(manifestVersion: SignedManifests.version, entries: [manifestEntry(checksum: Checksum.sha256Hex(of: filterSourceJSON()))])
         let manifestData = try JSONEncoder().encode(manifest)
         let manifestResponse = HTTPURLResponse(
             url: manifestEndpoint, statusCode: 200, httpVersion: nil, headerFields: ["ETag": "\"v1\""]
@@ -775,7 +859,7 @@ struct UpdateCoordinatorTests {
         try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("manifest.json"))
         try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("installed_filters.json"))
 
-        let manifest = FilterManifest(manifestVersion: "1", entries: [manifestEntry(checksum: "wrong-checksum-forces-failure")])
+        let manifest = FilterManifest(manifestVersion: SignedManifests.version, entries: [manifestEntry(checksum: "wrong-checksum-forces-failure")])
         let manifestData = try JSONEncoder().encode(manifest)
         let manifestResponse = HTTPURLResponse(
             url: manifestEndpoint, statusCode: 200, httpVersion: nil, headerFields: ["ETag": "\"v1\""]
@@ -815,7 +899,7 @@ struct UpdateCoordinatorTests {
             version: "2026-07-18", checksumSHA256: Checksum.sha256Hex(of: filterSourceJSON()),
             ruleCount: 1, enabledByDefault: true, premium: true
         )
-        let manifest = FilterManifest(manifestVersion: "1", entries: [premiumEntry])
+        let manifest = FilterManifest(manifestVersion: SignedManifests.version, entries: [premiumEntry])
         let manifestData = try JSONEncoder().encode(manifest)
         let manifestResponse = HTTPURLResponse(
             url: manifestEndpoint, statusCode: 200, httpVersion: nil, headerFields: ["ETag": "\"v1\""]

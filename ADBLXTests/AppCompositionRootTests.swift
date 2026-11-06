@@ -19,6 +19,11 @@ struct AppCompositionRootTests {
 
         let coordinator = AppCompositionRoot.makeUpdateCoordinator(pipeline: pipeline, store: store)
 
+        // Until K1 and K2 are pinned, the production verifier must refuse whatever the site serves.
+        guard !ManifestTrust.productionPublicKeys.isEmpty else {
+            await #expect(throws: ManifestRejection.signature) { _ = try await coordinator.run() }
+            return
+        }
         let result = try await coordinator.run()
         switch result {
         case .rolledBack, .upToDate, .updated, .rollbackFailed:

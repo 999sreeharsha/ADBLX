@@ -142,9 +142,7 @@ actor PremiumEntitlementReconciler {
             return false
         }
         // Force a full fetch: a 304 would otherwise leave the user on the bundled lists.
-        if let cached = try? await manifestStore.load() {
-            try? await manifestStore.save(cached.manifest, etag: nil)
-        }
+        try? await manifestStore.clearETag()
         // And let it run at the next opportunity: lists that came from updates are gone until then.
         await UpdateThrottle.clear(in: store)
         Self.logger.info("metadata recovered")
@@ -256,9 +254,7 @@ actor PremiumEntitlementReconciler {
         let results = await pipeline.installBundledPremiumSnapshot(reloadStrategy: .immediate)
         // ...and force the next update run to re-evaluate the manifest from scratch, since an
         // unchanged (304) manifest would otherwise never install premium lists it lacks.
-        if let cached {
-            try? await manifestStore.save(cached.manifest, etag: nil)
-        }
+        try? await manifestStore.clearETag()
         return .restored(installedCount: results.count)
     }
 

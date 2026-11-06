@@ -5,6 +5,8 @@ import Foundation
 /// (`docs/Architecture/Logging.md`); never log the URL or an id with it.
 nonisolated enum ManifestRejection: Error, Equatable {
     case signature, malformed, versionFormat, rollback, belowMinimum, id, duplicate, sourceURL
+    /// Over `ManifestClient.maxManifestBytes`; raised by the client, before verification.
+    case size
 }
 
 nonisolated enum ManifestVerdict: Equatable {

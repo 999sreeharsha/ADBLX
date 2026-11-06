@@ -173,7 +173,9 @@ public enum AppCompositionRoot {
         let session = makeHTTPSession()
         let endpointProvider: ManifestEndpointProvider = AppManifestEndpointProvider()
         return UpdateCoordinator(
-            manifestClient: ManifestClient(session: session, endpoint: endpointProvider.manifestURL),
+            manifestClient: ManifestClient(
+                session: session, endpoint: endpointProvider.manifestURL, verifier: ManifestTrust.verifier()
+            ),
             manifestStore: ManifestStore(filterStore: store),
             downloadClient: FilterDownloadClient(session: session),
             pipeline: pipeline,

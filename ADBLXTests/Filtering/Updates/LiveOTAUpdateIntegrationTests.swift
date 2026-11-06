@@ -43,13 +43,13 @@ struct LiveOTAUpdateIntegrationTests {
         // STEP 2: Test Rollback on Failure Mode A (Checksum Mismatch)
         // -------------------------------------------------------------
         let corruptChecksumManifest = FilterManifest(
-            manifestVersion: "2026-08-99-corrupt-sha",
+            manifestVersion: SignedManifests.version,
             entries: [
                 FilterManifest.Entry(
                     id: "corrupt-sha-entry",
                     name: "Corrupt SHA Filter",
                     group: .ads,
-                    sourceURL: URL(string: "https://999sreeharsha.github.io/ADBLX/filters/ads/easylist.txt")!,
+                    sourceURL: URL(string: "https://example.com/corrupt-sha/filters/ads/corrupt-sha-entry.txt")!,
                     version: "2026-08-99",
                     checksumSHA256: "0000000000000000000000000000000000000000000000000000000000000000",
                     ruleCount: 100,
@@ -60,18 +60,18 @@ struct LiveOTAUpdateIntegrationTests {
         )
 
         let mockSessionA = MockHTTPSession(responses: [
-            URL(string: "https://example.com/manifest-corrupt-sha.json")!: .success((
+            URL(string: "https://example.com/corrupt-sha/manifest.json")!: .success((
                 try JSONEncoder().encode(corruptChecksumManifest),
-                HTTPURLResponse(url: URL(string: "https://example.com/manifest-corrupt-sha.json")!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+                HTTPURLResponse(url: URL(string: "https://example.com/corrupt-sha/manifest.json")!, statusCode: 200, httpVersion: nil, headerFields: nil)!
             )),
-            URL(string: "https://999sreeharsha.github.io/ADBLX/filters/ads/easylist.txt")!: .success((
+            URL(string: "https://example.com/corrupt-sha/filters/ads/corrupt-sha-entry.txt")!: .success((
                 Data("! Sample filter\n||example.com^".utf8),
-                HTTPURLResponse(url: URL(string: "https://999sreeharsha.github.io/ADBLX/filters/ads/easylist.txt")!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+                HTTPURLResponse(url: URL(string: "https://example.com/corrupt-sha/filters/ads/corrupt-sha-entry.txt")!, statusCode: 200, httpVersion: nil, headerFields: nil)!
             ))
         ])
 
         let coordinatorA = UpdateCoordinator(
-            manifestClient: ManifestClient(session: mockSessionA, endpoint: URL(string: "https://example.com/manifest-corrupt-sha.json")!),
+            manifestClient: SignedManifests.signingClient(session: mockSessionA, endpoint: URL(string: "https://example.com/corrupt-sha/manifest.json")!),
             manifestStore: manifestStore,
             downloadClient: FilterDownloadClient(session: mockSessionA),
             pipeline: pipeline,
@@ -86,6 +86,7 @@ struct LiveOTAUpdateIntegrationTests {
             Issue.record("Coordinator must throw on checksum mismatch")
         } catch {
             // Expected: Checksum.verify failed before any write to App Group
+            #expect(!(error is ManifestRejection), "The manifest must pass verification, so the checksum check is what fails")
         }
 
         // Assert disk was untouched and Previous/ is absent
@@ -105,13 +106,13 @@ struct LiveOTAUpdateIntegrationTests {
         let malformedChecksum = Checksum.sha256Hex(of: malformedData)
 
         let dfaRejectionManifest = FilterManifest(
-            manifestVersion: "2026-08-99-dfa-reject",
+            manifestVersion: SignedManifests.version,
             entries: [
                 FilterManifest.Entry(
                     id: "dfa-reject-entry",
                     name: "DFA Rejection Filter",
                     group: .ads,
-                    sourceURL: URL(string: "https://example.com/malformed.txt")!,
+                    sourceURL: URL(string: "https://example.com/dfa-reject/filters/ads/dfa-reject-entry.txt")!,
                     version: "2026-08-99",
                     checksumSHA256: malformedChecksum,
                     ruleCount: 1,
@@ -122,18 +123,18 @@ struct LiveOTAUpdateIntegrationTests {
         )
 
         let mockSessionB = MockHTTPSession(responses: [
-            URL(string: "https://example.com/manifest-dfa-reject.json")!: .success((
+            URL(string: "https://example.com/dfa-reject/manifest.json")!: .success((
                 try JSONEncoder().encode(dfaRejectionManifest),
-                HTTPURLResponse(url: URL(string: "https://example.com/manifest-dfa-reject.json")!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+                HTTPURLResponse(url: URL(string: "https://example.com/dfa-reject/manifest.json")!, statusCode: 200, httpVersion: nil, headerFields: nil)!
             )),
-            URL(string: "https://example.com/malformed.txt")!: .success((
+            URL(string: "https://example.com/dfa-reject/filters/ads/dfa-reject-entry.txt")!: .success((
                 malformedData,
-                HTTPURLResponse(url: URL(string: "https://example.com/malformed.txt")!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+                HTTPURLResponse(url: URL(string: "https://example.com/dfa-reject/filters/ads/dfa-reject-entry.txt")!, statusCode: 200, httpVersion: nil, headerFields: nil)!
             ))
         ])
 
         let coordinatorB = UpdateCoordinator(
-            manifestClient: ManifestClient(session: mockSessionB, endpoint: URL(string: "https://example.com/manifest-dfa-reject.json")!),
+            manifestClient: SignedManifests.signingClient(session: mockSessionB, endpoint: URL(string: "https://example.com/dfa-reject/manifest.json")!),
             manifestStore: manifestStore,
             downloadClient: FilterDownloadClient(session: mockSessionB),
             pipeline: pipeline,
@@ -166,14 +167,22 @@ struct LiveOTAUpdateIntegrationTests {
         _ = try await pipeline.installBundledSnapshotIfNeeded()
     }
 
-    @Test("Live CDN Remote Manifest Fetch and 304 Not Modified Caching")
+    // Reaches the real site and checks it with the production keys, so it can only pass once
+    // K1 and K2 are pinned and a signed manifest is deployed. Excluded until then rather than
+    // left to fail and be rerun as a flake.
+    @Test(
+        "Live CDN Remote Manifest Fetch and 304 Not Modified Caching",
+        .disabled("Needs a signed manifest on the site and both keys pinned (release checklist, docs/AppStoreSetup.md).")
+    )
     func liveCDNRemoteManifestFetchAnd304NotModifiedCaching() async throws {
         let liveManifestURL = URL(string: "https://999sreeharsha.github.io/ADBLX/manifest.json")!
-        let manifestClient = ManifestClient(session: URLSession.shared, endpoint: liveManifestURL)
+        let manifestClient = ManifestClient(
+            session: URLSession.shared, endpoint: liveManifestURL, verifier: ManifestTrust.verifier()
+        )
         let downloadClient = FilterDownloadClient(session: URLSession.shared)
 
         // 1. Fetch live manifest from CDN
-        let fetchResult1 = try await manifestClient.fetch(previousETag: nil)
+        let fetchResult1 = try await manifestClient.fetch(previousETag: nil, cached: nil)
         guard case .updated(let manifest, let etag) = fetchResult1 else {
             Issue.record("First fetch from CDN must return updated with real manifest payload")
             return
@@ -185,7 +194,7 @@ struct LiveOTAUpdateIntegrationTests {
         print("Live CDN Fetch 1 Success: ETag=\(etag ?? "nil"), Entries=\(manifest.entries.count)")
 
         // 2. Fetch live manifest passing ETag to verify HTTP 304 Not Modified
-        let fetchResult2 = try await manifestClient.fetch(previousETag: etag)
+        let fetchResult2 = try await manifestClient.fetch(previousETag: etag, cached: manifest)
         guard case .notModified = fetchResult2 else {
             Issue.record("Second fetch with valid ETag must return .notModified (HTTP 304)")
             return
