@@ -51,7 +51,14 @@ Commit 4 deliberately does not answer:
 ## Output
 
 `backend/public/manifest.json`, matching `docs/ManifestSpecification.md`
-exactly.
+exactly. `publish` deletes any `manifest.json.sig` beside it, since that can only
+be for an older manifest.
+
+`publisher sign` then writes `backend/public/manifest.json.sig`, an Ed25519
+signature over the manifest's exact bytes, with a key kept outside the
+repository. Signatures are randomized, so the `.sig` file differs between runs
+even though the manifest doesn't. See `docs/Security/ManifestTrust.md` for the
+commands, keys and what the app checks.
 
 ## `backend/metadata/{id}.json` — per-filter metadata sidecar
 
@@ -143,6 +150,12 @@ Lexical comparison, valid because `version` is fixed-format `YYYY-MM-DD`.
 `manifestVersion` therefore only advances when at least one entry's own
 version advances — publishing with unchanged inputs produces an unchanged
 `manifestVersion`, and by extension a byte-identical `manifest.json`.
+
+**To change before the app verifies signatures:** removing a list or changing a
+name or premium flag keeps the same `manifestVersion`, so the app's rollback
+rule can't tell the new manifest from a replayed old one. The planned format is
+a UTC timestamp supplied to `publish`; see `docs/Security/ManifestTrust.md`
+(Rollback).
 
 ## Determinism rule
 

@@ -6,6 +6,9 @@ enum PublisherPaths {
     static let metadataDirectory = URL(fileURLWithPath: "backend/metadata")
     static let payloadDirectory = URL(fileURLWithPath: "backend/public/filters")
     static let manifestOutput = URL(fileURLWithPath: "backend/public/manifest.json")
+    static let manifestSignatureOutput = URL(fileURLWithPath: "backend/public/manifest.json.sig")
+    /// Every command runs from the repository root (the paths above are relative to it).
+    static let repositoryRoot = URL(fileURLWithPath: FileManager.default.currentDirectoryPath, isDirectory: true)
     static let filterRegistryDocsOutput = URL(fileURLWithPath: "backend/docs/FilterRegistry.md")
 }
 
@@ -19,7 +22,10 @@ struct PublisherCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "publisher",
         abstract: "Registry to manifest publisher for ADBLX's filter distribution backend.",
-        subcommands: [ValidateCommand.self, GenerateDocsCommand.self, PublishCommand.self, GenerateCommand.self]
+        subcommands: [
+            ValidateCommand.self, GenerateDocsCommand.self, PublishCommand.self, GenerateCommand.self,
+            KeygenCommand.self, SignCommand.self, VerifyCommand.self
+        ]
     )
 }
 
