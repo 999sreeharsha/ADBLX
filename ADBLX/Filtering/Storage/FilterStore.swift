@@ -25,15 +25,37 @@ actor FilterStore {
     private let appGroupIdentifier: String
     private let fileManager: FileManager
     private let overrideBaseURL: URL?
+    private let swapPaths: @Sendable (URL, URL) throws -> Void
 
     init(
         appGroupIdentifier: String = AppGroup.identifier,
         fileManager: FileManager = .default,
-        overrideBaseURL: URL? = nil
+        overrideBaseURL: URL? = nil,
+        swapPaths: @escaping @Sendable (URL, URL) throws -> Void = { try FilterStore.swapPathsAtomically($0, $1) }
     ) {
         self.appGroupIdentifier = appGroupIdentifier
         self.fileManager = fileManager
         self.overrideBaseURL = overrideBaseURL
+        self.swapPaths = swapPaths
+    }
+
+    /// Exchanges two paths in one call (`renamex_np` with `RENAME_SWAP`, APFS), so a crash leaves
+    /// both as they were or both swapped. A plain rename can't replace a non-empty directory, and
+    /// moving one aside first would leave a window with neither in place.
+    nonisolated static func swapPathsAtomically(_ first: URL, _ second: URL) throws {
+        guard renamex_np(first.path, second.path, UInt32(RENAME_SWAP)) == 0 else {
+            throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
+        }
+    }
+
+    /// A rename is atomic but only durable once its directory reaches the disk, so a power loss
+    /// soon after a swap could otherwise bring back the old entries. `F_FULLFSYNC`, as
+    /// `AtomicRuleWriter` uses for files.
+    nonisolated static func flushDirectory(_ directory: URL) throws {
+        let fd = open(directory.path, O_RDONLY)
+        guard fd >= 0 else { throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO) }
+        defer { close(fd) }
+        guard fcntl(fd, F_FULLFSYNC) == 0 else { throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO) }
     }
 
     /// Root container URL for the App Group. Not exposed outside this type —
@@ -82,6 +104,13 @@ actor FilterStore {
         try data.write(to: fileURL, options: .atomic)
     }
 
+    /// Deletes a metadata file. Absent already is not an error.
+    func removeMetadata(filename: String) throws {
+        let fileURL = try url(for: .metadata).appendingPathComponent(filename)
+        guard fileManager.fileExists(atPath: fileURL.path) else { return }
+        try fileManager.removeItem(at: fileURL)
+    }
+
     /// Persists one filter's verified raw source payload to `Filters/<filterID>.json` —
     /// the canonical local cache `.remove` (Sprint 8.0 Commit 3) reads from to recompose
     /// a group without the network. Callers write this only after checksum verification.
@@ -122,10 +151,8 @@ actor FilterStore {
     /// root, replacing any leftover snapshot from an earlier run. Call before any write
     /// in an update batch begins; pair with `restore(_:)` on failure.
     func snapshotForRollback() throws -> RollbackSnapshot {
+        try discardRollbackSnapshot()
         let previousRoot = try previousRootURL()
-        if fileManager.fileExists(atPath: previousRoot.path) {
-            try fileManager.removeItem(at: previousRoot)
-        }
         try fileManager.createDirectory(at: previousRoot, withIntermediateDirectories: true)
 
         let compiledSnapshot = previousRoot.appendingPathComponent("Compiled", isDirectory: true)
@@ -152,26 +179,67 @@ actor FilterStore {
     /// Replaces the entire current contents of `Compiled/`, `Metadata/`, and `Filters/` with the
     /// snapshot's contents (files present only in the current state and absent from the
     /// snapshot are removed), then discards the `Previous/` root.
+    /// Each directory is swapped in by one atomic rename, so a crash leaves it either as it was or
+    /// fully restored, never half-copied, and a full disk can't stop it. A crash between two swaps
+    /// can still leave the directories from different points; reconcile handles that.
+    ///
+    /// A restore that stops after a swap spends the snapshot: the swapped directories' newer
+    /// contents are now in `Previous/`, and restoring it again would put them back. `Previous/` is
+    /// renamed to `Previous.spent/` (a rename needs no space), and a later restore of it throws
+    /// `snapshotSpent`. One that fails on the first swap has changed nothing and stays usable.
     func restore(_ snapshot: RollbackSnapshot) throws {
-        try replaceDirectoryContents(at: try url(for: .compiled), with: snapshot.compiledSnapshotDir)
-        try replaceDirectoryContents(at: try url(for: .metadata), with: snapshot.metadataSnapshotDir)
-        try replaceDirectoryContents(at: try url(for: .filters), with: snapshot.filtersSnapshotDir)
-
+        let saved = [snapshot.compiledSnapshotDir, snapshot.metadataSnapshotDir, snapshot.filtersSnapshotDir]
+        guard saved.allSatisfy({ fileManager.fileExists(atPath: $0.path) }) else {
+            throw FilterStoreError.snapshotSpent
+        }
+        let live = [try url(for: .compiled), try url(for: .metadata), try url(for: .filters)]
+        let container = try containerURL()
         let previousRoot = try previousRootURL()
+
+        for (index, pair) in zip(saved, live).enumerated() {
+            do {
+                try swapIntoPlace(pair.0, at: pair.1)
+            } catch {
+                if index > 0 { spend(previousRoot) }
+                try? Self.flushDirectory(container)
+                throw error
+            }
+        }
+        // The swaps have happened either way; failing here would report a rollback that worked
+        // as one that didn't.
+        try? Self.flushDirectory(container)
         try? fileManager.removeItem(at: previousRoot)
     }
 
     /// Discards any leftover snapshot in the `Previous/` directory. Called after a batch
     /// update commits successfully to ensure no transient snapshot data leaks on disk.
     func discardRollbackSnapshot() throws {
-        let previousRoot = try previousRootURL()
-        if fileManager.fileExists(atPath: previousRoot.path) {
-            try fileManager.removeItem(at: previousRoot)
+        for root in [try previousRootURL(), try spentRootURL()] where fileManager.fileExists(atPath: root.path) {
+            try fileManager.removeItem(at: root)
         }
+    }
+
+    private func spend(_ previousRoot: URL) {
+        guard let spent = try? spentRootURL() else { return }
+        try? fileManager.removeItem(at: spent)
+        if (try? fileManager.moveItem(at: previousRoot, to: spent)) == nil {
+            // Deleting also makes a second restore refuse it; it is only slower and can stop part-way.
+            try? fileManager.removeItem(at: previousRoot)
+        }
+    }
+
+    /// The live directory's old contents end up at `saved`, inside `Previous/`, which `restore`
+    /// then deletes.
+    private func swapIntoPlace(_ saved: URL, at live: URL) throws {
+        try swapPaths(saved, live)
     }
 
     private func previousRootURL() throws -> URL {
         try containerURL().appendingPathComponent("Previous", isDirectory: true)
+    }
+
+    private func spentRootURL() throws -> URL {
+        try containerURL().appendingPathComponent("Previous.spent", isDirectory: true)
     }
 
     private func copyDirectoryContents(from source: URL, to destination: URL) throws {
@@ -180,19 +248,6 @@ actor FilterStore {
         }
         try fileManager.createDirectory(at: destination, withIntermediateDirectories: true)
         guard fileManager.fileExists(atPath: source.path) else { return }
-        for name in try fileManager.contentsOfDirectory(atPath: source.path) {
-            try fileManager.copyItem(
-                at: source.appendingPathComponent(name),
-                to: destination.appendingPathComponent(name)
-            )
-        }
-    }
-
-    private func replaceDirectoryContents(at destination: URL, with source: URL) throws {
-        if fileManager.fileExists(atPath: destination.path) {
-            try fileManager.removeItem(at: destination)
-        }
-        try fileManager.createDirectory(at: destination, withIntermediateDirectories: true)
         for name in try fileManager.contentsOfDirectory(atPath: source.path) {
             try fileManager.copyItem(
                 at: source.appendingPathComponent(name),
@@ -210,6 +265,7 @@ struct RollbackSnapshot {
     fileprivate let filtersSnapshotDir: URL
 }
 
-enum FilterStoreError: Error {
+nonisolated enum FilterStoreError: Error {
     case appGroupContainerUnavailable
+    case snapshotSpent
 }

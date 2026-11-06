@@ -2082,6 +2082,17 @@
         }
       }
     },
+    "settings.allowlist.compileFailed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't update rules. Your allowlist wasn't changed."
+          }
+        }
+      }
+    },
     "settings.appearance.dark" : {
       "localizations" : {
         "en" : {

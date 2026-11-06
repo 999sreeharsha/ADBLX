@@ -280,10 +280,12 @@ private nonisolated final class RecordingSettingsService: SettingsService, @unch
     func fetchSnapshot() async -> SettingsSnapshot {
         SettingsSnapshot(iCloudSyncEnabled: false, allowlist: added.map { AllowlistEntry(id: $0, domain: $0) })
     }
-    func addAllowlistEntry(domain: String) async {
-        if !rejectsAdds { lock.withLock { domains.append(domain) } }
+    func addAllowlistEntry(domain: String) async -> AllowlistEditOutcome {
+        if rejectsAdds { return .reverted }
+        lock.withLock { domains.append(domain) }
+        return .applied
     }
-    func removeAllowlistEntry(id: String) async {}
+    func removeAllowlistEntry(id: String) async -> AllowlistEditOutcome { .applied }
 }
 
 private nonisolated struct FixedStateProvider: ContentBlockerStateProviding {

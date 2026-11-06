@@ -192,7 +192,7 @@ Found in: `docs/superpowers/plans/2026-07-27-sprint7-publisher-implementation.md
 ## StoreKit Local Configuration does not activate under headless `xcodebuild test` — one test permanently skipped, not a code bug
 
 `StoreKitSubscriptionServiceTests.fetchStatusReturnsTwoPlans` (which exercises
-`StoreKitSubscriptionService.fetchStatus()` against the local `Products.storekit`
+`StoreKitSubscriptionService.fetchStatus()` against the local `Config/Configuration.storekit`
 configuration bundled in Task 12's scheme) fails only when run via CLI
 `xcodebuild test`, on this project's Xcode 26.6 toolchain (build 17F113). It
 does not indicate a bug in `StoreKitSubscriptionService`:
@@ -325,6 +325,30 @@ the new test double `nonisolated final class` (the same way production conformer
 such as `SystemContentBlockerStateProvider` are declared). When that error appears,
 look at test types added since the last green build, not at the file named in it.
 
+The same error comes from a new main-actor-isolated type (the default for a plain
+`enum`/`struct` in the app target) used in a `nonisolated` protocol's requirements: adding
+`AllowlistEditOutcome` as `SettingsService`'s return type produced it, on a clean build too,
+until the enum was declared `nonisolated`. Look at changed protocol signatures as well as new
+test doubles. A nested `private struct` inside a `nonisolated struct` didn't trigger it, but a
+reference to an actor's `nonisolated static` method used as a default argument
+(`swapPaths: ... = FilterStore.swapPathsAtomically`) did; wrapping it in a closure
+(`{ try FilterStore.swapPathsAtomically($0, $1) }`) fixed it.
+
+It is also batch-dependent, so it can appear when no isolation changed at all. The compiler
+type-checks test files in batches, and which files share a batch shifts as files are added.
+On 2026-11-06 a fresh arm64 build of an already-green commit failed because
+`RealProtectionServiceTests` (which uses the mock) was checked before
+`ContentBlockerStateProvidingTests` in the same batch. Then the actor's conformance to the
+`nonisolated` protocol, declared on the actor itself, made the compiler infer `nonisolated`
+for the actor and reject it. Declaring the conformance in an extension
+(`extension MockContentBlockerStateProvider: ContentBlockerStateProviding {}`) fixed it.
+
+**Standing rule:** a test double declares its conformance to a `nonisolated` protocol in an
+extension, never in its own declaration (`actor Stub {…}` then `extension Stub: SomeService {}`).
+Otherwise a later, unrelated test change can reshuffle the batches and bring the error back on
+someone else's build. Every existing test double follows it except the two in
+`BrokenSiteReporterTests.swift`, which wait on another session's uncommitted work.
+
 Found in: entitlement purchase-bug fix (`FakeStoreEntitlementSource`), bisected 2026-10-30
 
 ## DNS Protection breaks app connectivity and payments (OPEN — blocks shipping DNS)
@@ -385,7 +409,7 @@ cancelled earlier Ads rules on every page load, and Annoyances applied nothing
 on ordinary pages, so any ad-blocking or AdBlock-Tester / G1 measurement taken
 before `8b07893` is invalid. Re-measure G1 on a device after this fix.
 
-Pre-launch item (before App Store submission, not now): store a compiler
+Before the first TestFlight build (testers will update across compiler fixes): store a compiler
 version alongside the installed compiled rules, and on launch recompile every
 group from its stored lists when it differs from the app's compiler version.
 Today an existing install keeps rules from the old compiler until a list
@@ -435,22 +459,29 @@ Found in: cookiebot.com banner investigation, iPhone 14, 2026-11-03
 ## A corrupt `installed_filters.json` recovers from the bundle, and a failed read must not
 
 `writeMetadata` is already atomic (`.atomic`, guarded by
-`concurrentWriteNeverProducesTornRead`), so an interrupted write isn't the likely
-cause. The non-atomic path is `FilterStore.restore`, which deletes each directory and
-then copies files back: a crash there can leave a truncated or missing file.
+`concurrentWriteNeverProducesTornRead`). `FilterStore.restore` used to delete each
+directory and copy files back; it now swaps each one in with a rename, so a directory is
+never half-restored, then flushes the container (`F_FULLFSYNC`) so the renames survive a
+power loss. A crash between two swaps can still leave `Compiled/` and `Metadata/` from
+different points.
 
-- `PremiumEntitlementReconciler` treats a file that reads but won't decode as corrupt:
-  it reinstalls the free bundled lists, clears the ETag, then reconciles as usual.
+A restore that stops after a swap spends the snapshot: `Previous/` then holds the newer
+contents of the directories already swapped. It is renamed to `Previous.spent/`, and
+`restore` throws `snapshotSpent` for it rather than putting the newer state back. Only a
+restore that fails on its first swap, having changed nothing, can be tried again.
+
+- `PremiumEntitlementReconciler` treats the file as lost when it reads but won't decode,
+  or when it's missing while compiled rules exist (the pipeline always writes it after
+  compiling). It reinstalls the free bundled lists, clears the ETag and the update
+  throttle, then reconciles as usual. Drift repair never runs from a lost file.
 - A failed read is left alone. It can be temporary (before first unlock) and the file
   may be fine.
 - Recovery is all-or-nothing. A partial install would make the other groups look
   sourceless, and drift repair would empty them.
 - It runs once per launch, because a full disk would otherwise repeat a full compile.
-- Lists from an update (Regional, say) are gone until the next update run. That run can
-  still be held back by `UpdateThrottle`.
-- Not covered: a crash mid-restore that leaves `installed_filters.json` missing while
-  `manifest.json` survives. Missing still means "nothing installed", so drift repair
-  empties the groups. The next launch's bootstrap restores Ads and Privacy.
+- Lists from an update (Regional, say) are gone until the next update run. Clearing the
+  throttle lets that run at the next opportunity: the same launch, since reconcile runs
+  before the throttle check.
 
 Found in: review of the empty-group repair, 2026-11-05
 
@@ -474,6 +505,34 @@ the DEBUG diagnostics log. A failed compile during an allowlist edit reverts the
 with no message.
 
 Found in: `PayloadPersistenceTests` investigation, 2026-11-05
+
+## Each session tests on its own simulator
+
+Two `xcodebuild test` runs on one simulator kill each other's test runner. The run
+logs "Restarting after unexpected exit" or "exited before establishing connection",
+and a test can drop out of the results without failing, so a short result list can
+look like a pass.
+
+- At the start, create a simulator for the session and note its UDID:
+  `xcrun simctl create "adblx-<session>" <device type> <runtime>`. Copy the device
+  type and runtime from `xcrun simctl list devices -j` for an existing iPhone.
+- Pass it to every test command: `-destination "platform=iOS Simulator,id=<UDID>"`.
+  `Scripts/find-simulator-udid.sh <UDID>` checks it still exists.
+- Delete it when the session ends: `xcrun simctl delete <UDID>`.
+- Before trusting a run, compare its test count with the last full run. A smaller
+  count is a lost test, not a pass.
+
+Found in: corrupt-metadata recovery tests, 2026-11-05
+
+## Some tests still wait with fixed sleeps (follow-up)
+
+`CrossFeatureEntitlementSyncTests`, `EntitlementTeardownTests` and `PlanStateTests`
+still `Task.sleep` for a fixed time and then assume a background task has run. Under
+load they will fail the way the `Transaction.updates` test did (fixed on
+`fix/metadata-recovery` with `FakeStoreEntitlementSource.wait(until:)`). Replace each sleep with
+a wait on the condition the test is waiting for, and give the test a `.timeLimit`.
+
+Found in: review of the `Transaction.updates` test fix, 2026-11-06
 
 ## Security findings live in `docs/Security/Findings.md`
 

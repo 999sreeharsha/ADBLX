@@ -5,11 +5,14 @@ extension FilterStore {
     /// A store rooted in a fresh temporary directory. Tests never use the real App Group: the
     /// installed Safari extensions and the DNS tunnel read it, and two test runners sharing it
     /// made the suite order-dependent.
-    nonisolated static func temporary(fileManager: FileManager = .default) -> FilterStore {
+    nonisolated static func temporary(
+        fileManager: FileManager = .default,
+        swapPaths: @escaping @Sendable (URL, URL) throws -> Void = { try FilterStore.swapPathsAtomically($0, $1) }
+    ) -> FilterStore {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("FilterStore-\(UUID().uuidString)", isDirectory: true)
         try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
-        return FilterStore(fileManager: fileManager, overrideBaseURL: url)
+        return FilterStore(fileManager: fileManager, overrideBaseURL: url, swapPaths: swapPaths)
     }
 }
 
@@ -21,13 +24,5 @@ nonisolated enum DeviceHarness {
 
     static var isEnabled: Bool {
         ProcessInfo.processInfo.environment["ADBLX_DEVICE_HARNESS"] == "1"
-    }
-}
-
-/// Wall-clock and memory budgets fail locally but are report-only on CI, where shared runners
-/// make timings unreliable. CI sets `TEST_RUNNER_CI=true`.
-nonisolated enum PerformanceBudget {
-    static var isReportOnly: Bool {
-        ProcessInfo.processInfo.environment["CI"] == "true"
     }
 }

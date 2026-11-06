@@ -112,7 +112,7 @@ private nonisolated final class HeldGate: @unchecked Sendable {
     }
 }
 
-private nonisolated final class HoldingSettingsService: SettingsService, @unchecked Sendable {
+private nonisolated final class HoldingSettingsService: @unchecked Sendable {
     private let held = HeldGate()
 
     func waitUntilHeld() async { await held.waitUntilHeld() }
@@ -121,6 +121,14 @@ private nonisolated final class HoldingSettingsService: SettingsService, @unchec
     func fetchSnapshot() async -> SettingsSnapshot {
         SettingsSnapshot(iCloudSyncEnabled: false, allowlist: [])
     }
-    func addAllowlistEntry(domain: String) async { await held.holdUntilReleased() }
-    func removeAllowlistEntry(id: String) async { await held.holdUntilReleased() }
+    func addAllowlistEntry(domain: String) async -> AllowlistEditOutcome {
+        await held.holdUntilReleased()
+        return .applied
+    }
+    func removeAllowlistEntry(id: String) async -> AllowlistEditOutcome {
+        await held.holdUntilReleased()
+        return .applied
+    }
 }
+
+extension HoldingSettingsService: SettingsService {}

@@ -86,7 +86,7 @@ struct EntitlementResolutionTests {
         }
     }
 
-    @Test("Transaction.updates: an update flips state, publishes it, and finishes the transaction — no relaunch")
+    @Test("Transaction.updates: an update flips state, publishes it, and finishes the transaction — no relaunch", .timeLimit(.minutes(1)))
     func updateStreamRefreshesAndFinishes() async throws {
         let source = FakeStoreEntitlementSource()
         let sut = service(source)
@@ -94,13 +94,13 @@ struct EntitlementResolutionTests {
         #expect(await states.next() == .free)
 
         source.setEntitlements([.annual(id: 77)])
-        // give the listener a moment to attach, then deliver the update
-        try await Task.sleep(nanoseconds: 100_000_000)
+        // An update sent before the listener attaches goes nowhere.
+        await source.wait { $0.isListening }
         source.emitUpdate(.annual(id: 77))
 
         let next = await states.next()
         guard case .annual = next else { Issue.record("expected .annual from the stream, got \(String(describing: next))"); return }
-        for _ in 0..<40 where source.finished != [77] { try await Task.sleep(nanoseconds: 50_000_000) }
+        await source.wait { !$0.finished.isEmpty }
         #expect(source.finished == [77])
     }
 
@@ -205,7 +205,7 @@ struct EntitlementResolutionTests {
         #expect(snap.verifiedCount == 0)
     }
 
-    @Test("an unverified update from Transaction.updates is neither granted nor finished")
+    @Test("an unverified update from Transaction.updates is neither granted nor finished", .timeLimit(.minutes(1)))
     func unverifiedUpdateNotFinished() async throws {
         let unverified = StoreEntitlement.annual(id: 41).with(verification: .unverified("invalidCertificateChain"))
         let source = FakeStoreEntitlementSource([unverified])
@@ -213,9 +213,9 @@ struct EntitlementResolutionTests {
         await sut.refreshEntitlements()
         let readsBefore = source.readCount
 
-        try await Task.sleep(nanoseconds: 100_000_000)
+        await source.wait { $0.isListening }
         source.emitUpdate(unverified)
-        for _ in 0..<40 where source.readCount == readsBefore { try await Task.sleep(nanoseconds: 50_000_000) }
+        await source.wait { $0.readCount > readsBefore }
 
         #expect(source.readCount > readsBefore, "the update did not trigger a refresh")
         #expect(await sut.currentState == .free)

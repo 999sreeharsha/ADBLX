@@ -108,7 +108,7 @@ ADBLX (working title "SHIELD") is an **iOS / iPadOS / macOS / visionOS ad and tr
 - **`DEVELOPMENT_TEAM`** = `93F78RF6FG`, set once in `project.yml` `settings.base`, inherited by every target. `CODE_SIGN_STYLE: Automatic` everywhere. No provisioning profiles checked in. (The DNS tunnel needs a **paid Apple Developer Program** membership to provision `packet-tunnel-provider`; the Sprint 11 hardware runs confirm this is now in place — the "Personal Team" language in older docs is stale.)
 - **Lint/format:** `.swiftlint.yml` runs as a **non-failing pre-build phase**, and only over `ADBLX/` — `Extensions/` and both test targets are excluded. Custom rule `no_hardcoded_ui_string` bans hardcoded strings in `Text`/`Label`/`Button` (forces `Localizable.xcstrings` keys). `.swift-format` config exists but nothing invokes it.
 - **Scheme:** exactly one, `ADBLX` (auto-scheme generation off). Builds the app + all 6 extensions; Test action runs `ADBLXTests` + `ADBLXUITests`.
-- **`Config/Configuration.storekit`** (lifetime $39.99 / monthly $1.99 / annual $14.99) exists but is **orphaned** — not referenced by `project.yml`, `project.pbxproj`, or the scheme. No StoreKit configuration is wired into the scheme, which is why `StoreKitSubscriptionServiceTests.fetchStatusReturnsTwoPlans` is `.disabled` under headless `xcodebuild test` (it only works in Xcode's GUI test runner). Docs also call this file `Products.storekit` in places — filename is inconsistent across docs.
+- **`Config/Configuration.storekit`** (lifetime $39.99 / monthly $1.99 / annual $14.99) is the only StoreKit configuration. `project.yml` attaches it to the `ADBLX` scheme's Run action (`storeKitConfiguration`), so Xcode runs on a simulator or device use it. Set it there, not in Xcode's scheme editor: `xcodegen generate` overwrites the scheme. Older audit reports call it `Products.storekit`; no file by that name exists.
 
 ### 3.2 Targets (9)
 
@@ -172,7 +172,7 @@ group.com.ADBLX.shared/
 - **Not in CI:** no caching, no artifacts, no release automation; `ADBLXUITests` excluded; **no macOS/visionOS build**; **no `ADBLXShared` standalone test**; **no `backend/tools/Publisher` build or test**; **no run of the Safari Web Extension's JS test suites** (there is no `package.json` — the `node:test` suites run only locally).
 - **`.github/workflows/deploy-pages.yml`** — on push to the `gh-pages` branch. Publishes the branch contents verbatim to GitHub Pages. It builds nothing — `publish-pages.sh` (run locally) is what populates `gh-pages`.
 - **Test count:** ~335 test declarations in `ADBLXTests` + suites in `ADBLXShared` + 44 in `Publisher` + 3 JS suites. Recent whole-suite runs: "215/215" (Sprint 11), all green.
-- **`Scripts/find-simulator-udid.sh`** mirrors CI's simulator-discovery logic for local `xcodebuild` runs.
+- **`Scripts/find-simulator-udid.sh`** mirrors CI's simulator-discovery logic for local `xcodebuild` runs. Given a UDID, it checks that simulator exists instead. Each session should test on a simulator of its own (`docs/gotchas.md`).
 
 ---
 
@@ -494,7 +494,6 @@ Consolidated from `docs/Audit/*`, `docs/gotchas.md`, `docs/Validation/*`, and th
 
 ### Premium / Monetization
 - 🔴 **Reconcile pricing.** PD-01 + Sprint 11 (frozen): $1.99 / $14.99 / $39.99, monthly retained. `docs/AppStoreSetup.md` + `Config/Configuration.storekit`: $19.99 / $49.99, no monthly. Pick one; the founder SKU decision (all-3 vs annual+lifetime) is recorded as still-open.
-- 🔴 Wire a StoreKit configuration file into the `ADBLX` scheme (currently orphaned) so `xcodebuild test` and the GUI runner both exercise real products. Reconcile the filename (`Configuration.storekit` vs `Products.storekit`).
 - 🔴 StoreKit 2 sandbox lifecycle / Billing Grace Period / billing-retry QA with accelerated renewal.
 - ⚠️ "Manage" button in `PremiumView` is an empty closure — wire `showManageSubscriptions`.
 - ○ The permanently-`.disabled` `fetchStatusReturnsTwoPlans` test — re-check on each Xcode upgrade.

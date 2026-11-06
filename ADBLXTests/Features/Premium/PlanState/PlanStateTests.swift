@@ -2,7 +2,7 @@ import Testing
 import Foundation
 @testable import ADBLX
 
-private final class StubTrialSource: TrialSource, @unchecked Sendable {
+private final class StubTrialSource: @unchecked Sendable {
     private let lock = NSLock()
     private var snapshot: TrialSnapshot
     init(_ snapshot: TrialSnapshot) { self.snapshot = snapshot }
@@ -10,13 +10,17 @@ private final class StubTrialSource: TrialSource, @unchecked Sendable {
     func snapshot(at date: Date) async -> TrialSnapshot { lock.lock(); defer { lock.unlock() }; return snapshot }
 }
 
-private final class StubPaidSource: PaidEntitlementSource, @unchecked Sendable {
+extension StubTrialSource: TrialSource {}
+
+private final class StubPaidSource: @unchecked Sendable {
     private let lock = NSLock()
     private var kind: PremiumKind?
     init(_ kind: PremiumKind?) { self.kind = kind }
     func set(_ kind: PremiumKind?) { lock.lock(); self.kind = kind; lock.unlock() }
     func activePremiumKind() async -> PremiumKind? { lock.lock(); defer { lock.unlock() }; return kind }
 }
+
+extension StubPaidSource: PaidEntitlementSource {}
 
 @Suite("PlanState")
 struct PlanStateValueTests {

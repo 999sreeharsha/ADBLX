@@ -3,7 +3,9 @@ import Testing
 import Foundation
 @testable import ADBLX
 
-actor MockContentBlockerStateProvider: ContentBlockerStateProviding {
+// The conformance is in an extension on purpose. Declared here, it makes the compiler infer
+// `nonisolated` for the actor in some build batches, and then reject it (docs/gotchas.md).
+actor MockContentBlockerStateProvider {
     var states: [String: ContentBlockerSettingsState] = [:]
 
     init(states: [String: ContentBlockerSettingsState] = [:]) {
@@ -18,6 +20,8 @@ actor MockContentBlockerStateProvider: ContentBlockerStateProviding {
         states[extensionIdentifier] = state
     }
 }
+
+extension MockContentBlockerStateProvider: ContentBlockerStateProviding {}
 
 @Suite("ContentBlockerStateProviding")
 struct ContentBlockerStateProvidingTests {
