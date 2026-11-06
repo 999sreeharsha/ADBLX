@@ -372,6 +372,17 @@ extension FilterPipeline {
         try await gate.run { try await installBundledSnapshots(includePremium: includePremium) }
     }
 
+    /// Reinstalls the free bundled lists, failing unless all of them install, for a caller that
+    /// will roll back: a partial result would look like the other groups have no sources.
+    /// Callers must already hold the transaction gate.
+    func reinstallBundledBaseline() async throws -> [PipelineResult] {
+        let results = try await installBundledSnapshots(includePremium: false)
+        guard Set(results.map(\.group)) == [.ads, .privacy] else {
+            throw FilterPipelineError.bundledSnapshotMissing
+        }
+        return results
+    }
+
     private func installBundledSnapshots(includePremium: Bool) async throws -> [PipelineResult] {
         var results: [PipelineResult] = []
         var atLeastOneInstalled = false

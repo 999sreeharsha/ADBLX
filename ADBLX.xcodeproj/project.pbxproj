@@ -469,6 +469,7 @@
 			buildConfigurationList = 3808986D29A8874D4F4C0A4B /* Build configuration list for PBXNativeTarget "ADBLX" */;
 			buildPhases = (
 				485054795346E4BCB1BA4384 /* SwiftLint */,
+				D2FA85A4CBBB39729F018E05 /* Check Report Recipient */,
 				091621AA814C583EA42F511D /* Sources */,
 				AD6FA0F3423771E4849031F3 /* Resources */,
 				A41DA53F33D9B41B4EC02D5C /* Frameworks */,
@@ -770,6 +771,26 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "if which swiftlint > /dev/null; then\n  swiftlint\nelse\n  echo \"warning: SwiftLint not installed. Run: brew install swiftlint\"\nfi\n";
+		};
+		D2FA85A4CBBB39729F018E05 /* Check Report Recipient */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/ADBLX/Features/BrokenSite/BrokenSiteModels.swift",
+			);
+			name = "Check Report Recipient";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"$SRCROOT/Scripts/check-report-recipient.sh\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -1464,8 +1485,10 @@
 		E27D733FA6E582D2B41C0F56 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGNING_ALLOWED = NO;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				EXCLUDED_SOURCE_FILE_NAMES = "*";
 				INFOPLIST_FILE = Extensions/ADBLXPacketTunnel/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1478,6 +1501,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.ADBLX.ADBLX.PacketTunnel;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
+				SKIP_INSTALL = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;

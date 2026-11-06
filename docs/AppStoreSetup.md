@@ -56,6 +56,14 @@ code shipped in Sprint 8.0 (`EntitlementService`, `StoreKitSubscriptionService`)
       full app relaunch (confirms entitlement persists across launches, not
       just in-memory for the purchase session).
 
+## Broken Site Reports
+
+Reports are sent from the user's own mail app to `BrokenSiteReport.recipient`. Before submitting:
+
+- **Address:** set `BrokenSiteReport.recipient` to a forwarding alias on the product's domain, such as `reports@<brand-domain>`, not a personal mailbox. It ships in the app and will be scraped. An archive fails until it's set (`Scripts/check-report-recipient.sh`).
+- **Privacy policy:** say that reports arrive by email and contain only the domain, app version, enabled groups and issue category, along with the sender's address, which the mail app adds. The repository has no privacy policy yet.
+- **App Privacy label:** keeping a report for longer than it takes to answer it counts as "collect" under [Apple's definition](https://developer.apple.com/app-store/app-privacy-details/). Optional feedback can be left undeclared only if every listed criterion holds, including that the user's name or account name is prominently displayed in the submission form. Ours doesn't show one, so declare **Customer Support** and **Email Address**, linked to the user, with purpose App Functionality. Check the page again when filling in the label.
+
 ## Operational Status Log
 
 | Date | Environment | Action | Performed By | Result | Notes |

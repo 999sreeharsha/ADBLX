@@ -132,9 +132,15 @@ actor FilterStore {
         let metadataSnapshot = previousRoot.appendingPathComponent("Metadata", isDirectory: true)
         let filtersSnapshot = previousRoot.appendingPathComponent("Filters", isDirectory: true)
 
-        try copyDirectoryContents(from: try url(for: .compiled), to: compiledSnapshot)
-        try copyDirectoryContents(from: try url(for: .metadata), to: metadataSnapshot)
-        try copyDirectoryContents(from: try url(for: .filters), to: filtersSnapshot)
+        do {
+            try copyDirectoryContents(from: try url(for: .compiled), to: compiledSnapshot)
+            try copyDirectoryContents(from: try url(for: .metadata), to: metadataSnapshot)
+            try copyDirectoryContents(from: try url(for: .filters), to: filtersSnapshot)
+        } catch {
+            // Most likely a full disk, which a partial copy would only make worse.
+            try? fileManager.removeItem(at: previousRoot)
+            throw error
+        }
 
         return RollbackSnapshot(
             compiledSnapshotDir: compiledSnapshot,

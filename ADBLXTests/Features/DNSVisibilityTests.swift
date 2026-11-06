@@ -34,6 +34,12 @@ struct DNSVisibilityTests {
         #expect(HomeStatTile.visible(dnsEnabled: true) == [.safari, .dns, .lastUpdate, .rules])
     }
 
+    @Test("the Protection tab has no DNS row with the flag off")
+    func protectionRows() {
+        #expect(ProtectionConfigurationRow.visible(dnsEnabled: false) == [.advancedFilterLists, .speedOptimization, .brokenSiteReport])
+        #expect(ProtectionConfigurationRow.visible(dnsEnabled: true) == [.advancedFilterLists, .dnsProtection, .speedOptimization, .brokenSiteReport])
+    }
+
     @Test("the build's own flag decides the defaults")
     func defaultsFollowTheBuild() {
         #if DNS_PROTECTION_ENABLED
@@ -45,5 +51,6 @@ struct DNSVisibilityTests {
         #expect(HomeStatTile.visible().contains(.dns) == BuildFeatures.dnsProtection)
         #expect(TrialHighlight.visible().contains(.dns) == BuildFeatures.dnsProtection)
         #expect(PremiumComparisonRow.visible().contains(.dnsProtection) == BuildFeatures.dnsProtection)
+        #expect(ProtectionConfigurationRow.visible().contains(.dnsProtection) == BuildFeatures.dnsProtection)
     }
 }
