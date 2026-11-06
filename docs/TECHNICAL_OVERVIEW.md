@@ -172,7 +172,7 @@ group.com.ADBLX.shared/
 - **Not in CI:** no caching, no artifacts, no release automation; `ADBLXUITests` excluded; **no macOS/visionOS build**; **no `ADBLXShared` standalone test**; **no `backend/tools/Publisher` build or test**; **no run of the Safari Web Extension's JS test suites** (there is no `package.json` — the `node:test` suites run only locally).
 - **`.github/workflows/deploy-pages.yml`** — on push to the `gh-pages` branch. Publishes the branch contents verbatim to GitHub Pages. It builds nothing — `publish-pages.sh` (run locally) is what populates `gh-pages`.
 - **Test count:** ~335 test declarations in `ADBLXTests` + suites in `ADBLXShared` + 44 in `Publisher` + 3 JS suites. Recent whole-suite runs: "215/215" (Sprint 11), all green.
-- **`Scripts/find-simulator-udid.sh`** mirrors CI's simulator-discovery logic for local `xcodebuild` runs.
+- **`Scripts/find-simulator-udid.sh`** mirrors CI's simulator-discovery logic for local `xcodebuild` runs. Given a UDID, it checks that simulator exists instead. Each session should test on a simulator of its own (`docs/gotchas.md`).
 
 ---
 

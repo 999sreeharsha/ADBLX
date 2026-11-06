@@ -325,6 +325,12 @@ the new test double `nonisolated final class` (the same way production conformer
 such as `SystemContentBlockerStateProvider` are declared). When that error appears,
 look at test types added since the last green build, not at the file named in it.
 
+The same error comes from a new main-actor-isolated type (the default for a plain
+`enum`/`struct` in the app target) used in a `nonisolated` protocol's requirements: adding
+`AllowlistEditOutcome` as `SettingsService`'s return type produced it, on a clean build too,
+until the enum was declared `nonisolated`. Look at changed protocol signatures as well as new
+test doubles.
+
 Found in: entitlement purchase-bug fix (`FakeStoreEntitlementSource`), bisected 2026-10-30
 
 ## DNS Protection breaks app connectivity and payments (OPEN — blocks shipping DNS)
@@ -474,6 +480,24 @@ the DEBUG diagnostics log. A failed compile during an allowlist edit reverts the
 with no message.
 
 Found in: `PayloadPersistenceTests` investigation, 2026-11-05
+
+## Each session tests on its own simulator
+
+Two `xcodebuild test` runs on one simulator kill each other's test runner. The run
+logs "Restarting after unexpected exit" or "exited before establishing connection",
+and a test can drop out of the results without failing, so a short result list can
+look like a pass.
+
+- At the start, create a simulator for the session and note its UDID:
+  `xcrun simctl create "adblx-<session>" <device type> <runtime>`. Copy the device
+  type and runtime from `xcrun simctl list devices -j` for an existing iPhone.
+- Pass it to every test command: `-destination "platform=iOS Simulator,id=<UDID>"`.
+  `Scripts/find-simulator-udid.sh <UDID>` checks it still exists.
+- Delete it when the session ends: `xcrun simctl delete <UDID>`.
+- Before trusting a run, compare its test count with the last full run. A smaller
+  count is a lost test, not a pass.
+
+Found in: corrupt-metadata recovery tests, 2026-11-05
 
 ## Security findings live in `docs/Security/Findings.md`
 
