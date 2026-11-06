@@ -379,6 +379,14 @@ Found in: entitlement purchase-bug fix (`FakeStoreEntitlementSource`), bisected 
   any line with `$` modifiers, `*`, `/`, `?`, `:` or `^` in the host, so an
   unsupported domain produces no DNS rule rather than a wider one.
 
+- **Status 2026-11-07 (not closed).** Code review (`docs/superpowers/specs/2026-11-07-dns-connectivity-design.md`)
+  found the routes are not the cause (only the fake DNS address is routed, now pinned by
+  `TunnelNetworkSettingsTests`). The most likely cause was that TCP DNS and any failed query were
+  dropped without a reply, so a truncated UDP answer hung the app. The tunnel now answers TCP
+  and returns SERVFAIL instead of silence; DEBUG counters and a pass-through switch are on the
+  Developer screen. **Still needs a device:** the pass-through test, a payment flow on Wi-Fi,
+  Jio and Airtel, and the IPv6-only-network hypothesis. The upstream resolver choice waits on it.
+
 Found in: device testing on iPhone 14, 2026-10-30
 
 ## Compiler: dropping an unsupported domain must never widen a rule
