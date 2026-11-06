@@ -1,0 +1,104 @@
+# ADBLX DNS Protection: never-block list
+#
+# Domains the DNS filter always resolves, whatever a blocklist says, so payments, banking and
+# Apple services keep working. A listed domain covers all of its subdomains.
+#
+# Keep this list small and specific. It is public data: a domain here is a domain trackers
+# can't be blocked on, so nothing broad (a CDN, a search or ad network) belongs in it.
+
+# Payment gateways and card networks
+razorpay.com
+razorpay.in
+paytm.com
+paytm.in
+paytmbank.com
+phonepe.com
+payu.in
+payu.com
+payumoney.com
+juspay.in
+juspay.io
+billdesk.com
+ccavenue.com
+cashfree.com
+instamojo.com
+easebuzz.in
+pinelabs.com
+stripe.com
+stripe.network
+paypal.com
+paypalobjects.com
+braintreegateway.com
+adyen.com
+checkout.com
+worldpay.com
+visa.com
+mastercard.com
+mastercardintl.com
+americanexpress.com
+rupay.co.in
+
+# UPI, NPCI and wallets
+npci.org.in
+bhimupi.org.in
+pay.google.com
+amazonpay.in
+mobikwik.com
+freecharge.in
+cred.club
+airtelbank.com
+
+# Major Indian banks
+hdfcbank.com
+hdfc.com
+icicibank.com
+sbi.co.in
+onlinesbi.sbi
+onlinesbi.com
+sbicard.com
+axisbank.com
+kotak.com
+yesbank.in
+idfcfirstbank.com
+indusind.com
+pnbindia.in
+bankofbaroda.in
+canarabank.com
+unionbankofindia.co.in
+bankofindia.co.in
+centralbankofindia.co.in
+indianbank.in
+federalbank.co.in
+rblbank.com
+aubank.in
+bandhanbank.com
+idbibank.in
+southindianbank.com
+kvb.co.in
+jkbank.com
+dcbbank.com
+sc.com
+hsbc.co.in
+
+# Apple services
+apple.com
+icloud.com
+icloud-content.com
+mzstatic.com
+apple-cloudkit.com
+cdn-apple.com
+itunes.com
+
+# Fraud and device checks that payment flows call
+online-metrix.net
+threatmetrix.com
+iovation.com
+kount.net
+kount.com
+sift.com
+siftscience.com
+forter.com
+riskified.com
+signifyd.com
+cardinalcommerce.com
+arkoselabs.com

@@ -19,6 +19,9 @@ struct FilterManifest: Codable, Equatable {
 
     var manifestVersion: String
     var entries: [Entry]
+    /// The DNS never-block list, delivered with the manifest but separate from the filter
+    /// entries. Absent in manifests that predate it.
+    var dnsNeverBlock: DNSNeverBlockEntry?
 }
 
 enum FilterGroup: String, Codable, Equatable, CaseIterable {

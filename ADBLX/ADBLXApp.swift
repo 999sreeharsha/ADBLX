@@ -126,6 +126,12 @@ struct ADBLXApp: App {
                     } catch {
                         // Failed launches remain retryable on the next launch.
                     }
+                    // The manifest's never-block list for DNS Protection, from the manifest just cached.
+                    // Not shipped in Release, so nothing is fetched there.
+                    if BuildFeatures.dnsProtection, let entry = try? await manifestStore.load()?.manifest.dnsNeverBlock {
+                        let neverBlock = DNSNeverBlockStore(filterStore: store)
+                        _ = try? await DNSNeverBlockUpdater(store: neverBlock, session: AppCompositionRoot.makeHTTPSession()).update(to: entry)
+                    }
                 }
             }
         }

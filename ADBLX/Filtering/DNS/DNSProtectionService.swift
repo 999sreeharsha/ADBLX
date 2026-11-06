@@ -44,6 +44,7 @@ public protocol DNSProtectionServiceProtocol: AnyObject, Sendable {
 public final class RealDNSProtectionService: DNSProtectionServiceProtocol, @unchecked Sendable {
     private let settingsStore: DNSProtectionSettingsStore
     private let entitlementService: EntitlementService
+    private let neverBlockStore: DNSNeverBlockStore
     private let logger = Logger(subsystem: "com.ADBLX.ADBLX", category: "DNSProtectionService")
     private static let signposter = OSSignposter(subsystem: "com.ADBLX.ADBLX", category: "DNSProtectionService")
     private let stateLock = OSAllocatedUnfairLock(initialState: (
@@ -53,12 +54,25 @@ public final class RealDNSProtectionService: DNSProtectionServiceProtocol, @unch
     private var notificationObserver: AnyObject?
     private var entitlementTask: Task<Void, Never>?
     
-    public init(
+    public convenience init(
         settingsStore: DNSProtectionSettingsStore = DNSProtectionSettingsStore(),
         entitlementService: EntitlementService = AppCompositionRoot.makeSubscriptionService()
     ) {
+        self.init(
+            settingsStore: settingsStore,
+            entitlementService: entitlementService,
+            neverBlockStore: DNSNeverBlockStore(filterStore: AppCompositionRoot.makeFilterStore())
+        )
+    }
+
+    init(
+        settingsStore: DNSProtectionSettingsStore,
+        entitlementService: EntitlementService,
+        neverBlockStore: DNSNeverBlockStore
+    ) {
         self.settingsStore = settingsStore
         self.entitlementService = entitlementService
+        self.neverBlockStore = neverBlockStore
         setupStatusObserver()
         setupEntitlementObserver()
     }
@@ -300,11 +314,13 @@ public final class RealDNSProtectionService: DNSProtectionServiceProtocol, @unch
 
     private func publishAllowlistGeneration(_ allowlist: [String]) async throws {
         let blocklistSources = loadBlocklistSources()
+        let neverBlock = await neverBlockStore.current()
         try await Task.detached(priority: .userInitiated) {
             let appGroupBase = DNSAppGroupPaths.appGroupContainerURL() ?? FileManager.default.temporaryDirectory
             _ = try DNSArtifactPublisher().publish(
                 blocklistSources: blocklistSources,
                 allowlistRules: allowlist,
+                neverBlockRules: neverBlock,
                 baseAppGroupURL: appGroupBase
             )
         }.value

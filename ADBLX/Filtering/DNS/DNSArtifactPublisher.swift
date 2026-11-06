@@ -41,11 +41,14 @@ public final class DNSArtifactPublisher {
     /// - Parameters:
     ///   - blocklistSources: Raw blocklist rule feeds.
     ///   - allowlistRules: Raw user allowlist rule strings.
+    ///   - neverBlockRules: The never-block list (`DNSNeverBlockList`). Compiled into the allowlist
+    ///     artifact, so the tunnel's allowlist-first check puts it ahead of every blocklist entry.
     ///   - baseAppGroupURL: Optional base App Group URL override (for testing).
     /// - Returns: Published `DNSGenerationManifest`.
     public func publish(
         blocklistSources: [String],
         allowlistRules: [String],
+        neverBlockRules: [String] = [],
         baseAppGroupURL: URL? = DNSAppGroupPaths.appGroupContainerURL()
     ) throws -> DNSGenerationManifest {
         guard let baseURL = baseAppGroupURL else {
@@ -84,7 +87,7 @@ public final class DNSArtifactPublisher {
         let allowData: Data
         do {
             blockData = try blocklistCompiler.compile(sourceContents: blocklistSources)
-            allowData = try allowlistCompiler.compile(rules: allowlistRules)
+            allowData = try allowlistCompiler.compile(rules: allowlistRules + neverBlockRules)
         } catch {
             throw DNSArtifactPublisherError.serializationFailed(error.localizedDescription)
         }
