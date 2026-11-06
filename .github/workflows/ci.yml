@@ -29,6 +29,9 @@ jobs:
       - name: Test the archive's report recipient check
         run: Scripts/check-report-recipient.test.sh
 
+      - name: Test the archive's manifest trust check
+        run: Scripts/check-manifest-trust.test.sh
+
       - name: Select Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
