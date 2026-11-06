@@ -11,6 +11,8 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
     private var forwarder: DNSUpstreamForwarder?
     private var tcpServer: DNSTCPServer?
     private var payloadResolver: DNSPayloadResolver?
+    private var diagnostics: DNSTunnelDiagnosticsHandler?
+    private let counters = DNSTunnelCounters()
     
     // Aggregate diagnostic counters (zero private browsing history retained)
     private var totalIngressQueries: UInt64 = 0
@@ -72,7 +74,7 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
             timeoutSeconds: 2.0,
             maxInFlightQueries: 512
         )
-        let fwd = DNSUpstreamForwarder(config: forwarderConfig)
+        let fwd = DNSUpstreamForwarder(config: forwarderConfig, counters: counters)
         self.forwarder = fwd
         // TCP clients (the retry after a truncated UDP answer) are answered by a small TCP server
         // on the fake DNS address, resolving through the same engine and forwarder as UDP.
@@ -81,12 +83,14 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
             clock: SystemDNSClock()
         )
         self.payloadResolver = DNSPayloadResolver(engine: engine, forwarder: fwd)
+        self.diagnostics = DNSTunnelDiagnosticsHandler(counters: counters, engine: engine)
         
         Task {
             do {
                 try await fwd.start { [weak self] (responsePacket: Data, ipVersion: IPVersion) in
                     guard let self = self else { return }
                     self.totalResponsesEgress &+= 1
+                    self.counters.increment(\.responsesWritten)
                     let protocolNumber: NSNumber = (ipVersion == .v6) ? NSNumber(value: AF_INET6) : NSNumber(value: AF_INET)
                     self.packetFlow.writePackets([responsePacket], withProtocols: [protocolNumber])
                 }
@@ -132,7 +136,8 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
     
     override func handleAppMessage(_ messageData: Data, completionHandler: ((Data?) -> Void)?) {
         checkForGenerationUpdate()
-        completionHandler?(nil)
+        // The DEBUG Developer screen's counters and pass-through switch; counts only.
+        completionHandler?(diagnostics?.handle(messageData))
     }
     
     // MARK: - Packet Processing Loop
@@ -143,13 +148,15 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
             
             for (index, packetData) in packets.enumerated() {
                 self.totalIngressQueries &+= 1
+                self.counters.increment(\.ingressPackets)
                 let proto = protocols[index]
                 
                 switch TunnelPacketClassifier.classify(packetData) {
                 case .tcp(let segment):
+                    self.counters.increment(\.tcpSegments)
                     self.handleTCP(segment)
                 case .unparsable:
-                    break
+                    self.counters.increment(\.unparsablePackets)
                 case .udpQuery(let query):
                     self.handleUDP(query, packetData: packetData, proto: proto)
                 }
@@ -172,6 +179,7 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
         switch decision {
         case .block:
             totalBlockedQueries &+= 1
+            counters.increment(\.blockedQueries)
             let response = packetData.withUnsafeBytes {
                 NXDOMAINResponseBuilder.buildResponse(
                     for: query,
@@ -181,11 +189,13 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
             }
             if let response {
                 totalResponsesEgress &+= 1
+                counters.increment(\.responsesWritten)
                 packetFlow.writePackets([response], withProtocols: [proto])
             }
             
         case .allow:
             totalForwardedQueries &+= 1
+            counters.increment(\.forwardedQueries)
             Task {
                 guard let forwarder = self.forwarder else { return }
                 _ = await forwarder.forward(query: query, originalPacket: packetData)
@@ -198,6 +208,7 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
         let output = server.receive(segment)
         writeIPv4(output.packets)
         for pending in output.queries {
+            counters.increment(\.tcpQueries)
             Task { [weak self] in
                 // An unreadable question closes the connection, as a resolver would.
                 let answer = await resolver.resolve(pending.message)
@@ -212,6 +223,7 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
     private func writeIPv4(_ packets: [Data]) {
         guard !packets.isEmpty else { return }
         totalResponsesEgress &+= UInt64(packets.count)
+        counters.increment(\.responsesWritten, by: UInt64(packets.count))
         packetFlow.writePackets(packets, withProtocols: packets.map { _ in NSNumber(value: AF_INET) })
     }
     

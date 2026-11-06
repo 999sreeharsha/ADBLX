@@ -1,5 +1,6 @@
 import Foundation
 import os
+import ADBLXShared
 
 public actor DNSUpstreamForwarder {
     private var config: UpstreamResolverConfig
@@ -13,6 +14,7 @@ public actor DNSUpstreamForwarder {
     private let socketFactory: @Sendable (String, UInt16, Bool) throws -> any DNSUpstreamSocketProtocol
     private let clock: DNSClock
     private let tcpTransport: DNSUpstreamTCPTransport?
+    private let counters: DNSTunnelCounters?
     
     public init(
         config: UpstreamResolverConfig = UpstreamResolverConfig(),
@@ -20,12 +22,14 @@ public actor DNSUpstreamForwarder {
             try BSDUDPUpstreamSocket(host: host, port: port, isIPv6: isIPv6)
         },
         clock: DNSClock = SystemDNSClock(),
-        tcpTransport: DNSUpstreamTCPTransport? = NWDNSUpstreamTCPTransport()
+        tcpTransport: DNSUpstreamTCPTransport? = NWDNSUpstreamTCPTransport(),
+        counters: DNSTunnelCounters? = nil
     ) {
         self.config = config
         self.socketFactory = socketFactory
         self.clock = clock
         self.tcpTransport = tcpTransport
+        self.counters = counters
     }
     
     public var activeInFlightCount: Int {
@@ -164,6 +168,7 @@ public actor DNSUpstreamForwarder {
         do {
             try await socket.send(payload: dnsPayload)
         } catch {
+            counters?.increment(\.upstreamSendErrors)
             if let dropped = pendingTransactions.removeValue(forKey: upstreamTxID) {
                 dropped.timeoutTask?.cancel()
                 emitServfail(for: dropped)
@@ -214,6 +219,7 @@ public actor DNSUpstreamForwarder {
     
     private func failPending(upstreamTxID: UInt16) {
         guard let pending = pendingTransactions.removeValue(forKey: upstreamTxID) else { return }
+        counters?.increment(\.upstreamSendErrors)
         pending.timeoutTask?.cancel()
         fail(pending)
     }
@@ -246,6 +252,7 @@ public actor DNSUpstreamForwarder {
         // The upstream cut its own answer short: get the whole one over TCP rather than hand the
         // client a truncated answer it would retry over a connection we'd otherwise not answer.
         if DNSMessage.isTruncated(data) {
+            counters?.increment(\.truncatedUpstreamAnswers)
             Task { [weak self] in await self?.completeTruncated(pending) }
             return
         }
@@ -293,6 +300,7 @@ public actor DNSUpstreamForwarder {
     
     private func emitServfail(for pending: PendingQuery) {
         guard let servfail = DNSMessage.errorResponse(for: pending.clientQuery, rcode: 2) else { return }
+        counters?.increment(\.servfailsSent)
         writeClientPacket(pending, dnsPayload: servfail)
     }
     
@@ -319,6 +327,7 @@ public actor DNSUpstreamForwarder {
     private func handleTimeout(upstreamTxID: UInt16) {
         guard let pending = pendingTransactions.removeValue(forKey: upstreamTxID) else { return }
         DNSForwarderMetrics.logQueryTimeout(upstreamTxID: upstreamTxID, clientTxID: pending.clientTxID)
+        counters?.increment(\.upstreamTimeouts)
         fail(pending)
     }
     

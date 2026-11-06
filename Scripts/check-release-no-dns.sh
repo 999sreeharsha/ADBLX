@@ -17,5 +17,9 @@ fi
 if codesign -d --entitlements - "$app" 2>/dev/null | grep -q "networkextension"; then
     echo "error: Release app is signed with the Network Extension entitlement" >&2; fail=1
 fi
+# The DEBUG-only tunnel diagnostics (counters, pass-through switch, Developer section).
+if strings -a "$app/ADBLX" | grep -q -e DNSTunnelCountersSnapshot -e DNSTunnelDiagnosticsModel -e DNSTunnelDiagnosticsMessage; then
+    echo "error: Release app binary contains the DNS tunnel diagnostics" >&2; fail=1
+fi
 [ "$fail" = 0 ] && echo "ok: no DNS Protection in $app"
 exit "$fail"

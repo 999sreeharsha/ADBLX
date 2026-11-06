@@ -10,6 +10,17 @@ public enum DNSLookupVerdict: Equatable {
 public final class DNSLookupEngine {
     private let snapshotLock: OSAllocatedUnfairLock<DNSLookupSnapshot>
     
+    #if DEBUG
+    private let passthroughLock = OSAllocatedUnfairLock(initialState: false)
+    
+    /// DEBUG only: forward every query, as if the blocklist were empty. Tells a tunnel fault
+    /// from a list that blocks too much (docs/gotchas.md, DNS connectivity).
+    public var isPassthrough: Bool {
+        get { passthroughLock.withLock { $0 } }
+        set { passthroughLock.withLock { $0 = newValue } }
+    }
+    #endif
+    
     public init(initialSnapshot: DNSLookupSnapshot = .makeEmptySnapshot()) {
         self.snapshotLock = OSAllocatedUnfairLock(initialState: initialSnapshot)
     }
@@ -36,6 +47,9 @@ public final class DNSLookupEngine {
     /// - Parameter reversedBytes: Contiguous UTF-8 buffer of the label-reversed domain (e.g. `net.doubleclick.ad`).
     /// - Returns: `DNSLookupVerdict.allow` or `DNSLookupVerdict.block`.
     public func lookup(reversedBytes: UnsafeBufferPointer<UInt8>) -> DNSLookupVerdict {
+        #if DEBUG
+        if isPassthrough { return .allow }
+        #endif
         // Obtain immutable snapshot reference without long-held locks or heap allocations
         let snapshot = snapshotLock.withLock { $0 }
         

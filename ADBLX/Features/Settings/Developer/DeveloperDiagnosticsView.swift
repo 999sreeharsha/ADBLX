@@ -8,6 +8,7 @@ struct DeveloperDiagnosticsView: View {
     @State private var diagnostics: DeveloperDiagnostics?
     @State private var isRecompiling = false
     @State private var recompileSummary: String?
+    @State private var tunnel = DNSTunnelDiagnosticsModel(transport: SystemDNSTunnelDiagnosticsTransport())
 
     var body: some View {
         List {
@@ -29,6 +30,25 @@ struct DeveloperDiagnosticsView: View {
             } footer: {
                 Text(verbatim: "Changes what Home and Premium display until the app relaunches. "
                      + "Entitlement and filters still follow the real plan.")
+            }
+            Section {
+                Toggle(isOn: Binding(
+                    get: { tunnel.passthrough },
+                    set: { on in Task { await tunnel.setPassthrough(on) } }
+                )) {
+                    Text(verbatim: "Pass-through (empty blocklist)")
+                }
+                ForEach(tunnel.rows, id: \.label) { row($0.label, $0.value) }
+                if let status = tunnel.status {
+                    Text(verbatim: status).foregroundStyle(.secondary)
+                }
+                Button { Task { await tunnel.refresh() } } label: { Text(verbatim: "Refresh counts") }
+                Button { Task { await tunnel.reset() } } label: { Text(verbatim: "Reset counts") }
+            } header: {
+                Text(verbatim: "DNS tunnel")
+            } footer: {
+                Text(verbatim: "Counts only. Pass-through forwards every query and blocks none, to tell a tunnel "
+                     + "fault from a list that blocks too much. It resets when the tunnel restarts.")
             }
             Section("StoreKit") {
                 row("Paid product", diagnostics?.paidProductID ?? "none")
@@ -65,7 +85,7 @@ struct DeveloperDiagnosticsView: View {
             }
         }
         .navigationTitle("Developer")
-        .task { await load() }
+        .task { await load(); await tunnel.refresh() }
     }
 
     /// Resets to the real plan on relaunch, so a forced state never outlives the session.
