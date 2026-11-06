@@ -14,6 +14,9 @@ enum ReconcileOutcome: Equatable {
     /// A group's compiled rules came from sources other than the installed ones: it was
     /// recompiled from what is installed.
     case repaired(groups: [FilterGroup], reloadFailures: Int)
+    /// `installed_filters.json` was corrupt: the bundled baseline was reinstalled, then the run
+    /// reconciled from that.
+    case recoveredMetadata
     /// The batch failed part-way and the whole transaction was rolled back.
     case rolledBack
     /// Rollback itself failed. Surfaced distinctly, never swallowed.
@@ -43,6 +46,7 @@ actor PremiumEntitlementReconciler {
     private let gate: FilterTransactionGate
 
     private var observationTask: Task<Void, Never>?
+    private var didAttemptMetadataRecovery = false
 
     private static let logger = Logger(subsystem: "com.ADBLX.ADBLX", category: "PremiumEntitlementReconciler")
     private static let signposter = OSSignposter(subsystem: "com.ADBLX.ADBLX", category: "PremiumEntitlementReconciler")
@@ -94,14 +98,62 @@ actor PremiumEntitlementReconciler {
             // This is an actor, so its work must never land on the main thread (NFR-05).
             dispatchPrecondition(condition: .notOnQueue(.main))
             #endif
+            let recovered = await recoverCorruptMetadata()
             let outcome = state.hasPremiumAccess ? await restoreIfNeeded() : await downgradeIfNeeded()
-            return await repairingDrift(after: outcome)
+            let repaired = await repairingDrift(after: outcome)
+            if repaired == .rolledBack || repaired == .rollbackFailed { return repaired }
+            return recovered ? .recoveredMetadata : repaired
         }
         Self.signposter.endInterval("entitlement.reconcile", interval, "\(Self.caseName(of: outcome), privacy: .public)")
         if outcome != .noChange {
             Self.logger.info("reconcile outcome=\(Self.name(of: outcome), privacy: .public)")
         }
         return outcome
+    }
+
+    // MARK: - Corrupt metadata
+
+    /// Without this a corrupt `installed_filters.json` stops reconciling for good: downgrade
+    /// sees nothing to remove and drift repair skips. Reinstalls the free baseline; the rest of
+    /// the run then restores premium lists or removes premium rules, as for any other state.
+    /// Tried once per launch, since on a full disk it would repeat a full compile each time.
+    private func recoverCorruptMetadata() async -> Bool {
+        guard !didAttemptMetadataRecovery, await installedMetadataIsCorrupt() else { return false }
+        didAttemptMetadataRecovery = true
+
+        let snapshot: RollbackSnapshot
+        do {
+            snapshot = try await store.snapshotForRollback()
+        } catch {
+            Self.logger.error("metadata recovery snapshot failed")
+            return false
+        }
+        do {
+            _ = try await pipeline.reinstallBundledBaseline()
+            try await store.discardRollbackSnapshot()
+        } catch {
+            Self.logger.error("metadata recovery failed")
+            do {
+                try await store.restore(snapshot)
+            } catch {
+                Self.logger.error("metadata recovery rollback failed")
+            }
+            _ = await reloader.reload(extensionIdentifiers: FilterGroup.allCases.map { identifier(for: $0) })
+            return false
+        }
+        // Force a full fetch: a 304 would otherwise leave the user on the bundled lists.
+        if let cached = try? await manifestStore.load() {
+            try? await manifestStore.save(cached.manifest, etag: nil)
+        }
+        Self.logger.info("metadata recovered")
+        return true
+    }
+
+    /// Only a file that reads but won't decode. A failed read may be temporary (before first
+    /// unlock, say) and the file may be fine, so that must not replace anything.
+    private func installedMetadataIsCorrupt() async -> Bool {
+        guard let data = try? await store.read("installed_filters.json", in: .metadata) else { return false }
+        return (try? JSONDecoder().decode([InstalledFilter].self, from: data)) == nil
     }
 
     // MARK: - Downgrade
@@ -263,6 +315,7 @@ actor PremiumEntitlementReconciler {
         case .downgraded: return "downgraded"
         case .restored: return "restored"
         case .repaired: return "repaired"
+        case .recoveredMetadata: return "recoveredMetadata"
         case .rolledBack: return "rolledBack"
         case .rollbackFailed: return "rollbackFailed"
         }
@@ -275,6 +328,7 @@ actor PremiumEntitlementReconciler {
             return "downgraded removed=\(removed) groups=\(groups.count) reloadFailures=\(failures)"
         case .restored(let count): return "restored installed=\(count)"
         case .repaired(let groups, let failures): return "repaired groups=\(groups.count) reloadFailures=\(failures)"
+        case .recoveredMetadata: return "recoveredMetadata"
         case .rolledBack: return "rolledBack"
         case .rollbackFailed: return "rollbackFailed"
         }

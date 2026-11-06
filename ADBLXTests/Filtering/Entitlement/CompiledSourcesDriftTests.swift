@@ -193,16 +193,6 @@ struct CompiledSourcesDriftTests {
         #expect(h.compiler.count == 0)
     }
 
-    @Test("an unreadable installed_filters.json is not read as nothing installed")
-    func corruptMetadataKeepsRules() async throws {
-        let h = makeHarness()
-        try await install("easylist", group: .ads, premium: false, in: h)
-        try await h.store.writeMetadata(Data("{".utf8), filename: "installed_filters.json")
-
-        #expect(await h.reconciler.reconcile() == .noChange)
-        #expect(try await ruleCount("Ads.json", in: h.store) == 1)
-    }
-
     @Test("the uninstalled bundled Ads fallback is not drift")
     func bundledFallbackIsNoChange() async throws {
         let h = makeHarness()
