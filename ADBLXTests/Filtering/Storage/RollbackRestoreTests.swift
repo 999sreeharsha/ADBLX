@@ -55,9 +55,93 @@ struct RollbackRestoreTests {
         #expect(try inode(of: compiled) != liveInode)
     }
 
+    // After a restore stops part-way, the swapped directories' newer contents sit in Previous/.
+    // Restoring that a second time would put the newer state back.
+    @Test("a snapshot whose restore stopped part-way is refused a second time")
+    func spentSnapshotIsRefused() async throws {
+        let store = FilterStore.temporary(swapPaths: { saved, live in
+            if live.lastPathComponent == "Metadata" { throw CocoaError(.fileWriteUnknown) }
+            try FilterStore.swapPathsAtomically(saved, live)
+        })
+        let compiled = try await store.directoryURL(.compiled)
+        try before.write(to: compiled.appendingPathComponent("Ads.json"))
+        try await store.writeMetadata(before, filename: "installed_filters.json")
+        let snapshot = try await store.snapshotForRollback()
+        try after.write(to: compiled.appendingPathComponent("Ads.json"))
+        try await store.writeMetadata(after, filename: "installed_filters.json")
+        await #expect(throws: CocoaError.self) { try await store.restore(snapshot) }
+
+        await #expect(throws: FilterStoreError.snapshotSpent) { try await store.restore(snapshot) }
+
+        #expect(try await store.read("Ads.json", in: .compiled) == before)
+        #expect(try await store.read("installed_filters.json", in: .metadata) == after)
+    }
+
+    @Test("a restore whose first swap fails changes nothing and can be tried again")
+    func failedFirstSwapLeavesSnapshotUsable() async throws {
+        let failures = Counter()
+        let store = FilterStore.temporary(swapPaths: { saved, live in
+            if failures.increment() == 1 { throw CocoaError(.fileWriteUnknown) }
+            try FilterStore.swapPathsAtomically(saved, live)
+        })
+        let compiled = try await store.directoryURL(.compiled)
+        try before.write(to: compiled.appendingPathComponent("Ads.json"))
+        let snapshot = try await store.snapshotForRollback()
+        try after.write(to: compiled.appendingPathComponent("Ads.json"))
+        await #expect(throws: CocoaError.self) { try await store.restore(snapshot) }
+
+        try await store.restore(snapshot)
+
+        #expect(try await store.read("Ads.json", in: .compiled) == before)
+    }
+
+    @Test("a new snapshot after a spent one restores normally")
+    func newSnapshotAfterSpentOne() async throws {
+        let failOnMetadata = Flag(true)
+        let store = FilterStore.temporary(swapPaths: { saved, live in
+            if failOnMetadata.value, live.lastPathComponent == "Metadata" { throw CocoaError(.fileWriteUnknown) }
+            try FilterStore.swapPathsAtomically(saved, live)
+        })
+        let compiled = try await store.directoryURL(.compiled)
+        try before.write(to: compiled.appendingPathComponent("Ads.json"))
+        try? await store.restore(try await store.snapshotForRollback())
+        failOnMetadata.value = false
+
+        let snapshot = try await store.snapshotForRollback()
+        try after.write(to: compiled.appendingPathComponent("Ads.json"))
+        try await store.restore(snapshot)
+
+        #expect(try await store.read("Ads.json", in: .compiled) == before)
+        #expect(!FileManager.default.fileExists(atPath: compiled.deletingLastPathComponent().appendingPathComponent("Previous.spent").path))
+    }
+
+    @Test("the container directory can be flushed after the swaps")
+    func containerFlushes() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+
+        try FilterStore.flushDirectory(directory)
+    }
+
     private func inode(of url: URL) throws -> UInt64 {
         let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
         return try #require((attributes[.systemFileNumber] as? NSNumber)?.uint64Value)
+    }
+}
+
+private nonisolated final class Counter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var count = 0
+    func increment() -> Int { lock.withLock { count += 1; return count } }
+}
+
+private nonisolated final class Flag: @unchecked Sendable {
+    private let lock = NSLock()
+    private var stored: Bool
+    init(_ value: Bool) { stored = value }
+    var value: Bool {
+        get { lock.withLock { stored } }
+        set { lock.withLock { stored = newValue } }
     }
 }
 

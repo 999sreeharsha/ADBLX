@@ -305,17 +305,16 @@ struct UpdateCoordinatorTests {
             return
         }
 
-        // Previous/ must still exist: restore() only deletes it after success. It now holds the
-        // swapped-out Compiled/ and the unrestored rest, for inspection, not for a second restore.
-        let previousExists = FileManager.default.fileExists(
-            atPath: try await store.directoryURL(.compiled).deletingLastPathComponent()
-                .appendingPathComponent("Previous").path
-        )
-        #expect(previousExists)
+        // restore() only deletes the snapshot after success. After this one it holds the
+        // swapped-out Compiled/ and the unrestored rest, so it is kept as Previous.spent/, for
+        // inspection, and never restored a second time.
+        let container = try await store.directoryURL(.compiled).deletingLastPathComponent()
+        #expect(FileManager.default.fileExists(atPath: container.appendingPathComponent("Previous.spent").path))
+        #expect(!FileManager.default.fileExists(atPath: container.appendingPathComponent("Previous").path))
 
         try? FileManager.default.removeItem(at: compiledDir.appendingPathComponent("Ads.json"))
         try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("installed_filters.json"))
-        try? FileManager.default.removeItem(at: try await store.directoryURL(.compiled).deletingLastPathComponent().appendingPathComponent("Previous"))
+        try? FileManager.default.removeItem(at: try await store.directoryURL(.compiled).deletingLastPathComponent().appendingPathComponent("Previous.spent"))
     }
 
     @Test("manifest spanning all four groups installs each group once and reloads each affected extension once")

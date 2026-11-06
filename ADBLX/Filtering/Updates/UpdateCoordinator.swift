@@ -199,11 +199,10 @@ actor UpdateCoordinator {
             do {
                 try await store.restore(snapshot)
             } catch let restoreError {
-                // `store.restore` only deletes `Previous/` after both directory
-                // replacements succeed, so a thrown restoreError here means the
-                // snapshot is still on disk — do not attempt a second automatic
-                // retry; surface both failures distinctly instead of losing the
-                // original install failure or crashing the caller with a raw throw.
+                // A restore that stops part-way spends the snapshot (`store.restore`
+                // refuses it again), so there is no automatic retry; surface both
+                // failures distinctly instead of losing the original install
+                // failure or crashing the caller with a raw throw.
                 return .rollbackFailed(originalReason: error, restoreError: restoreError)
             }
             _ = await reloader.reload(extensionIdentifiers: Array(affectedExtensionIDs))
