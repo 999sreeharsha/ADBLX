@@ -562,15 +562,18 @@ The app side is built: `FilterManifest.dnsNeverBlock` (optional), `DNSNeverBlock
 bundled `ADBLX/Resources/Filters/DNS/never-block.txt` as the seed. **Nothing emits the entry.**
 The Publisher (`ManifestBuilder`, the manifest spec, the golden manifest) does not know the
 field, and the live manifest has none, so every install uses the bundled seed and the list can
-only change with an app release. It also waits on `feat/manifest-signing`: that branch rewrites
-`ManifestBuilder`, `ManifestClient` and the golden file, and the signed manifest has to cover
-the new field (`ManifestVerifier`'s rules must accept it too).
+only change with an app release. `feat/manifest-signing` has merged into this branch (2725c14), so the signed
+manifest now covers every field; per the merging session the verifier rejects a manifest at the
+same version as the cached one if `dnsNeverBlock` differs, and does not yet check its
+`sourceURL` against the allowed base. The Publisher change is what is left, and it must settle
+the list's URL layout first.
 
 Before DNS Protection ships:
-1. Merge `feat/manifest-signing`, then add `dnsNeverBlock` to the Publisher (a registry entry
+1. Add `dnsNeverBlock` to the Publisher (a registry entry
    for the list, a payload under `backend/public/filters/dns/`, the field in `ManifestBuilder`
    and `ManifestSpecification.md`, the golden manifest and `CommittedManifestTests`).
-2. Confirm the verifier accepts a manifest with the field, and a manifest without it.
+2. Confirm the verifier accepts a manifest with the field and without it, and make it check
+   the field's `sourceURL` against the allowed base.
 3. Call `DNSNeverBlockUpdater` from the same place that runs `UpdateCoordinator` (done in
    `ADBLXApp.swift`, Debug builds only) and republish the DNS generation when it installs a
    new list, so the tunnel picks it up without waiting for a DNS restart or allowlist edit.
