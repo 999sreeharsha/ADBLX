@@ -12,4 +12,15 @@ nonisolated enum BuildFeatures {
         return false
         #endif
     }
+
+
+    /// On in Debug, off in Release: Settings rows for features that don't exist yet
+    /// (`SettingsPlaceholderRow`), so a Release build never shows a row that leads nowhere.
+    static var settingsPlaceholders: Bool {
+        #if SETTINGS_PLACEHOLDERS_ENABLED
+        return true
+        #else
+        return false
+        #endif
+    }
 }

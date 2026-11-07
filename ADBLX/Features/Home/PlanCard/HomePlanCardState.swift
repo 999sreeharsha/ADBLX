@@ -99,13 +99,12 @@ nonisolated struct ProtectionBreakdown: Equatable, Sendable {
         case cookieBanners
         case indianSites
         case systemWideBlocking
-        case iCloudSync
 
         /// Needs Premium; the others work on the free plan.
         var requiresPremium: Bool {
             switch self {
             case .safariAdsTrackers, .allowlist, .filterUpdates: return false
-            case .youtubeAds, .cookieBanners, .indianSites, .systemWideBlocking, .iCloudSync: return true
+            case .youtubeAds, .cookieBanners, .indianSites, .systemWideBlocking: return true
             }
         }
 
@@ -118,7 +117,6 @@ nonisolated struct ProtectionBreakdown: Equatable, Sendable {
             case .cookieBanners: return "home.plan.item.cookieBanners"
             case .indianSites: return "home.plan.item.indianSites"
             case .systemWideBlocking: return "home.plan.item.systemWideBlocking"
-            case .iCloudSync: return "home.plan.item.iCloudSync"
             }
         }
 

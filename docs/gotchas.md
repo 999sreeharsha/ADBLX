@@ -126,26 +126,16 @@ which rows are load-bearing and which aren't before building on top of them:
   compiles the domains with `SafariAllowlistCompiler` (`FilterPipeline.swift:208`)
   and DNS enforces them too (ADR-0009). See SEC-01 in
   `docs/Security/Findings.md` for the remaining gap.
-- **Notifications and Safari Help are `ComingSoonState` navigation targets,
-  not real screens.** Both rows navigate successfully (no crash, no dead
-  link), but land on the same shared placeholder component used elsewhere in
-  the app for not-yet-built features. Notifications specifically needs real
-  `UNUserNotificationCenter` permission-status wiring before it can be
-  anything but a placeholder — there is no notification permission request or
-  status display anywhere in this codebase yet.
-- **Language is read-only and does not localize the app.** The row displays
-  `Locale.current`'s system language name accurately, but there is no in-app
-  language override — picking a different language anywhere else on the
-  device changes what this row shows, but nothing in Settings can change it.
-  Building an actual in-app language picker is a larger localization-
-  infrastructure task (separate from the `Localizable.xcstrings` string
-  migration work Sprint 4C already did), explicitly out of scope here.
-- **iCloud Sync stays hardcoded `false`/non-functional**, unchanged from the
-  pre-Sprint-5B mock — there is no iCloud sync backend anywhere in this
-  codebase. This one predates Sprint 5B entirely and was correctly left alone
-  (not a new gap), but is easy to lump in with the other half-wired rows above
-  if auditing this screen later — worth distinguishing "never was in scope"
-  from "deliberately deferred this sprint."
+- **Hidden in Release (2026-11-07):** Notifications, Safari Help and iCloud Sync are
+  `SettingsPlaceholderRow`s, shown only with `SETTINGS_PLACEHOLDERS_ENABLED` (set in
+  `Config/Debug.xcconfig` only). In Debug, Notifications and Safari Help still land on
+  `ComingSoonState`, and iCloud Sync still reads a hardcoded off: there is no notification
+  permission wiring and no iCloud sync backend. The Home plan card no longer lists iCloud sync.
+  Remove a row from `SettingsPlaceholderRow` only when its feature is real.
+- **Language opens the app's page in iOS Settings** (`SettingsView.languageSettingsURL`).
+  iOS shows a per-app language choice there only when the app has more than one localization.
+  Today `Localizable.xcstrings` has English only, so the page opens with no language option
+  until a second language is added.
 
 None of this is a defect in what shipped — every one of these was an explicit
 design-doc decision (`docs/superpowers/specs/2026-07-26-sprint5b-feature-live-data-design.md`,
