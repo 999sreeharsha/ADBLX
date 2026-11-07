@@ -259,6 +259,12 @@ not there yet), not an attack, and the safe response to both is the same.
 - Retry at the next allowed check, not in a loop. A rejection **advances** the update
   throttle, like a success: otherwise a bad publish or a missing signature would make every
   launch on every phone refetch the manifest for as long as the problem lasts.
+- A network failure doesn't advance it, and needs no separate minimum gap: the only automatic
+  check is at launch (`AutomaticUpdate.runIfDue` from `ADBLXApp`'s launch task). Foreground
+  handlers refresh the plan, reconcile and refresh the Protection status, but never fetch the
+  manifest; the update sheet runs only when the user asks (checked 2026-11-07). If a foreground
+  or background check is ever added, give network failures a minimum gap (about 15 minutes)
+  separate from the 6-hour throttle.
 - Log the reason as a case name and a count only (`docs/Architecture/Logging.md`): for example
   `manifest rejected reason=signature`, never a URL or ID. The DEBUG diagnostics screen shows
   consecutive failures, so one that lasts past a deploy can be seen during testing.
