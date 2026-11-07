@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 
 /// Where UpdateCoordinator fetches manifest.json from. A separate abstraction from
@@ -169,12 +170,17 @@ public enum AppCompositionRoot {
         )
     }
 
-    static func makeUpdateCoordinator(pipeline: FilterPipeline, store: FilterStore) -> UpdateCoordinator {
-        let session = makeHTTPSession()
+    /// `session` and `trustedKeys` exist for tests; the app always takes the defaults.
+    static func makeUpdateCoordinator(
+        pipeline: FilterPipeline,
+        store: FilterStore,
+        session: HTTPSession = makeHTTPSession(),
+        trustedKeys: [P256.Signing.PublicKey] = ManifestTrust.pinnedPublicKeys
+    ) -> UpdateCoordinator {
         let endpointProvider: ManifestEndpointProvider = AppManifestEndpointProvider()
         return UpdateCoordinator(
             manifestClient: ManifestClient(
-                session: session, endpoint: endpointProvider.manifestURL, verifier: ManifestTrust.verifier()
+                session: session, endpoint: endpointProvider.manifestURL, verifier: ManifestTrust.verifier(trustedKeys: trustedKeys)
             ),
             manifestStore: ManifestStore(filterStore: store),
             downloadClient: FilterDownloadClient(session: session),

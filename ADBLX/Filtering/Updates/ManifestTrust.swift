@@ -13,9 +13,9 @@ nonisolated enum ManifestTrust {
     /// Moving the site means adding the new base in a release *before* the move.
     static let allowedBases = [URL(string: "https://999sreeharsha.github.io/ADBLX")!]
 
-    /// What the app checks every downloaded manifest with.
-    static func verifier() -> ManifestVerifier {
-        ManifestVerifier(trustedKeys: pinnedPublicKeys, allowedBases: allowedBases, builtInMinimum: BundledManifest.minimumVersion())
+    /// What the app checks every downloaded manifest with. Only tests pass other keys.
+    static func verifier(trustedKeys: [P256.Signing.PublicKey] = pinnedPublicKeys) -> ManifestVerifier {
+        ManifestVerifier(trustedKeys: trustedKeys, allowedBases: allowedBases, builtInMinimum: BundledManifest.minimumVersion())
     }
 
     static var pinnedPublicKeys: [P256.Signing.PublicKey] {

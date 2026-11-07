@@ -231,6 +231,12 @@ The manifest, its signature and every list download are capped and streamed to d
 SEC-09's size-cap item. Planned caps: 256 KB for the manifest, 1 KB for the signature, and a
 per-list cap set from the largest real list with headroom.
 
+The manifest and signature caps are built: `URLSession.data(for:maxBytes:)` checks the
+declared length, then reads `bytes(for:)` one byte at a time and stops past the cap. That is
+fine for 256 KB but not for lists of several MB, where byte-by-byte async iteration costs real
+CPU on every update. The list cap must use a download task that streams to disk and cancels
+from its delegate once the bytes written pass the cap.
+
 ## When verification fails
 
 Treat it as temporary. The likeliest cause is a deploy still reaching the CDN (the signature
