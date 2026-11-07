@@ -247,8 +247,9 @@ not there yet), not an attack, and the safe response to both is the same.
   manifest again. Pending Safari reloads (`pending_reloads.json`) are still retried, as on a
   `304`.
 - Don't show it as an error. An automatic update says nothing and retries on the next run. A
-  manual update shows the neutral "Couldn't check for filter updates right now. Your current
-  filters are still on.", the same as a network failure. It does not mention verification.
+  manual update shows the sheet's existing failure text ("Unable to check for updates. Please
+  try again later.", `updateprogress.status.failed`), the same as a network failure. It does
+  not mention verification.
 - Retry at the next allowed check, not in a loop. A rejection **advances** the update
   throttle, like a success: otherwise a bad publish or a missing signature would make every
   launch on every phone refetch the manifest for as long as the problem lasts.

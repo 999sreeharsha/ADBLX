@@ -21,6 +21,7 @@ struct ReloadFailureSurfacingTests {
         reloads: ReloadRecorder,
         rules: Data? = nil,
         notModified: Bool = false,
+        unsigned: Bool = false,
         blockerState: ContentBlockerSettingsState = .enabled
     ) throws -> UpdateCoordinator {
         let reloader = ReloadCoordinator(timeoutSeconds: 3, reloadOperation: reloads.operation)
@@ -49,7 +50,9 @@ struct ReloadFailureSurfacingTests {
             store: store, writer: AtomicRuleWriter(), reloader: reloader, gate: FilterTransactionGate()
         )
         return UpdateCoordinator(
-            manifestClient: SignedManifests.signingClient(session: session, endpoint: manifestEndpoint),
+            manifestClient: unsigned
+                ? SignedManifests.client(session: session, endpoint: manifestEndpoint)
+                : SignedManifests.signingClient(session: session, endpoint: manifestEndpoint),
             manifestStore: ManifestStore(filterStore: store),
             downloadClient: FilterDownloadClient(session: session),
             pipeline: pipeline, store: store, reloader: reloader, extensionIdentifiers: ids,
@@ -132,6 +135,27 @@ struct ReloadFailureSurfacingTests {
         // Applied now, so nothing is left to retry.
         await UpdateProgressModel(stateProvider: enabled).start(coordinator: try makeCoordinator(store: store, reloads: reloads, notModified: true))
         #expect(reloads.calls.count == attemptsAfterUpdate + 2)
+    }
+
+    // Retrying a reload doesn't depend on the manifest, so a rejected one mustn't skip it.
+    @Test("a rejected manifest still retries a pending reload")
+    @MainActor
+    func rejectedManifestRetriesPendingReload() async throws {
+        let store = FilterStore.temporary()
+        let reloads = ReloadRecorder(failure: compileError)
+        let enabled = FixedBlockerState(.enabled)
+        await UpdateProgressModel(stateProvider: enabled).start(coordinator: try makeCoordinator(store: store, reloads: reloads))
+        let attemptsAfterUpdate = reloads.calls.count
+
+        reloads.failure = nil
+        let rejected = UpdateProgressModel(stateProvider: enabled)
+        await rejected.start(coordinator: try makeCoordinator(store: store, reloads: reloads, rules: Data("[]".utf8), unsigned: true))
+
+        #expect(reloads.calls.count == attemptsAfterUpdate + 1)
+        #expect(rejected.phase == .failed(String(localized: "updateprogress.status.failed")))
+        // Applied by that retry, so nothing is left pending.
+        await UpdateProgressModel(stateProvider: enabled).start(coordinator: try makeCoordinator(store: store, reloads: reloads, notModified: true))
+        #expect(reloads.calls.count == attemptsAfterUpdate + 1)
     }
 
     private let unknown = ContentBlockerSettingsState.unavailable("state unreadable")

@@ -113,19 +113,9 @@ struct ADBLXApp: App {
                     // lapsed user never downloads premium lists.
                     await reconciler.startObserving()
                     await reconciler.reconcile()
-                    let throttle = AppCompositionRoot.makeUpdateThrottle(store: store)
-                    guard await throttle.shouldRun(now: Date()) else { return }
-                    do {
-                        let result = try await coordinator.run()
-                        switch result {
-                        case .upToDate, .updated:
-                            try await throttle.recordSuccess(at: Date())
-                        case .rolledBack, .rollbackFailed:
-                            break
-                        }
-                    } catch {
-                        // Failed launches remain retryable on the next launch.
-                    }
+                    await AutomaticUpdate.runIfDue(
+                        coordinator: coordinator, throttle: AppCompositionRoot.makeUpdateThrottle(store: store)
+                    )
                 }
             }
         }

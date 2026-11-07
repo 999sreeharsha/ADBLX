@@ -29,9 +29,9 @@ actor UpdateThrottle {
         return now.timeIntervalSince(record.lastSuccessAt) >= interval
     }
 
-    /// Called only on `UpdateCoordinator.run()`'s success paths (`.upToDate`, `.updated`) —
-    /// never on `.rolledBack`/`.rollbackFailed`/a thrown error, so a failed update remains
-    /// retryable on the next launch.
+    /// Called on `UpdateCoordinator.run()`'s success paths (`.upToDate`, `.updated`) and for a
+    /// rejected manifest (`AutomaticUpdate`) — never on `.rolledBack`/`.rollbackFailed`/any
+    /// other thrown error, so those remain retryable on the next launch.
     func recordSuccess(at date: Date) async throws {
         let record = UpdateThrottleRecord(lastSuccessAt: date)
         let data = try JSONEncoder().encode(record)

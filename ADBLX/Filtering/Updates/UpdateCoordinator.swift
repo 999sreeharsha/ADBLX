@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 
 enum UpdateRunResult {
     case upToDate
@@ -24,6 +25,8 @@ actor UpdateCoordinator {
     private let entitlementService: EntitlementService
     private let gate: FilterTransactionGate
     private let pendingReloads: PendingReloads
+    private let rejectionLog: ManifestRejectionLog
+    private static let logger = Logger(subsystem: "com.ADBLX", category: "UpdateCoordinator")
     private var inFlightTask: Task<UpdateRunResult, Error>?
     // Bumped each time a NEW transaction task is created. `Task` is a struct with no
     // identity comparison, so this generation counter is what lets the creator of a
@@ -42,8 +45,10 @@ actor UpdateCoordinator {
         extensionIdentifiers: GroupExtensionIdentifiers,
         entitlementService: EntitlementService,
         gate: FilterTransactionGate = .shared,
-        stateProvider: ContentBlockerStateProviding = SystemContentBlockerStateProvider()
+        stateProvider: ContentBlockerStateProviding = SystemContentBlockerStateProvider(),
+        rejectionLog: ManifestRejectionLog = .shared
     ) {
+        self.rejectionLog = rejectionLog
         self.manifestClient = manifestClient
         self.manifestStore = manifestStore
         self.downloadClient = downloadClient
@@ -103,7 +108,7 @@ actor UpdateCoordinator {
         let cached = try await manifestStore.load()
         // Only a manifest that passed verification can set the floor for the rollback rule.
         let verifiedCache = cached?.signatureVerified == true ? cached : nil
-        let fetchResult = try await manifestClient.fetch(previousETag: cached?.etag, cached: verifiedCache?.manifest)
+        let fetchResult = try await fetchManifest(previousETag: cached?.etag, cached: verifiedCache?.manifest)
 
         let manifest: FilterManifest
         let etag: String?
@@ -216,6 +221,22 @@ actor UpdateCoordinator {
             }
             _ = await reloader.reload(extensionIdentifiers: Array(affectedExtensionIDs))
             return .rolledBack(reason: error)
+        }
+    }
+
+    /// A rejected manifest writes nothing and its ETag isn't saved (ManifestTrust.md, "When
+    /// verification fails"). Retrying a failed Safari reload doesn't depend on the manifest, so
+    /// it still runs, as on a 304.
+    private func fetchManifest(previousETag: String?, cached: FilterManifest?) async throws -> ManifestFetchResult {
+        do {
+            let result = try await manifestClient.fetch(previousETag: previousETag, cached: cached)
+            rejectionLog.recordAccepted()
+            return result
+        } catch let rejection as ManifestRejection {
+            Self.logger.notice("manifest rejected reason=\(String(describing: rejection), privacy: .public)")
+            rejectionLog.recordRejection(rejection)
+            _ = await upToDateResult()
+            throw rejection
         }
     }
 
