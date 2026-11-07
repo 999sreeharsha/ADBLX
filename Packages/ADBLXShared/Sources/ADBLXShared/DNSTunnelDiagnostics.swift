@@ -11,11 +11,15 @@ public struct DNSTunnelCountersSnapshot: Codable, Equatable, Sendable {
     public var responsesWritten: UInt64 = 0
     public var upstreamTimeouts: UInt64 = 0
     public var upstreamSendErrors: UInt64 = 0
+    /// Queries tried a second time on another upstream after a timeout or send failure.
+    public var upstreamRetries: UInt64 = 0
     public var servfailsSent: UInt64 = 0
     public var truncatedUpstreamAnswers: UInt64 = 0
     public var tcpSegments: UInt64 = 0
     public var tcpQueries: UInt64 = 0
     public var unparsablePackets: UInt64 = 0
+    /// Times the upstream sockets were replaced after a network change.
+    public var socketResets: UInt64 = 0
     /// Every query is forwarded and nothing is blocked (an empty blocklist).
     public var passthrough: Bool = false
 

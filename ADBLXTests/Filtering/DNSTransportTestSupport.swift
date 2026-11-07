@@ -109,6 +109,7 @@ nonisolated final class ScriptedUpstreamSocket: @unchecked Sendable {
     private let failure: Error?
     private let senderIP: String
     let sent = OSAllocatedUnfairLock(initialState: [Data]())
+    let isClosed = OSAllocatedUnfairLock(initialState: false)
 
     init(senderIP: String = "9.9.9.9", failure: Error? = nil, reply: @escaping @Sendable (Data) -> Data? = { _ in nil }) {
         self.reply = reply
@@ -122,7 +123,7 @@ nonisolated final class ScriptedUpstreamSocket: @unchecked Sendable {
         if let response = reply(payload) { handler.withLock { $0 }?(response, senderIP, 53) }
     }
     func setResponseHandler(_ h: @escaping @Sendable (Data, String, UInt16) -> Void) { handler.withLock { $0 = h } }
-    func close() {}
+    func close() { isClosed.withLock { $0 = true } }
 }
 extension ScriptedUpstreamSocket: DNSUpstreamSocketProtocol {}
 
@@ -197,3 +198,12 @@ nonisolated enum TestDNS {
     /// DNS payload of a UDP packet the forwarder wrote.
     static func dnsPayload(ofUDPPacket p: Data) -> Data { p.subdata(in: 28..<p.count) }
 }
+
+/// A network path as the tunnel sees it, with the changes a test wants to simulate.
+nonisolated final class FakePathObserver: @unchecked Sendable {
+    private let handler = OSAllocatedUnfairLock<(@Sendable (NetworkPathSnapshot) -> Void)?>(initialState: nil)
+    func start(_ handler: @escaping @Sendable (NetworkPathSnapshot) -> Void) { self.handler.withLock { $0 = handler } }
+    func stop() { handler.withLock { $0 = nil } }
+    func emit(_ snapshot: NetworkPathSnapshot) { handler.withLock { $0 }?(snapshot) }
+}
+extension FakePathObserver: NetworkPathObserver {}

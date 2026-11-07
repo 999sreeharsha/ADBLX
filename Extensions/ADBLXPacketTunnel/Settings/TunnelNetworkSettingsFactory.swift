@@ -9,7 +9,9 @@ public enum TunnelNetworkSettingsFactory {
     public static let fakeDNSServer = "198.51.100.1"
     static let quad9IPv4 = "9.9.9.9"
 
-    public static func make(upstreamIPv4: String, upstreamIPv6: String?) -> NEPacketTunnelNetworkSettings {
+    public static func make(
+        upstreamIPv4: String, upstreamIPv6: String?, upstreamIPv4Fallback: String? = nil
+    ) -> NEPacketTunnelNetworkSettings {
         let settings = NEPacketTunnelNetworkSettings(tunnelRemoteAddress: "127.0.0.1")
 
         let dnsSettings = NEDNSSettings(servers: [fakeDNSServer])
@@ -27,6 +29,9 @@ public enum TunnelNetworkSettingsFactory {
         ]
         if upstreamIPv4 != quad9IPv4 {
             excludedV4Routes.append(NEIPv4Route(destinationAddress: quad9IPv4, subnetMask: "255.255.255.255"))
+        }
+        if let upstreamIPv4Fallback {
+            excludedV4Routes.append(NEIPv4Route(destinationAddress: upstreamIPv4Fallback, subnetMask: "255.255.255.255"))
         }
         ipv4Settings.excludedRoutes = excludedV4Routes
         settings.ipv4Settings = ipv4Settings
