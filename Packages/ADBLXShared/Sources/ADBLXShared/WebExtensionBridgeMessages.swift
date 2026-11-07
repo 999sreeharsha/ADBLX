@@ -90,23 +90,22 @@ public struct WebExtensionCheckVersionResponse: Codable, Equatable, Sendable {
     }
 }
 
-/// Response payload for `fetchGeneration` native messaging request.
+/// Response payload for `fetchGeneration` native messaging request. No checksum: the rules and
+/// their checksum sit in the same App Group with the same writer, so checking one against the
+/// other protected nothing (SEC-18).
 public struct WebExtensionFetchGenerationResponse: Codable, Equatable, Sendable {
     public let generation: UInt64
     public let generationStatus: WebExtensionGenerationStatus
     public let rulesJSON: String?
-    public let checksum: String?
     
     public init(
         generation: UInt64,
         generationStatus: WebExtensionGenerationStatus,
-        rulesJSON: String? = nil,
-        checksum: String? = nil
+        rulesJSON: String? = nil
     ) {
         self.generation = generation
         self.generationStatus = generationStatus
         self.rulesJSON = rulesJSON
-        self.checksum = checksum
     }
     
     public func toDictionary() -> [String: Any] {
@@ -118,9 +117,6 @@ public struct WebExtensionFetchGenerationResponse: Codable, Equatable, Sendable 
            let data = rulesJSON.data(using: .utf8),
            let obj = try? JSONSerialization.jsonObject(with: data) {
             dict["rules"] = obj
-        }
-        if let checksum = checksum {
-            dict["checksum"] = checksum
         }
         return dict
     }

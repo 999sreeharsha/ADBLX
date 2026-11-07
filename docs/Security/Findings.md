@@ -25,8 +25,8 @@ Scan reports are in the gitignored `CLAUDE-SECURITY-*` folders at the repo root.
 | SEC-08 | Each ad skip sends two clicks | LOW | Manual | Fixed; check skip on a device |
 | **Pre-launch blockers** | | | | |
 | SEC-09 | Manifest isn't authenticated or validated | HIGH | Overruled | Verification and list cap built; waiting on K1/K2, the first signed manifest and the device memory check |
-| SEC-10 | `PublicSuffixList` widens allowlisted domains | MEDIUM | Overruled | Open |
-| SEC-11 | Web-extension rule payload needs an audit | To confirm | Review | Open |
+| SEC-10 | `PublicSuffixList` widens allowlisted domains | MEDIUM | Overruled | Fixed for country codes; private gTLD suffixes open |
+| SEC-11 | Web-extension rule payload needs an audit | To confirm | Review | Read end to end: no network path, no scriptlets; selector escape closed |
 | **With the DNS track** | | | | |
 | SEC-12 | No DNS over TCP; responses over 4096 bytes truncated | MEDIUM | Manual | Open |
 | SEC-13 | Tunnel start check allows `.free` | LOW | Panel | Open |
@@ -35,7 +35,7 @@ Scan reports are in the gitignored `CLAUDE-SECURITY-*` folders at the repo root.
 | **Decide and record** | | | | |
 | SEC-16 | Clock set forward extends the trial | LOW | Panel | Blocked on the PD-01 trial decision |
 | SEC-17 | macOS `entitlement.json` is user-editable | LOW | Panel | Accepted |
-| SEC-18 | Web-extension rule checksum is never verified | LOW | Manual | Open |
+| SEC-18 | Web-extension rule checksum is never verified | LOW | Manual | Fixed (field removed) |
 
 ## Fix now
 
@@ -160,6 +160,10 @@ The original items:
 
 **Fix:** keep the full host when the registrable domain is uncertain. That closes the over-allowlisting in a few lines, at no memory cost.
 
+**Fixed (2026-11-07):** under a two-letter TLD, a second-level label that registries use as a category (`co`, `com`, `org`, `gov`, `ac`, `or`, …) and that the curated set doesn't know now keeps the full host: `shop.example.co.kr` stays `shop.example.co.kr`, never `co.kr` (`PublicSuffixListTests`). Narrower, never wider; the cost is an allowlist entry that covers one host rather than the whole site.
+
+**Still a limit:** private suffixes under generic TLDs (`wordpress.com`, `blogspot.com` and other platforms not in the curated set) still fall back to the last two labels, so allowlisting `someblog.wordpress.com` covers every WordPress site. Only the full list closes that.
+
 **Nice-to-have, not a launch blocker:** bundle the full Public Suffix List in the main app only, parsed lazily once. It's about 250 KB on disk and 1–2 MB as a `Set` (review's estimate). The list is MPL-2.0, so credit it in `ADBLX/Features/Settings/FilterAttributionView.swift`.
 
 ### SEC-11: Web-extension rule payload needs an audit
@@ -173,6 +177,14 @@ If the extension could evaluate strings arriving from the network, a compromised
 Check the scriptlet path specifically, because a grep for `eval` won't catch it:
 - Can a manifest rule name a scriptlet that isn't bundled?
 - Can scriptlet arguments reach `innerHTML`, `setAttribute('on…')` or `style` in a way that executes?
+
+**Read end to end (2026-11-07):**
+- **Source:** the only publisher of web-extension rules is `WebExtensionBootstrap`, from `defaultRulesJSON`, a constant compiled into the app. No manifest or network data reaches these rules, so a compromised manifest can't change them.
+- **Validation:** `WebExtensionSchemaValidator` runs on every publish (size, schema version, the YouTube selectors and parameters, the disable mask's domains). It doesn't check `cosmetics` or `antiAdblock`, which nothing reads today.
+- **Use in the page:** `content.js` uses the rules only as CSS selectors (`querySelector`, `querySelectorAll`) and joins the hide selectors into one `<style>` element through `textContent`. No `eval`, `Function`, `innerHTML`, `setAttribute` or script injection, and nothing reads `cosmetics` or `antiAdblock`.
+- **Scriptlets:** there is no scriptlet engine, so no rule can name a scriptlet or pass it arguments. Both questions above have no path to check.
+- **Hardened:** because the hide selectors are joined into one CSS rule, a selector containing `}` could have closed it and added CSS of its own (restyling, or a `url()` fetch as a tracking pixel). The validator now rejects `{`, `}`, `@` and `url(` in selectors (`WebExtensionSchemaValidatorTests`). Harmless while the rules are compiled in; it matters if they ever come from the network.
+- **If rules ever come from the network:** validate every section, not only `youtube`, and sign them like the manifest.
 
 ## With the DNS track
 
@@ -238,6 +250,8 @@ These can't be reached in a release while DNS Protection stays off (see the open
 `SafariWebExtensionBridgeProcessor.swift:131` passes `sha256Rules` through, and nothing checks it. Verifying it wouldn't protect anything: the rules and the checksum sit in the same App Group with the same writer, and `AtomicRuleWriter` already prevents partial writes.
 
 **Decision:** drop the field from the bridge response and the JS together. Grep `content.js` for any use of it first, because removing it only from the Swift side breaks JS that reads it. Keep the manifest's per-filter SHA-256: downloads cross a real trust boundary, unlike the App Group read.
+
+**Fixed (2026-11-07):** it was still there on 2026-11-07, so it's now gone from `WebExtensionFetchGenerationResponse`, the bridge processor and `background.js` (state, storage and the rules response). `content.js` never read it. The bridge still requires the generation's manifest to decode, since it's written last and so marks a complete generation. Tests: the bridge response has no `checksum`, and `background.js` doesn't pass one on even from a native side that still sends it.
 
 ## Coverage
 

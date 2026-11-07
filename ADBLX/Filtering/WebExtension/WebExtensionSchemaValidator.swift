@@ -131,7 +131,9 @@ public struct WebExtensionSchemaValidator {
             )
         }
         
-        let prohibitedSubstrings = ["javascript:", "expression(", "-moz-binding", "<script", "eval("]
+        // content.js joins hide selectors into one CSS rule, so braces, at-rules and url() would
+        // let a selector add CSS of its own (SEC-11). A selector never needs them.
+        let prohibitedSubstrings = ["javascript:", "expression(", "-moz-binding", "<script", "eval(", "{", "}", "@", "url("]
         let lower = selector.lowercased()
         for prohibited in prohibitedSubstrings {
             if lower.contains(prohibited) {

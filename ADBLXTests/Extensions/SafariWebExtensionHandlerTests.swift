@@ -124,7 +124,8 @@ final class SafariWebExtensionHandlerTests: XCTestCase {
         XCTAssertEqual(response["generation"] as? Int, 5)
         XCTAssertEqual(response["generationStatus"] as? String, "ok")
         XCTAssertNotNil(response["rules"])
-        XCTAssertNotNil(response["checksum"])
+        // SEC-18: the rules' checksum sat beside them in the App Group, so verifying it protected nothing.
+        XCTAssertNil(response["checksum"])
     }
     
     func testFetchGenerationNonExistentReturnsUnavailable() throws {

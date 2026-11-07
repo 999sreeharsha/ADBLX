@@ -31,6 +31,14 @@ public struct PublicSuffixList: Sendable {
         "vercel.app", "netlify.app", "herokuapp.com", "fly.dev", "deno.dev"
     ]
 
+    /// Second-level labels that country registries use as categories (`co.kr`, `com.mx`,
+    /// `or.jp`). Under a two-letter TLD, one of these not in `multiPartSuffixes` means the
+    /// registrable domain is uncertain.
+    private static let registryLikeSecondLevels: Set<String> = [
+        "ac", "co", "com", "edu", "gen", "go", "gob", "gov", "gv", "id", "info", "int", "ltd",
+        "me", "mil", "ne", "net", "nom", "or", "org", "plc", "sch", "web"
+    ]
+
     /// Extracts the eTLD+1 (effective top-level domain + 1 label, i.e. the registrable domain).
     /// For example:
     /// - `news.bbc.co.uk` -> `bbc.co.uk`
@@ -49,6 +57,15 @@ public struct PublicSuffixList: Sendable {
                 // If 3+ labels, take [count - 3].[count - 2].[count - 1] (e.g. bbc.co.uk)
                 return "\(labels[labels.count - 3]).\(twoSuffix)"
             }
+        }
+
+        // A country code whose second level looks like a registry (co.kr, com.mx, ac.th) that
+        // the curated set doesn't know: the last two labels would be the suffix itself, and
+        // allowlisting it would cover every site under it (SEC-10). Keep the full host instead:
+        // narrower, never wider.
+        let tld = labels[labels.count - 1]
+        if tld.count == 2, registryLikeSecondLevels.contains(labels[labels.count - 2]) {
+            return clean
         }
 
         // Standard 2-label TLD extraction (e.g. example.com from sub.example.com)

@@ -84,7 +84,8 @@ test("Cold boot: checkVersion -> fetchGeneration -> storage.local persisted", as
     assert.equal(config.layer3Enabled, true);
     assert.equal(config.generation, 1);
     assert.deepEqual(config.rules, { schemaVersion: 1, youtube: { enabled: true } });
-    assert.equal(config.checksum, "sha256_mock");
+    // SEC-18: nothing verified it, so it's no longer passed on, even from a host that still sends it.
+    assert.equal("checksum" in config, false);
 
     const sent = env.getNativeMessagesSent();
     assert.equal(sent.length, 2);

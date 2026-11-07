@@ -130,6 +130,33 @@ final class WebExtensionSchemaValidatorTests: XCTestCase {
         }
     }
     
+    // content.js joins the hide selectors into one CSS rule (`a, b { display: none }`), so a
+    // selector that closes the rule or opens a block, an at-rule or a url() could add CSS of its
+    // own: restyle the page, or fetch a URL as a tracking pixel (SEC-11). Selectors never need these.
+    func testSelectorThatCouldEscapeTheHideRuleIsRejected() {
+        let escapes = [
+            ".ad } body { background: url(https://example.invalid/p) }",
+            ".ad{display:block}",
+            "@import \\\"https://example.invalid/x.css\\\"",
+            ".ad[style*=\\\"url(https://example.invalid)\\\"]"
+        ]
+        for escape in escapes {
+            let json = validSampleRulesJSON().replacingOccurrences(
+                of: "\".ytp-ad-player-overlay\"", with: "\"\(escape)\""
+            ).data(using: .utf8)!
+            XCTAssertThrowsError(try validator.validate(rulesData: json), escape) { error in
+                guard case WebExtensionValidationError.prohibitedSelectorConstruct = error else {
+                    XCTFail("Expected prohibitedSelectorConstruct for \(escape), got \(error)")
+                    return
+                }
+            }
+        }
+    }
+
+    func testShippedDefaultRulesPass() throws {
+        try validator.validate(rulesData: Data(WebExtensionBootstrap.defaultRulesJSON.utf8))
+    }
+
     func testSelectorTooLongRejected() {
         let longSelector = String(repeating: "a", count: 300)
         let jsonLong = validSampleRulesJSON().replacingOccurrences(
