@@ -8,12 +8,20 @@ nonisolated struct CompiledSources: Codable, Equatable, Sendable {
     /// Ads fallback when nothing is installed. Not drift.
     static let uninstalledFallbackID = "ads-bundled"
 
+    /// Bump whenever the compiler's output can change for the same input (`SafariRuleGenerator`,
+    /// `NativeABPRuleCompiler`, the partitioner): every installed group is then recompiled at
+    /// the next launch (`FilterPipeline.recompileIfCompilerChanged`).
+    static let currentCompilerVersion = 1
+
     var sourceIDs: [String]
     /// Size of the rules file this sidecar describes. A mismatch means a crash between the two
     /// writes, which the source IDs can't show. An mtime wouldn't: the atomic rename keeps the
     /// temp file's.
     var compiledByteCount: Int
     var ruleCount: Int
+    /// The `currentCompilerVersion` that wrote these rules; `nil` in sidecars written before it
+    /// was recorded, which counts as another version.
+    var compilerVersion: Int?
 
     static func rulesFilename(for group: FilterGroup) -> String {
         "\(group.rawValue.capitalized).json"
