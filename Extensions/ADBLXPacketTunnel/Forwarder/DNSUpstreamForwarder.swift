@@ -432,17 +432,12 @@ public actor DNSUpstreamForwarder {
             base[6] = 17 // UDP
             base[7] = 64
             
-            var srcIP = pending.clientDstIPv6
-            var dstIP = pending.clientSrcIPv6
-            withUnsafePointer(to: &srcIP) { ptr in
-                ptr.withMemoryRebound(to: UInt8.self, capacity: 16) { rawSrc in
-                    for i in 0..<16 { base[8 + i] = rawSrc[i] }
-                }
-            }
-            withUnsafePointer(to: &dstIP) { ptr in
-                ptr.withMemoryRebound(to: UInt8.self, capacity: 16) { rawDst in
-                    for i in 0..<16 { base[24 + i] = rawDst[i] }
-                }
+            let srcIP = pending.clientDstIPv6
+            let dstIP = pending.clientSrcIPv6
+            let srcBytes = IPv6Bytes.make(srcIP), dstBytes = IPv6Bytes.make(dstIP)
+            for i in 0..<16 {
+                base[8 + i] = srcBytes[i]
+                base[24 + i] = dstBytes[i]
             }
             
             // UDP Header

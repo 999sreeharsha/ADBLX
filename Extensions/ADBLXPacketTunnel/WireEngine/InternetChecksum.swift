@@ -93,16 +93,14 @@ public enum InternetChecksum {
         
         // IPv6 Pseudo-header:
         // Src IP (16 bytes = 8 16-bit words)
-        withUnsafeBytes(of: srcIP) { raw in
-            for i in stride(from: 0, to: 16, by: 2) {
-                sum &+= (UInt32(raw[i]) << 8) | UInt32(raw[i + 1])
-            }
+        let srcBytes = IPv6Bytes.make(srcIP)
+        for i in stride(from: 0, to: 16, by: 2) {
+            sum &+= (UInt32(srcBytes[i]) << 8) | UInt32(srcBytes[i + 1])
         }
         // Dst IP (16 bytes = 8 16-bit words)
-        withUnsafeBytes(of: dstIP) { raw in
-            for i in stride(from: 0, to: 16, by: 2) {
-                sum &+= (UInt32(raw[i]) << 8) | UInt32(raw[i + 1])
-            }
+        let dstBytes = IPv6Bytes.make(dstIP)
+        for i in stride(from: 0, to: 16, by: 2) {
+            sum &+= (UInt32(dstBytes[i]) << 8) | UInt32(dstBytes[i + 1])
         }
         // Upper-Layer Packet Length (4 bytes)
         sum &+= (UInt32(udpPacket.count) >> 16) & 0xFFFF

@@ -107,17 +107,19 @@ nonisolated final class ScriptedUpstreamSocket: @unchecked Sendable {
     private let handler = OSAllocatedUnfairLock<(@Sendable (Data, String, UInt16) -> Void)?>(initialState: nil)
     private let reply: @Sendable (Data) -> Data?
     private let failure: Error?
+    private let senderIP: String
     let sent = OSAllocatedUnfairLock(initialState: [Data]())
 
-    init(failure: Error? = nil, reply: @escaping @Sendable (Data) -> Data? = { _ in nil }) {
+    init(senderIP: String = "9.9.9.9", failure: Error? = nil, reply: @escaping @Sendable (Data) -> Data? = { _ in nil }) {
         self.reply = reply
         self.failure = failure
+        self.senderIP = senderIP
     }
 
     func send(payload: Data) async throws {
         if let failure { throw failure }
         sent.withLock { $0.append(payload) }
-        if let response = reply(payload) { handler.withLock { $0 }?(response, "9.9.9.9", 53) }
+        if let response = reply(payload) { handler.withLock { $0 }?(response, senderIP, 53) }
     }
     func setResponseHandler(_ h: @escaping @Sendable (Data, String, UInt16) -> Void) { handler.withLock { $0 = h } }
     func close() {}

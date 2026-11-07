@@ -142,11 +142,10 @@ public enum NXDOMAINResponseBuilder {
                 let srcIP = query.dstIPv6
                 let dstIP = query.srcIPv6
                 
-                withUnsafeBytes(of: srcIP) { srcRaw in
-                    for i in 0..<16 { base[8 + i] = srcRaw[i] }
-                }
-                withUnsafeBytes(of: dstIP) { dstRaw in
-                    for i in 0..<16 { base[24 + i] = dstRaw[i] }
+                let srcBytes = IPv6Bytes.make(srcIP), dstBytes = IPv6Bytes.make(dstIP)
+                for i in 0..<16 {
+                    base[8 + i] = srcBytes[i]
+                    base[24 + i] = dstBytes[i]
                 }
                 
                 // 2. UDP Header
