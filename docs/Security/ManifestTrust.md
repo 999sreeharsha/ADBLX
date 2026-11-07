@@ -275,12 +275,15 @@ manifest replaces it.
 2. Publisher: signature pruning (7 days, `signatures/index.json`) and the `manifestVersion`
    timestamp, and the ID-pattern check in `Validator`. **Done.**
 3. Generate K1 (`keygen --secure-enclave`) and K2 (a key file, written to offline storage)
-   together, and record both public keys in the app. The algorithm is settled: P-256.
-4. App: download cap and streaming (SEC-09 size cap), then signature fetch and verification,
-   then the rollback rule (cached version and built-in minimum), ID, duplicate, group and
-   `sourceURL` rules, each with a test that the whole manifest is rejected and the installed
-   rules are unchanged. That includes a fresh install served an old, validly signed manifest:
-   it keeps its bundled rules and reports a failed update.
+   together, and record both public keys in `ManifestTrust.productionPublicKeys`. The
+   algorithm is settled: P-256. **On the critical path:** the archive check fails every
+   Release archive, for any feature, until both are pinned and a signed manifest is live.
+4. App: signature fetch and verification, the rollback rule (cached version and built-in
+   minimum), ID, duplicate, group and `sourceURL` rules, the manifest cap, soft failure and
+   redirects, each with a test that the whole manifest is rejected and the installed rules
+   are unchanged, including a fresh install served an old, validly signed manifest. **Done**
+   (plan `docs/superpowers/plans/2026-11-06-ios-manifest-verification.md`). Still open: the
+   list download cap and streaming to disk (SEC-09 size cap; see Size).
 5. Sign and deploy the first signed manifest **before** the first TestFlight upload. Nothing has
    shipped, so there is no unsigned transition: every build requires a signature from the
    first release on. An app that requires a signature, reading a site that has none, can never

@@ -590,3 +590,23 @@ can't be served an older, still validly signed one (`BundledManifest`,
   key in a locked session, not a regression.
 
 Found in: iOS manifest verification, Task 3, 2026-11-07
+
+## Every downloaded manifest is verified, and a rejection is silent by design
+
+`ManifestClient` returns a manifest only once `ManifestVerifier` accepts it
+(`docs/Security/ManifestTrust.md`). Three things follow:
+
+- **Until K1 and K2 are pinned, updates never install anything.** Every manifest is rejected
+  on its signature and the app stays on its bundled lists. The sheet shows the ordinary
+  "Unable to check for updates" text and nothing else says why. The DEBUG Developer screen's
+  "Manifest rejections" row and the `manifest rejected reason=<case>` log line do.
+- **A rejection advances the update throttle**, so after one the next automatic check waits
+  the full 6 hours. Use the sheet's manual update to retry sooner.
+- **Test manifests must be signed and follow the rules.** Build the client with
+  `SignedManifests.signingClient` (or serve `SignedManifests.responses`) and give fixtures a
+  timestamp `manifestVersion` and `sourceURL`s of the form
+  `<manifest directory>/filters/<group>/<id>.txt`. A fixture that breaks a rule is rejected
+  before the code under test runs, and a test that only expects "some error" passes for the
+  wrong reason; assert the specific error.
+
+Found in: iOS manifest verification, Tasks 4 and 5, 2026-11-07
