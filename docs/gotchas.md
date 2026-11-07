@@ -290,9 +290,10 @@ clock-tamper resistant (`lastObservedDate` guards against moving the clock
 backwards between observations, not against a reinstall-then-wipe).
 
 Candidate fix if review pushes back: a zero-price non-consumable "15-Day
-Premium Trial". If migrated, existing `TrialRecord`s must be grandfathered
-(honour the remaining days) rather than reset. Keep trial access behind the
-`TrialSource` protocol (Plan State work) so that swap touches one type.
+Premium Trial". No grandfathering is needed while the app is unreleased (no live
+trials exist); revisit that if the swap happens after the first TestFlight or
+App Store build. Keep trial access behind the `TrialSource` protocol (Plan State
+work) so that swap touches one type.
 
 Found in: Plan State + Downgrade planning, 2026-10-29
 
@@ -669,3 +670,15 @@ Found in: iOS manifest verification, Task 3, 2026-11-07
   wrong reason; assert the specific error.
 
 Found in: iOS manifest verification, Tasks 4 and 5, 2026-11-07
+
+## `URLSession.download(for:delegate:)` never calls the task delegate's `didWriteData`
+
+On this toolchain (Xcode 26.6, iOS simulator), the async `download(for:delegate:)` gives its
+per-task delegate no progress callbacks at all, so a size cap can't cancel it mid-download:
+the whole body arrives. A download task made with `downloadTask(with:)`, with
+`task.delegate` set, does get `didWriteData` per chunk, with `totalBytesExpectedToWrite`, and
+can be cancelled from it. The session delegate (`RedirectGuard`) still handles redirects for
+such a task. A `URLProtocol` stub must send the body in several chunks to exercise this: one
+`didLoad` call gives one callback.
+
+Found in: list download cap spike, 2026-11-07

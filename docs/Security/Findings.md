@@ -24,7 +24,7 @@ Scan reports are in the gitignored `CLAUDE-SECURITY-*` folders at the repo root.
 | SEC-07 | Benchmark spike files are in the tunnel folder | LOW | Manual | Fixed |
 | SEC-08 | Each ad skip sends two clicks | LOW | Manual | Fixed; check skip on a device |
 | **Pre-launch blockers** | | | | |
-| SEC-09 | Manifest isn't authenticated or validated | HIGH | Overruled | Verification built; waiting on K1/K2 and the first signed manifest; list size cap open |
+| SEC-09 | Manifest isn't authenticated or validated | HIGH | Overruled | Verification and list cap built; waiting on K1/K2, the first signed manifest and the device memory check |
 | SEC-10 | `PublicSuffixList` widens allowlisted domains | MEDIUM | Overruled | Open |
 | SEC-11 | Web-extension rule payload needs an audit | To confirm | Review | Open |
 | **With the DNS track** | | | | |
@@ -142,7 +142,8 @@ Design: `docs/Security/ManifestTrust.md`.
 - K1 and K2 aren't generated, so production builds reject every manifest and stay on the
   bundled lists. Pinning them and publishing the first signed manifest are on the release
   checklist (`docs/AppStoreSetup.md`).
-- The list size cap and streaming to disk (last bullet below).
+- The list size cap is built (8 MB, streamed to disk, 2026-11-07; `ManifestTrust.md` Size).
+  The Allocations trace on a device (last bullet below) is still to do.
 
 The original items:
 

@@ -7,6 +7,10 @@ enum Validator {
     /// rejects a manifest with any other id (docs/Security/ManifestTrust.md, Filter IDs).
     static let idPattern = "^[a-z0-9][a-z0-9-]{0,63}$"
 
+    /// The app refuses any list over this (`FilterDownloadClient.maxListBytes`, SEC-09), so a
+    /// payload over it is never published. Keep the two equal.
+    static let maxListBytes = 8 * 1_024 * 1_024
+
     static func isValidID(_ id: String) -> Bool {
         id.range(of: idPattern, options: .regularExpression) != nil
     }
@@ -50,7 +54,8 @@ enum Validator {
     static func validate(
         registry: Registry,
         metadataDirectory: URL,
-        payloadDirectory: URL
+        payloadDirectory: URL,
+        maxPayloadBytes: Int = Validator.maxListBytes
     ) throws -> ValidationReport {
         var errors = validateRegistry(registry)
 
@@ -86,6 +91,9 @@ enum Validator {
                 .appendingPathComponent("\(entry.id).txt")
             if !FileManager.default.fileExists(atPath: payloadURL.path) {
                 errors.append(.missingPayload(id: entry.id, expectedPath: payloadURL.path))
+            } else if let size = (try? FileManager.default.attributesOfItem(atPath: payloadURL.path)[.size] as? NSNumber)?.intValue,
+                      size > maxPayloadBytes {
+                errors.append(.payloadTooLarge(id: entry.id, bytes: size, maxBytes: maxPayloadBytes))
             }
         }
 

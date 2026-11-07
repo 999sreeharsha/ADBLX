@@ -42,4 +42,16 @@ struct ChecksumTests {
             )
         }
     }
+
+    // A list is hashed from disk in chunks, so verify never holds a whole list in memory.
+    @Test("hashing a file in chunks gives the same digest as hashing it in memory", arguments: [0, 5, 7, 23])
+    func chunkedFileDigestMatches(size: Int) throws {
+        let data = Data((0..<size).map { UInt8($0 % 251) })
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("chunked-\(UUID().uuidString)")
+        try data.write(to: url)
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        // 7-byte chunks: empty, under one chunk, exactly one, and several plus a remainder.
+        #expect(try Checksum.sha256Hex(ofFileAt: url, chunkSize: 7) == Checksum.sha256Hex(of: data))
+    }
 }

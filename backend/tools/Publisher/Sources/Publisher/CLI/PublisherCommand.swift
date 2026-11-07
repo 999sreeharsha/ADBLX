@@ -73,6 +73,8 @@ enum PublisherPipeline {
             return "Duplicate metadata files for id \"\(id)\""
         case .missingPayload(let id, let expectedPath):
             return "Missing payload for \"\(id)\" (expected at \(expectedPath))"
+        case .payloadTooLarge(let id, let bytes, let maxBytes):
+            return "Payload for \"\(id)\" is \(bytes) bytes, over the app's \(maxBytes)-byte list cap"
         }
     }
 }
