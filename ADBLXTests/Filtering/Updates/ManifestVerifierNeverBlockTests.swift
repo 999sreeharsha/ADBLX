@@ -125,6 +125,43 @@ struct ManifestVerifierNeverBlockTests {
         #expect(rejection(of: verify(bytes(manifest(neverBlock(url))))) == .sourceURL)
     }
 
+    @Test("the host is the parsed host: userinfo, a port, a trailing dot, another case or an encoded dot cannot pass for the allowed one")
+    func parsedHostNotPrefix() {
+        let urls = [
+            "https://999sreeharsha.github.io@evil.example/ADBLX/filters/dns/never-block.txt",
+            "https://999sreeharsha.github.io:evil@evil.example/ADBLX/filters/dns/never-block.txt",
+            "https://evil.example\\@999sreeharsha.github.io/ADBLX/filters/dns/never-block.txt",
+            "https://999sreeharsha.github.io:8443/ADBLX/filters/dns/never-block.txt",
+            "https://999sreeharsha.github.io./ADBLX/filters/dns/never-block.txt",
+            "https://999SREEHARSHA.github.io/ADBLX/filters/dns/never-block.txt",
+            "https://999sreeharsha%2Egithub.io/ADBLX/filters/dns/never-block.txt",
+            "https://999sreeharsha.github.io/ADBLX/filters/dns/never%2Dblock.txt",
+            "https://999sreeharsha.github.io/ADBLX/filters/dns/never-block.txt/"
+        ]
+        for url in urls {
+            guard let parsed = URL(string: url) else { continue }   // an unparseable URL can't reach the verifier at all
+            let entry = DNSNeverBlockEntry(version: "2026-11-07", sourceURL: parsed, checksumSHA256: String(repeating: "b", count: 64), domainCount: 90)
+            #expect(rejection(of: verify(bytes(manifest(entry)))) == .sourceURL, "\(url) must be rejected")
+        }
+    }
+
+    @Test("the same holds for a filter entry's source URL")
+    func filterEntryParsedHost() {
+        let urls = [
+            "https://999sreeharsha.github.io@evil.example/ADBLX/filters/ads/easylist.txt",
+            "https://999sreeharsha.github.io:8443/ADBLX/filters/ads/easylist.txt",
+            "https://999sreeharsha.github.io.evil.example/ADBLX/filters/ads/easylist.txt"
+        ]
+        for url in urls {
+            let entry = FilterManifest.Entry(
+                id: "easylist", name: "EasyList", group: .ads, sourceURL: URL(string: url)!, version: "2026-11-06",
+                checksumSHA256: String(repeating: "a", count: 64), ruleCount: 1, enabledByDefault: true, premium: false
+            )
+            let m = FilterManifest(manifestVersion: "2026-11-07T09:30:00Z", entries: [entry])
+            #expect(rejection(of: verify(bytes(m))) == .sourceURL, "\(url) must be rejected")
+        }
+    }
+
     // MARK: - Same version
 
     @Test("the same version with a different entry is refused, like any other changed field")
