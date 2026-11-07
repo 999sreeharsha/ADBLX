@@ -233,15 +233,28 @@ the manifest instead of being skipped.
 
 ### Size
 
-The manifest, its signature and every list download are capped and streamed to disk, as in
-SEC-09's size-cap item. Planned caps: 256 KB for the manifest, 1 KB for the signature, and a
-per-list cap set from the largest real list with headroom.
+All three are capped (built 2026-11-07):
 
-The manifest and signature caps are built: `URLSession.data(for:maxBytes:)` checks the
-declared length, then reads `bytes(for:)` one byte at a time and stops past the cap. That is
-fine for 256 KB but not for lists of several MB, where byte-by-byte async iteration costs real
-CPU on every update. The list cap must use a download task that streams to disk and cancels
-from its delegate once the bytes written pass the cap.
+- **Manifest:** 256 KB, **signature:** 1 KB. `URLSession.data(for:maxBytes:)` checks the
+  declared length, then reads `bytes(for:)` one byte at a time and stops past the cap. Fine
+  at these sizes, and only at these sizes.
+- **Each list:** 8 MB (`FilterDownloadClient.maxListBytes`), about four times EasyList
+  (2.06 MB). `HTTPSession.download(for:maxBytes:to:)` streams to disk with a download task
+  whose per-task delegate (`CappedDownloadDelegate`) cancels at the first `didWriteData`
+  when the declared length is over the cap, and on any later one once the bytes written
+  pass it, since a server can omit or understate the length. It isn't the async
+  `download(for:delegate:)`, which never calls `didWriteData` (`docs/gotchas.md`). Nothing is
+  left at the destination after a refusal. The checksum is then computed from disk in
+  64 KB chunks. Revisit the cap when any list passes 4 MB.
+- **An over-cap list fails the update** like a checksum mismatch: thrown before the snapshot,
+  nothing written. It retries like a network failure (the throttle isn't advanced; the only
+  automatic check is at launch). The Publisher refuses any payload over the same 8 MB
+  (`Validator.maxListBytes`), so a signed manifest can't point at one.
+- **Not verified on a device yet:** an Allocations trace during a full ~150K-rule update on
+  the iPhone 14 should show about the same peak memory with or without the download in flight.
+- **Possible future tightening:** the signed manifest could carry each list's byte size, for
+  a cap of "that size plus a small margin". The checksum already guarantees the content, so
+  the gain is small, and it needs a manifest format change. Not planned.
 
 ## When verification fails
 

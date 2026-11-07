@@ -294,7 +294,7 @@ checking:   ManifestStore.load() → ManifestClient.fetch(previousETag:cached:) 
               rejected → nothing written, pending reloads retried, throw ManifestRejection
               unchanged (same version and content) → save new ETag, upToDate
             UpdatePlanner.plan(manifest, installed, isPremiumEntitled)     [pure diff, no I/O]
-downloading: for every .install group: FilterDownloadClient.download each entry,
+downloading: for every .install group: FilterDownloadClient.download each entry (streamed to disk, 8 MB cap),
              then Checksum.verify(sha256) every file      [ALL groups verified before ANY write]
 snapshot:   FilterStore.snapshotForRollback()             [copies Compiled/ + Metadata/ + Filters/ → Previous/]
 installing: per group: FilterPipeline.install(GroupComposition, .deferred)
