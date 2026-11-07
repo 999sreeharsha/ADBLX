@@ -105,6 +105,12 @@ method gets an explicit correctness guard, audit every sibling field derived
 from the same source collection for the same class of bug before assuming the
 method is safe.
 
+**Closed for `filterLists` (2026-11-07):** a manifest that repeats an ID is now rejected
+whole by `ManifestVerifier` (`.duplicate`) before anything is installed, so
+`installed_filters.json` can't gain a duplicate from the network.
+`DuplicateManifestProtectionTests` drives a duplicate-ID manifest through the update and
+checks the Protection screen still lists each installed list once. The general lesson stands.
+
 Found in: ABORT review of `docs/superpowers/plans/2026-07-26-sprint5b-feature-live-data.md`, 2026-07-26
 
 ## Settings screen (Sprint 5B): several rows look fully functional but are deliberately half-wired
@@ -513,8 +519,9 @@ low disk is the suspected cause of the flaky `PayloadPersistenceTests` run.
 
 Whether Safari keeps the previous rules after a failed reload is assumed, not verified
 on a device. Reloads outside the update path (allowlist edits, reconcile) only reach
-the DEBUG diagnostics log. A failed compile during an allowlist edit reverts the edit
-with no message.
+the DEBUG diagnostics log. A failed compile during an allowlist edit reverts the edit and
+shows `settings.allowlist.compileFailed` in Settings (`AllowlistEditOutcome.reverted`,
+`AllowlistEditFailureTests`).
 
 Found in: `PayloadPersistenceTests` investigation, 2026-11-05
 
