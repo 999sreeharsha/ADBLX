@@ -10,6 +10,7 @@ enum ValidationError: Error, Equatable {
     case orphanedMetadata(id: String)
     case duplicateMetadata(id: String)
     case missingPayload(id: String, expectedPath: String)
+    case payloadTooLarge(id: String, bytes: Int, maxBytes: Int)
 
     /// Registry=0, Metadata=1, Payload=2 — fixed category order for deterministic reporting.
     private var categoryRank: Int {
@@ -18,7 +19,7 @@ enum ValidationError: Error, Equatable {
             return 0
         case .missingMetadata, .metadataIDMismatch, .orphanedMetadata, .duplicateMetadata:
             return 1
-        case .missingPayload:
+        case .missingPayload, .payloadTooLarge:
             return 2
         }
     }
@@ -29,7 +30,7 @@ enum ValidationError: Error, Equatable {
             return ""
         case .invalidGroup(let id, _), .invalidID(let id), .duplicateRegistryID(let id),
              .missingMetadata(let id), .orphanedMetadata(let id),
-             .duplicateMetadata(let id), .missingPayload(let id, _):
+             .duplicateMetadata(let id), .missingPayload(let id, _), .payloadTooLarge(let id, _, _):
             return id
         case .metadataIDMismatch(let filename, _):
             return filename

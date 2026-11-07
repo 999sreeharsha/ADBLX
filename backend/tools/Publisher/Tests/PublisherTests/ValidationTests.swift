@@ -117,6 +117,33 @@ final class ValidationTests: XCTestCase {
         })
     }
 
+    // The app refuses a list over 8 MB (FilterDownloadClient.maxListBytes), so the Publisher
+    // must never publish one: a signed manifest pointing at it would fail every update.
+    func test_maxListBytesMatchesTheApp() {
+        XCTAssertEqual(Validator.maxListBytes, 8 * 1_024 * 1_024)
+    }
+
+    func test_fullValidate_payloadOverTheCapIsRefused_andOneAtTheCapIsNot() throws {
+        let registry = Registry(registryVersion: 1, filters: [
+            makeEntry(id: "easylist", group: "ads"), makeEntry(id: "easyprivacy", group: "privacy")
+        ])
+        let metadataDir = try MetadataTests.makeTempDirectory()
+        try MetadataTests.writeMetadata(id: "easylist", version: "2026-07-15", in: metadataDir)
+        try MetadataTests.writeMetadata(id: "easyprivacy", version: "2026-07-15", in: metadataDir)
+        let payloadDir = try MetadataTests.makeTempDirectory()
+        for (group, id, size) in [("ads", "easylist", 101), ("privacy", "easyprivacy", 100)] {
+            let folder = payloadDir.appendingPathComponent(group)
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            try Data(repeating: 0x61, count: size).write(to: folder.appendingPathComponent("\(id).txt"))
+        }
+
+        let report = try Validator.validate(
+            registry: registry, metadataDirectory: metadataDir, payloadDirectory: payloadDir, maxPayloadBytes: 100
+        )
+
+        XCTAssertEqual(report.errors, [.payloadTooLarge(id: "easylist", bytes: 101, maxBytes: 100)])
+    }
+
     func test_fullValidate_middleOfThreeFails_stillReportsAllErrors() throws {
         // Regression coverage for docs/gotchas.md's "batch/transactional test coverage"
         // lesson: a failure in the *middle* of a 3-item batch, not just the first/only item.
