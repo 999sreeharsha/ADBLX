@@ -2,7 +2,7 @@
 
 Design: `docs/Security/ManifestTrust.md` (Size) and SEC-09's size-cap item in
 `docs/Security/Findings.md`. Branch: `feat/list-download-cap`, off `feat/plan-state-downgrade`
-at `2725c14`. For review before building.
+at `2725c14`. Reviewed 2026-11-07; the review's changes are folded in below.
 
 ## Problem
 
@@ -23,24 +23,25 @@ is checked only after the whole body has arrived.
   bounds the download, not the later steps.
 - 23 call sites construct `FilterDownloadClient(session:)` with a `MockHTTPSession`.
 
-## Decisions to review
+## Decided in review (2026-11-07)
 
-1. **Cap: 8 MB per list,** about four times EasyList. One constant,
-   `FilterDownloadClient.maxListBytes`, with the reason next to it. A list that grows past it
-   needs an app release, so the doc says to revisit it when any list passes 4 MB.
-2. **Declared length:** a download task has no "response received" callback before data
-   arrives. The earliest point is the first `didWriteData`, which carries
-   `totalBytesExpectedToWrite`. The plan checks it there, before more than the first chunk
-   (typically ≤ 64 KB) is written, and cancels. A HEAD request first would add a round trip
-   to every list for little gain. If "up front" must mean before any byte, say so and I'll
-   plan the HEAD.
-3. **Over the cap → the run fails,** like a checksum mismatch: thrown before the snapshot,
-   nothing written, the throttle not advanced. The open point: a list that is always too big
-   (a publishing bug in a signed manifest) costs up to 8 MB per launch on every phone until
-   it's fixed. Options are (a) leave it, since it's a publishing bug the signed manifest
-   should never carry, and the Publisher could refuse lists over the cap, or (b) advance the
-   throttle like a manifest rejection. Recommendation: (a) plus a Publisher check that refuses
-   any list over the same 8 MB, so it can't be published.
+1. **Cap: 8 MB per list,** about four times EasyList, with headroom inside the 200 MB compile
+   budget. One constant, `FilterDownloadClient.maxListBytes`, with the reason next to it.
+   Revisit when any list passes 4 MB.
+2. **Declared length at the first `didWriteData`** (`totalBytesExpectedToWrite`), so at most one
+   chunk (typically ≤ 64 KB) arrives before cancelling. No HEAD request.
+3. **Over the cap fails the run,** like a checksum mismatch: thrown before the snapshot, nothing
+   written. It gets the same retry rule as a network failure: the throttle isn't advanced, and
+   since the only automatic check is at launch (item 2 of 2026-11-07, `ManifestTrust.md`), it
+   retries at the next launch, never on foreground. If a foreground check is ever added, the
+   15-minute minimum gap applies to `tooLarge` too. The Publisher refuses any list over the
+   same 8 MB, so a signed manifest can't carry one.
+4. **Prefer the async `URLSession.download(for:delegate:)`** if the spike shows its per-task
+   delegate gets `didWriteData` and the redirect guard still applies. The delegate then only
+   sets a "too large" flag and cancels; the `URLError.cancelled` that follows becomes
+   `tooLarge`. No hand-written continuation. Otherwise, the continuation version below.
+5. **Future tightening, not now:** the signed manifest could carry each list's byte size, for a
+   cap of "size plus a small margin". Noted in `ManifestTrust.md`.
 
 ## Tasks
 
@@ -48,8 +49,9 @@ Each task ends green, with a test that fails without it.
 
 ### 1. Spike: confirm the delegate calls on a download task (no production code)
 
-Check on the simulator, with a `URLProtocol` stub, that a per-task delegate
-(`URLSessionTask.delegate`, iOS 15+) on a download task created from the app's session gets:
+Check on the simulator, with a `URLProtocol` stub that delivers the body **in several chunks
+smaller than the cap**, first with the async `download(for:delegate:)` and, only if that falls
+short, with a download task and `URLSessionTask.delegate`, that the per-task delegate gets:
 - `didWriteData` with `totalBytesExpectedToWrite` set when the server sends `Content-Length`,
   and `NSURLSessionTransferSizeUnknown` when it doesn't;
 - `didFinishDownloadingTo` before the temporary file is deleted;
@@ -63,7 +65,9 @@ If any of these fails, stop and report: the design below depends on all three.
 A new requirement: download to a file the caller names, and throw
 `HTTPSessionError.tooLarge` past `maxBytes`.
 
-- **`URLSession`:** a download task with a per-task delegate (`ListDownloadDelegate`):
+- **`URLSession`:** `download(for:delegate:)` with a per-task delegate (`ListDownloadDelegate`)
+  if the spike allows; its `didWriteData` sets a flag and cancels, and the resulting
+  `URLError.cancelled` becomes `tooLarge`. Otherwise a download task with that delegate:
   - on the first `didWriteData`, cancel if `totalBytesExpectedToWrite` is known and over the cap;
   - on every `didWriteData`, cancel once `totalBytesWritten` passes the cap. A server can omit
     or lie about the length;
@@ -76,11 +80,14 @@ A new requirement: download to a file the caller names, and throw
   sites working unchanged.
 
 Tests:
-- Through a real `URLSession` with a `URLProtocol` stub (no network): a body under the cap
+- Through a real `URLSession` with a `URLProtocol` stub (no network) that sends the body in
+  chunks smaller than the cap, so cancellation happens mid-download: a body under the cap
   arrives intact; a declared length over the cap is refused, with no file at the destination;
   a body over the cap with no `Content-Length` is refused, with no file; a declared length
   that understates the body is refused once the bytes pass the cap; a redirect to another host
-  is still refused.
+  is still refused. After every refusal, neither the destination nor the workspace holds a file.
+- Breakage check: comparing against the cap only at completion must make the "no length" and
+  "understated length" tests fail.
 - The default implementation: the same three refusals with `MockHTTPSession`.
 
 ### 3. `FilterDownloadClient` downloads to the workspace through the cap
