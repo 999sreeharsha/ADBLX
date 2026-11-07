@@ -419,14 +419,13 @@ cancelled earlier Ads rules on every page load, and Annoyances applied nothing
 on ordinary pages, so any ad-blocking or AdBlock-Tester / G1 measurement taken
 before `8b07893` is invalid. Re-measure G1 on a device after this fix.
 
-Before the first TestFlight build (testers will update across compiler fixes): store a compiler
-version alongside the installed compiled rules, and on launch recompile every
-group from its stored lists when it differs from the app's compiler version.
-Today an existing install keeps rules from the old compiler until a list
-update or an allowlist edit happens to recompile that group, so a compiler fix
-does not reliably reach it. The
-DEBUG Developer screen's "Recompile all now" is the manual stand-in for device
-testing.
+Compiler fixes reach installed rules (built 2026-11-07): each group's sidecar records
+`CompiledSources.currentCompilerVersion`, and launch runs
+`FilterPipeline.recompileIfCompilerChanged`, which recompiles every group inside the gate
+when any group's version differs (or is missing). All or nothing; a failure is retried at the
+next launch. **Bump `currentCompilerVersion` with any change that can alter compiled output**
+(`SafariRuleGenerator`, `NativeABPRuleCompiler`, the partitioner), or the fix won't reach
+existing installs. The DEBUG Developer screen's "Recompile all now" still forces it by hand.
 
 Found in: cookiebot.com banner still visible with Annoyances on, iPhone 14, 2026-10-31
 

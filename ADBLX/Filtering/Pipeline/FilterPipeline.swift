@@ -141,19 +141,65 @@ actor FilterPipeline {
     /// caller that reverts the allowlist leaves no rules built from the reverted one.
     func syncAllowlist(reloadStrategy: ReloadStrategy = .immediate) async throws -> [PipelineResult] {
         try await gate.run {
-            let snapshot = try await store.snapshotForRollback()
-            let results: [PipelineResult]
-            do {
-                results = try await recomposeInstalledGroups(reloadStrategy: reloadStrategy)
-            } catch {
-                try await store.restore(snapshot)
-                throw error
+            try await inRollbackTransaction { try await recomposeInstalledGroups(reloadStrategy: reloadStrategy) }
+        }
+    }
+
+    /// Recompiles every group when any group's rules were compiled by another compiler version
+    /// (`CompiledSources.compilerVersion`), so a compiler fix reaches a device without waiting
+    /// for a list update. Returns `nil` when every group is current. Holds the gate for the
+    /// check and the recompile; all or nothing, so a failure leaves every group as it was and
+    /// still stale, and the next launch tries again. Run detached from the first frame.
+    func recompileIfCompilerChanged(reloadStrategy: ReloadStrategy = .immediate) async throws -> [PipelineResult]? {
+        try await gate.run {
+            let stale = await groupsFromAnotherCompiler()
+            guard !stale.isEmpty else { return nil }
+            let results = try await inRollbackTransaction {
+                var results = try await recomposeInstalledGroups(reloadStrategy: reloadStrategy)
+                // A group with rules but no installed source (empty, or allowlist only) isn't in
+                // that pass; left stale, it would trigger a full recompile on every launch.
+                let recomposed = Set(results.map(\.group))
+                for group in FilterGroup.allCases where stale.contains(group) && !recomposed.contains(group) {
+                    results.append(try await remove(filterIDs: [], group: group, reloadStrategy: reloadStrategy))
+                }
+                return results
             }
-            try? await store.discardRollbackSnapshot()
-            // The next update run retries a reload that failed here.
-            await pendingReloads.record(after: results.first?.reloadResults ?? [])
+            Self.logger.info(
+                "recompiled \(results.count, privacy: .public) groups, compiler \(CompiledSources.currentCompilerVersion, privacy: .public)"
+            )
             return results
         }
+    }
+
+    /// Groups whose compiled rules carry another compiler version, or none (written before
+    /// versions were recorded). A group with no compiled rules has nothing to recompile.
+    private func groupsFromAnotherCompiler() async -> Set<FilterGroup> {
+        var stale: Set<FilterGroup> = []
+        for group in FilterGroup.allCases {
+            guard await store.compiledFileSize(CompiledSources.rulesFilename(for: group)) != nil else { continue }
+            let sidecar = (try? await store.read(CompiledSources.filename(for: group), in: .compiled))
+                .flatMap { try? JSONDecoder().decode(CompiledSources.self, from: $0) }
+            if sidecar?.compilerVersion != CompiledSources.currentCompilerVersion {
+                stale.insert(group)
+            }
+        }
+        return stale
+    }
+
+    /// Snapshot, run `body`, and restore every group if it throws. The caller holds the gate.
+    private func inRollbackTransaction(_ body: () async throws -> [PipelineResult]) async throws -> [PipelineResult] {
+        let snapshot = try await store.snapshotForRollback()
+        let results: [PipelineResult]
+        do {
+            results = try await body()
+        } catch {
+            try await store.restore(snapshot)
+            throw error
+        }
+        try? await store.discardRollbackSnapshot()
+        // The next update run retries a reload that failed here.
+        await pendingReloads.record(after: results.first?.reloadResults ?? [])
+        return results
     }
 
     private func recomposeInstalledGroups(reloadStrategy: ReloadStrategy) async throws -> [PipelineResult] {
@@ -343,7 +389,8 @@ actor FilterPipeline {
         let sidecar = CompiledSources(
             sourceIDs: sourceIDs,
             compiledByteCount: partition.json.count,
-            ruleCount: partition.ruleCount
+            ruleCount: partition.ruleCount,
+            compilerVersion: CompiledSources.currentCompilerVersion
         )
         try writer.write(
             try JSONEncoder().encode(sidecar),
