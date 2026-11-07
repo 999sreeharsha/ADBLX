@@ -220,8 +220,14 @@ the manifest instead of being skipped.
 - The app pins the allowed bases: today `https://999sreeharsha.github.io/ADBLX`, later the
   brand domain. Moving hosts means adding the brand domain to `allowedBases` in a release
   *before* the site moves, and moving only once that release is what users run.
-- Downloads refuse redirects to a different host (a `URLSessionTaskDelegate` that cancels a
-  cross-host redirect). `URLSession` follows redirects by default.
+- Every request refuses a redirect that leaves the original host or isn't `https`
+  (`RedirectGuard`, the delegate of the app's one `URLSession`; built 2026-11-07).
+  `URLSession` follows redirects by default. This covers the manifest and signature too.
+- Consequence for the move: once a custom domain is set, GitHub Pages 301-redirects
+  `github.io` URLs to it, and `RedirectGuard` refuses that. So the release that adds the brand
+  domain to `allowedBases` must also switch the manifest endpoint
+  (`AppManifestEndpointProvider`) to it, and the site moves only after users run that release.
+  Older versions stop updating at the move.
 - The payload checksum is checked as today. With a signed manifest, that checksum is now
   trustworthy too.
 

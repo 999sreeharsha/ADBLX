@@ -53,8 +53,11 @@ public enum AppCompositionRoot {
     /// and FilterDownloadClient both receive this same instance rather than each reaching
     /// for URLSession.shared independently.
     static func makeHTTPSession() -> HTTPSession {
-        URLSession.shared
+        sharedHTTPSession
     }
+
+    /// One session for the app's lifetime: a session holds its delegate until invalidated.
+    private static let sharedHTTPSession = URLSession(configuration: .default, delegate: RedirectGuard(), delegateQueue: nil)
 
     /// The single `FilterPreferencesStore` instance — same "one instance per backend
     /// type" principle as makeFilterStore(). No factory or service constructs its own.
