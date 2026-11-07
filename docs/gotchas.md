@@ -418,10 +418,16 @@ before `8b07893` is invalid. Re-measure G1 on a device after this fix.
 Compiler fixes reach installed rules (built 2026-11-07): each group's sidecar records
 `CompiledSources.currentCompilerVersion`, and launch runs
 `FilterPipeline.recompileIfCompilerChanged`, which recompiles every group inside the gate
-when any group's version differs (or is missing). All or nothing; a failure is retried at the
-next launch. **Bump `currentCompilerVersion` with any change that can alter compiled output**
-(`SafariRuleGenerator`, `NativeABPRuleCompiler`, the partitioner), or the fix won't reach
-existing installs. The DEBUG Developer screen's "Recompile all now" still forces it by hand.
+when any group's version differs (or is missing). All or nothing. A failure is retried at a
+later launch at least 15 minutes on, and after three consecutive failures not again until the
+app's version or build changes (`RecompileThrottle`, `recompile_attempts.json`), so a group
+that always fails doesn't cost a full recompile every launch. **Bump `currentCompilerVersion`
+with any change that can alter compiled output** (`SafariRuleGenerator`, `NativeABPRuleCompiler`,
+the partitioner), or the fix won't reach existing installs. `CompilerSourceFingerprintTests`
+hashes the compiler's sources and fails when they change without `CompiledSources.compilerFingerprint` being
+updated; its message gives the new hash. It can't tell whether the version was bumped too: for
+a change that only touches comments or formatting, update the hash alone. The DEBUG
+Developer screen's "Recompile all now" still forces it by hand.
 
 Found in: cookiebot.com banner still visible with Annoyances on, iPhone 14, 2026-10-31
 

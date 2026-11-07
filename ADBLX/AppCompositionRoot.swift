@@ -136,6 +136,14 @@ public enum AppCompositionRoot {
         UpdateThrottle(store: store, interval: updateThrottleInterval)
     }
 
+    /// Keyed on version and build, so any new build retries a recompile that gave up.
+    static func makeRecompileThrottle(store: FilterStore) -> RecompileThrottle {
+        let info = Bundle.main.infoDictionary
+        let version = info?["CFBundleShortVersionString"] as? String ?? "?"
+        let build = info?["CFBundleVersion"] as? String ?? "?"
+        return RecompileThrottle(store: store, build: "\(version) (\(build))")
+    }
+
     /// The single `PlanStateModel` instance shared app-wide (owned here, injected into the
     /// view hierarchy by `ADBLXApp`; never accessed as a global by views).
     private static let sharedTrialSource = KeychainTrialSource(manager: sharedTrialManager, store: sharedTrialKeychainStore)

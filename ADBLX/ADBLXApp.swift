@@ -113,9 +113,12 @@ struct ADBLXApp: App {
                     // lapsed user never downloads premium lists.
                     await reconciler.startObserving()
                     await reconciler.reconcile()
-                    // Rules from an older compiler are rebuilt every launch until it succeeds,
-                    // before the throttled update, which may not run at all. Takes the gate.
-                    _ = try? await pipeline.recompileIfCompilerChanged()
+                    // Rules from an older compiler are rebuilt at launch until it succeeds (with a
+                    // gap after a failure, and a limit per build), before the throttled update,
+                    // which may not run at all. Takes the gate.
+                    await CompilerRecompile.runIfDue(
+                        pipeline: pipeline, throttle: AppCompositionRoot.makeRecompileThrottle(store: store)
+                    )
                     guard await AutomaticUpdate.runIfDue(
                         coordinator: coordinator, throttle: AppCompositionRoot.makeUpdateThrottle(store: store)
                     ) else { return }
