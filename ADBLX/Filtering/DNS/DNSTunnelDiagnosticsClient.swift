@@ -63,11 +63,13 @@ final class DNSTunnelDiagnosticsModel {
             Row(label: "Responses written", value: "\(c.responsesWritten)"),
             Row(label: "Upstream timeouts", value: "\(c.upstreamTimeouts)"),
             Row(label: "Upstream send errors", value: "\(c.upstreamSendErrors)"),
+            Row(label: "Upstream retries", value: "\(c.upstreamRetries)"),
             Row(label: "SERVFAIL sent", value: "\(c.servfailsSent)"),
             Row(label: "Truncated upstream answers", value: "\(c.truncatedUpstreamAnswers)"),
             Row(label: "TCP segments", value: "\(c.tcpSegments)"),
             Row(label: "TCP queries", value: "\(c.tcpQueries)"),
-            Row(label: "Unparsable packets", value: "\(c.unparsablePackets)")
+            Row(label: "Unparsable packets", value: "\(c.unparsablePackets)"),
+            Row(label: "Socket resets", value: "\(c.socketResets)")
         ]
     }
 

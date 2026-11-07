@@ -12,6 +12,7 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
     private var tcpServer: DNSTCPServer?
     private var payloadResolver: DNSPayloadResolver?
     private var diagnostics: DNSTunnelDiagnosticsHandler?
+    private var networkMonitor: DNSNetworkMonitor?
     private let counters = DNSTunnelCounters()
     
     // Aggregate diagnostic counters (zero private browsing history retained)
@@ -47,8 +48,13 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
         let upstreamIPv4 = (resolverOption == .quad9Default) ? "9.9.9.9" : customIPv4
         let upstreamIPv6 = (resolverOption == .quad9Default) ? "2620:fe::fe" : customIPv6
         
+        // Quad9's second address, tried once when the first fails. A resolver the user chose gets none.
+        let fallbackIPv4: String? = (resolverOption == .quad9Default) ? "149.112.112.112" : nil
+        
         // 2. Scoped DNS routing and route exclusions (loop prevention); see TunnelNetworkSettingsFactory.
-        let settings = TunnelNetworkSettingsFactory.make(upstreamIPv4: upstreamIPv4, upstreamIPv6: upstreamIPv6)
+        let settings = TunnelNetworkSettingsFactory.make(
+            upstreamIPv4: upstreamIPv4, upstreamIPv6: upstreamIPv6, upstreamIPv4Fallback: fallbackIPv4
+        )
 
         // 3. Initialize Runtime Engine & Generation Loader
         let loader = DNSGenerationLoader()
@@ -70,6 +76,7 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
         let forwarderConfig = UpstreamResolverConfig(
             ipv4Address: upstreamIPv4,
             ipv6Address: upstreamIPv6,
+            fallbackIPv4Address: fallbackIPv4,
             port: 53,
             timeoutSeconds: 2.0,
             maxInFlightQueries: 512
@@ -84,6 +91,12 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
         )
         self.payloadResolver = DNSPayloadResolver(engine: engine, forwarder: fwd)
         self.diagnostics = DNSTunnelDiagnosticsHandler(counters: counters, engine: engine)
+        // Replaces the upstream sockets when the network changes (Wi-Fi <-> mobile data, offline <-> online).
+        let monitor = DNSNetworkMonitor(
+            observer: SystemNetworkPathObserver(), forwarder: fwd,
+            setReasserting: { [weak self] in self?.reasserting = $0 }
+        )
+        self.networkMonitor = monitor
         
         Task {
             do {
@@ -113,6 +126,7 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
                 }
                 
                 self.logger.notice("Tunnel network settings applied successfully. Starting packetFlow read loop.")
+                self.networkMonitor?.start()
                 completionHandler(nil)
                 self.readPackets()
             }
@@ -123,6 +137,8 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
         let stopSignpost = signposter.beginInterval("TunnelStop")
         logger.notice("Stopping DNS Protection tunnel, reason: \(String(describing: reason), privacy: .public)")
         
+        networkMonitor?.stop()
+        networkMonitor = nil
         Task {
             await self.forwarder?.stop()
             self.forwarder = nil

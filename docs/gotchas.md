@@ -555,6 +555,31 @@ corrected versions there.
 
 Found in: security audit and review, 2026-11-05
 
+## Pre-launch: the DNS never-block list is not published through the manifest yet
+
+The app side is built: `FilterManifest.dnsNeverBlock` (optional), `DNSNeverBlockUpdater`
+(installs only after a checksum, count and non-empty check) and `DNSNeverBlockStore`, with the
+bundled `ADBLX/Resources/Filters/DNS/never-block.txt` as the seed. **Nothing emits the entry.**
+The Publisher (`ManifestBuilder`, the manifest spec, the golden manifest) does not know the
+field, and the live manifest has none, so every install uses the bundled seed and the list can
+only change with an app release. It also waits on `feat/manifest-signing`: that branch rewrites
+`ManifestBuilder`, `ManifestClient` and the golden file, and the signed manifest has to cover
+the new field (`ManifestVerifier`'s rules must accept it too).
+
+Before DNS Protection ships:
+1. Merge `feat/manifest-signing`, then add `dnsNeverBlock` to the Publisher (a registry entry
+   for the list, a payload under `backend/public/filters/dns/`, the field in `ManifestBuilder`
+   and `ManifestSpecification.md`, the golden manifest and `CommittedManifestTests`).
+2. Confirm the verifier accepts a manifest with the field, and a manifest without it.
+3. Call `DNSNeverBlockUpdater` from the same place that runs `UpdateCoordinator` (done in
+   `ADBLXApp.swift`, Debug builds only) and republish the DNS generation when it installs a
+   new list, so the tunnel picks it up without waiting for a DNS restart or allowlist edit.
+4. Run `publish-pages.sh` so the list is actually on the host.
+
+Until then, a bank or gateway missing from the seed is blocked if a list blocks it.
+
+Found in: DNS connectivity work, 2026-11-07
+
 ## Pre-launch: the PRD promises free weekly auto-updates, but nothing schedules them
 
 `docs/adblock-prd-v1.1.md` (feature table, "Automatic filter updates") lists

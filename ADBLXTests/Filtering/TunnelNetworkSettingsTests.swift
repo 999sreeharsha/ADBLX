@@ -68,4 +68,11 @@ struct TunnelNetworkSettingsTests {
         #expect(s.ipv6Settings?.addresses == ["fd00::2"])
         #expect(s.ipv6Settings?.networkPrefixLengths == [128])
     }
+
+    @Test("a fallback upstream is excluded too, after the primary")
+    func fallbackExcluded() throws {
+        let s = TunnelNetworkSettingsFactory.make(upstreamIPv4: "9.9.9.9", upstreamIPv6: nil, upstreamIPv4Fallback: "149.112.112.112")
+        #expect(try v4(s).excludedRoutes?.map(\.destinationAddress) == ["9.9.9.9", "149.112.112.112"])
+        for route in try v4(s).includedRoutes ?? [] { #expect(route.destinationAddress == "198.51.100.1") }
+    }
 }

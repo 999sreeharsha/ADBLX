@@ -6,6 +6,7 @@ public actor DNSUpstreamForwarder {
     private var config: UpstreamResolverConfig
     private var ipv4Socket: (any DNSUpstreamSocketProtocol)?
     private var ipv6Socket: (any DNSUpstreamSocketProtocol)?
+    private var fallbackSocket: (any DNSUpstreamSocketProtocol)?
     
     private var pendingTransactions: [UInt16: PendingQuery] = [:]
     private var nextTxID: UInt16 = 1
@@ -62,6 +63,9 @@ public actor DNSUpstreamForwarder {
         ipv6Socket?.close()
         ipv6Socket = nil
         
+        fallbackSocket?.close()
+        fallbackSocket = nil
+        
         DNSForwarderMetrics.logTunnelShutdown(activeQueriesCount: activeCount)
     }
     
@@ -90,6 +94,81 @@ public actor DNSUpstreamForwarder {
                 }
             }
             self.ipv6Socket = v6Socket
+        }
+        
+        // Fallback IPv4 upstream, used only for a retry.
+        if let fallbackAddress = config.fallbackIPv4Address {
+            let socket = try socketFactory(fallbackAddress, config.port, false)
+            socket.setResponseHandler { [weak self] data, senderIP, senderPort in
+                Task { [weak self] in
+                    await self?.handleUpstreamResponse(data: data, senderIP: senderIP, senderPort: senderPort, isIPv6: false)
+                }
+            }
+            self.fallbackSocket = socket
+        }
+    }
+    
+    /// Replaces every upstream socket (after a network change, when the old ones may be bound to
+    /// a path that is gone) and sends each query still waiting again on the new sockets.
+    public func resetSockets() throws {
+        ipv4Socket?.close(); ipv4Socket = nil
+        ipv6Socket?.close(); ipv6Socket = nil
+        fallbackSocket?.close(); fallbackSocket = nil
+        try initializeSockets()
+        counters?.increment(\.socketResets)
+        for (upstreamTxID, pending) in pendingTransactions {
+            guard let socket = pending.attempt == 0 ? firstSocket(for: pending) : retryTarget(for: pending) else { continue }
+            var payload = pending.clientQuery
+            payload.withUnsafeMutableBytes { raw in
+                let base = raw.baseAddress!.assumingMemoryBound(to: UInt8.self)
+                base[0] = UInt8((upstreamTxID >> 8) & 0xFF)
+                base[1] = UInt8(upstreamTxID & 0xFF)
+            }
+            let resend = payload
+            Task { [weak self] in
+                do { try await socket.send(payload: resend) } catch { await self?.failPending(upstreamTxID: upstreamTxID) }
+            }
+        }
+    }
+    
+    // MARK: - Retry on a second upstream
+    
+    private func firstSocket(for pending: PendingQuery) -> (any DNSUpstreamSocketProtocol)? {
+        pending.ipVersion == .v6 ? (ipv6Socket ?? ipv4Socket) : ipv4Socket
+    }
+    
+    /// Where a retry goes: the other IP family first (an IPv6-only network can't reach the IPv4
+    /// literal), then the second IPv4 upstream, then whatever else is left.
+    private func retryTarget(for pending: PendingQuery) -> (any DNSUpstreamSocketProtocol)? {
+        let first = firstSocket(for: pending)
+        for candidate in [ipv6Socket, fallbackSocket, ipv4Socket] {
+            if let candidate, candidate !== first { return candidate }
+        }
+        return nil
+    }
+    
+    /// Sends `failed` again on another upstream if it hasn't been retried. Returns the new
+    /// upstream id, or nil if there is nothing to retry on (the caller then gives up).
+    private func attemptRetry(_ failed: PendingQuery) async -> UInt16? {
+        guard failed.attempt == 0, let socket = retryTarget(for: failed) else { return nil }
+        let upstreamTxID = allocateNextUpstreamTxID()
+        var retry = failed.retried(upstreamTxID: upstreamTxID, at: clock.now)
+        retry.timeoutTask = scheduleTimeout(upstreamTxID: upstreamTxID)
+        pendingTransactions[upstreamTxID] = retry
+        counters?.increment(\.upstreamRetries)
+        var payload = failed.clientQuery
+        payload.withUnsafeMutableBytes { raw in
+            let base = raw.baseAddress!.assumingMemoryBound(to: UInt8.self)
+            base[0] = UInt8((upstreamTxID >> 8) & 0xFF)
+            base[1] = UInt8(upstreamTxID & 0xFF)
+        }
+        do {
+            try await socket.send(payload: payload)
+            return upstreamTxID
+        } catch {
+            counters?.increment(\.upstreamSendErrors)
+            pendingTransactions.removeValue(forKey: upstreamTxID)?.timeoutTask?.cancel()
+            return nil
         }
     }
     
@@ -171,6 +250,7 @@ public actor DNSUpstreamForwarder {
             counters?.increment(\.upstreamSendErrors)
             if let dropped = pendingTransactions.removeValue(forKey: upstreamTxID) {
                 dropped.timeoutTask?.cancel()
+                if let retryID = await attemptRetry(dropped) { return .forwarded(upstreamTxID: retryID) }
                 emitServfail(for: dropped)
             }
             return .socketUnavailable(error.localizedDescription)
@@ -217,10 +297,11 @@ public actor DNSUpstreamForwarder {
         }
     }
     
-    private func failPending(upstreamTxID: UInt16) {
+    private func failPending(upstreamTxID: UInt16) async {
         guard let pending = pendingTransactions.removeValue(forKey: upstreamTxID) else { return }
         counters?.increment(\.upstreamSendErrors)
         pending.timeoutTask?.cancel()
+        if await attemptRetry(pending) != nil { return }
         fail(pending)
     }
     
@@ -230,8 +311,10 @@ public actor DNSUpstreamForwarder {
         guard data.count >= 12 else { return }
         
         // Validate source endpoint (protect against rogue/unrelated UDP packets)
-        let expectedHost = isIPv6 ? config.ipv6Address : config.ipv4Address
-        if let exp = expectedHost, !senderIP.isEmpty && senderIP != exp {
+        let allowedHosts: [String] = isIPv6
+            ? [config.ipv6Address].compactMap { $0 }
+            : [config.ipv4Address] + [config.fallbackIPv4Address].compactMap { $0 }
+        if !senderIP.isEmpty, !allowedHosts.isEmpty, !allowedHosts.contains(senderIP) {
             return
         }
         if senderPort != 0 && senderPort != config.port {
@@ -328,7 +411,10 @@ public actor DNSUpstreamForwarder {
         guard let pending = pendingTransactions.removeValue(forKey: upstreamTxID) else { return }
         DNSForwarderMetrics.logQueryTimeout(upstreamTxID: upstreamTxID, clientTxID: pending.clientTxID)
         counters?.increment(\.upstreamTimeouts)
-        fail(pending)
+        Task { [weak self] in
+            guard let self else { return }
+            if await self.attemptRetry(pending) == nil { await self.fail(pending) }
+        }
     }
     
     private func allocateNextUpstreamTxID() -> UInt16 {

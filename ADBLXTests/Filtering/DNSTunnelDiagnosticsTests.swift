@@ -174,8 +174,8 @@ struct DNSTunnelDiagnosticsTests {
         // Literal key list, not derived from the type under test.
         #expect(Set(object.keys) == [
             "ingressPackets", "blockedQueries", "forwardedQueries", "responsesWritten",
-            "upstreamTimeouts", "upstreamSendErrors", "servfailsSent", "truncatedUpstreamAnswers",
-            "tcpSegments", "tcpQueries", "unparsablePackets", "passthrough"
+            "upstreamTimeouts", "upstreamSendErrors", "upstreamRetries", "servfailsSent", "truncatedUpstreamAnswers",
+            "tcpSegments", "tcpQueries", "unparsablePackets", "socketResets", "passthrough"
         ])
         for (key, value) in object {
             #expect(value is NSNumber, "\(key) must be a number or flag, not \(type(of: value))")

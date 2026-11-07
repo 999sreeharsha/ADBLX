@@ -81,8 +81,8 @@ struct DNSTunnelDiagnosticsModelTests {
         await model.refresh()
         #expect(model.rows.map(\.label) == [
             "Packets in", "Blocked", "Forwarded", "Responses written", "Upstream timeouts",
-            "Upstream send errors", "SERVFAIL sent", "Truncated upstream answers",
-            "TCP segments", "TCP queries", "Unparsable packets"
+            "Upstream send errors", "Upstream retries", "SERVFAIL sent", "Truncated upstream answers",
+            "TCP segments", "TCP queries", "Unparsable packets", "Socket resets"
         ])
         #expect(model.rows.allSatisfy { UInt64($0.value) != nil })
         #expect(model.rows.first { $0.label == "Packets in" }?.value == "12")
