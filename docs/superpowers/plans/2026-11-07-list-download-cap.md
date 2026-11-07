@@ -60,6 +60,16 @@ short, with a download task and `URLSessionTask.delegate`, that the per-task del
 
 If any of these fails, stop and report: the design below depends on all three.
 
+**Result (2026-11-07, simulator, `URLProtocol` stub sending 10 KB chunks):**
+- Async `download(for:delegate:)`: the per-task delegate got **no** `didWriteData` at all,
+  with or without `Content-Length`, and the whole body arrived. It can't enforce a cap, so
+  decision 4 falls back to the continuation version.
+- `downloadTask(with:)` with `task.delegate`: one `didWriteData` per chunk, with
+  `totalBytesExpectedToWrite` set to the declared length (unknown without one). Cancelling
+  from `didWriteData` stopped after 2 of 5 chunks with `URLError.cancelled` and no
+  `didFinishDownloadingTo`. `RedirectGuard`, the session delegate, still refused a cross-host
+  redirect: only the 3xx came back, with no body from the other host.
+
 ### 2. `HTTPSession.download(for:maxBytes:to:)`
 
 A new requirement: download to a file the caller names, and throw
