@@ -25,7 +25,7 @@ Scan reports are in the gitignored `CLAUDE-SECURITY-*` folders at the repo root.
 | SEC-08 | Each ad skip sends two clicks | LOW | Manual | Fixed; check skip on a device |
 | **Pre-launch blockers** | | | | |
 | SEC-09 | Manifest isn't authenticated or validated | HIGH | Overruled | Verification and list cap built; waiting on K1/K2, the first signed manifest and the device memory check |
-| SEC-10 | `PublicSuffixList` widens allowlisted domains | MEDIUM | Overruled | Open |
+| SEC-10 | `PublicSuffixList` widens allowlisted domains | MEDIUM | Overruled | Fixed for country codes; private gTLD suffixes open |
 | SEC-11 | Web-extension rule payload needs an audit | To confirm | Review | Open |
 | **With the DNS track** | | | | |
 | SEC-12 | No DNS over TCP; responses over 4096 bytes truncated | MEDIUM | Manual | Open |
@@ -159,6 +159,10 @@ The original items:
 `ADBLX/Filtering/Validation/PublicSuffixList.swift` uses a hand-curated suffix set, and anything missing falls back to the last two labels. `shop.example.co.kr` becomes `co.kr`, so one broken-site report can turn off blocking for every `.co.kr` site. The main Indian suffixes (`co.in`, `org.in`, `gov.in`, `ac.in` and others) are in the set, so India isn't the exposed market. Other common ones, such as `co.kr`, `co.id`, `com.cn` and `com.mx`, are not.
 
 **Fix:** keep the full host when the registrable domain is uncertain. That closes the over-allowlisting in a few lines, at no memory cost.
+
+**Fixed (2026-11-07):** under a two-letter TLD, a second-level label that registries use as a category (`co`, `com`, `org`, `gov`, `ac`, `or`, …) and that the curated set doesn't know now keeps the full host: `shop.example.co.kr` stays `shop.example.co.kr`, never `co.kr` (`PublicSuffixListTests`). Narrower, never wider; the cost is an allowlist entry that covers one host rather than the whole site.
+
+**Still a limit:** private suffixes under generic TLDs (`wordpress.com`, `blogspot.com` and other platforms not in the curated set) still fall back to the last two labels, so allowlisting `someblog.wordpress.com` covers every WordPress site. Only the full list closes that.
 
 **Nice-to-have, not a launch blocker:** bundle the full Public Suffix List in the main app only, parsed lazily once. It's about 250 KB on disk and 1–2 MB as a `Set` (review's estimate). The list is MPL-2.0, so credit it in `ADBLX/Features/Settings/FilterAttributionView.swift`.
 
