@@ -49,13 +49,25 @@ actor RealBrokenSiteReporter: BrokenSiteReporting {
 
     /// Through `SettingsService`, as a Settings edit is: storing the domain alone would leave the
     /// compiled rules blocking the site.
+    ///
+    /// Allowlists the host itself, not the registrable domain: an entry also covers every
+    /// subdomain, so `myblog.wordpress.com` widened to `wordpress.com` would unblock every blog
+    /// there (SEC-10). A leading `www.` is dropped so the bare domain is covered too, unless that
+    /// would leave a public suffix. A user who wants a whole site can add its parent in Settings.
     public func allowlist(domain: String) async throws -> String {
-        let cleanDomain = try sanitizeDomain(domain)
+        let cleanDomain = try Self.allowlistHost(domain)
         await settingsService.addAllowlistEntry(domain: cleanDomain)
         // The service rolls back and returns normally when the recompile fails.
         guard await settingsService.fetchSnapshot().allowlist.contains(where: { $0.domain == cleanDomain }) else {
             throw BrokenSiteError.allowlistFailed
         }
         return cleanDomain
+    }
+
+    private static func allowlistHost(_ input: String) throws -> String {
+        let host = try SafariDomainNormalizer.normalize(input: input)
+        guard host.hasPrefix("www.") else { return host }
+        let bare = String(host.dropFirst(4))
+        return PublicSuffixList.isPublicSuffix(bare) ? host : bare
     }
 }
