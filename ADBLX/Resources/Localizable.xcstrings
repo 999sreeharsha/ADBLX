@@ -709,16 +709,6 @@
         }
       }
     },
-    "home.plan.item.iCloudSync" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "iCloud sync"
-          }
-        }
-      }
-    },
     "home.plan.item.indianSites" : {
       "localizations" : {
         "en" : {

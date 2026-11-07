@@ -2,11 +2,16 @@
 import SwiftUI
 
 struct SettingsView: View {
+    /// The app's own page in iOS Settings, where iOS offers a per-app language once the app
+    /// has more than one localization.
+    static let languageSettingsURL = URL(string: UIApplication.openSettingsURLString)
     @State var viewModel: SettingsViewModel
     @AppStorage(AppearancePreference.storageKey) private var appearance: AppearancePreference = .system
     @State private var newDomain = ""
     @State private var showBrokenSiteReport = false
     @Environment(PlanStateModel.self) private var planStateModel: PlanStateModel?
+    @Environment(\.openURL) private var openURL
+    private let placeholderRows = SettingsPlaceholderRow.visible()
 
     var body: some View {
         ScrollView {
@@ -20,6 +25,7 @@ struct SettingsView: View {
                 generalSection
 
                 if let snapshot = viewModel.snapshot {
+                    if placeholderRows.contains(.iCloudSync) {
                     Card {
                         HStack {
                             Text("settings.row.iCloudSync")
@@ -31,6 +37,7 @@ struct SettingsView: View {
                         Text(snapshot.iCloudSyncEnabled ? "settings.status.on" : "settings.status.off")
                             .font(DesignTypography.bodySmall)
                             .foregroundStyle(DesignColors.onSurfaceVariant)
+                    }
                     }
 
                     Card {
@@ -158,30 +165,38 @@ struct SettingsView: View {
                         )
                     }
                     Divider().overlay(DesignColors.outlineVariant.opacity(0.2))
-                    generalRow(
-                        titleKey: "settings.row.language", systemImage: "character.bubble",
-                        detail: Text(
-                            Locale.current.localizedString(forIdentifier: Locale.current.identifier)
-                                ?? Locale.current.identifier
-                        )
-                    )
-                    Divider().overlay(DesignColors.outlineVariant.opacity(0.2))
-                    NavigationLink {
-                        ComingSoonState(
-                            title: "settings.row.notifications",
-                            message: "settings.notifications.comingSoon.message"
-                        )
+                    Button {
+                        if let url = Self.languageSettingsURL { openURL(url) }
                     } label: {
-                        SettingsRow(titleKey: "settings.row.notifications", systemImage: "bell.fill")
+                        generalRow(
+                            titleKey: "settings.row.language", systemImage: "character.bubble",
+                            detail: Text(
+                                Locale.current.localizedString(forIdentifier: Locale.current.identifier)
+                                    ?? Locale.current.identifier
+                            )
+                        )
                     }
-                    Divider().overlay(DesignColors.outlineVariant.opacity(0.2))
-                    NavigationLink {
-                        ComingSoonState(
-                            title: "settings.row.safariHelp",
-                            message: "settings.safariHelp.comingSoon.message"
-                        )
-                    } label: {
-                        SettingsRow(titleKey: "settings.row.safariHelp", systemImage: "safari")
+                    if placeholderRows.contains(.notifications) {
+                        Divider().overlay(DesignColors.outlineVariant.opacity(0.2))
+                        NavigationLink {
+                            ComingSoonState(
+                                title: "settings.row.notifications",
+                                message: "settings.notifications.comingSoon.message"
+                            )
+                        } label: {
+                            SettingsRow(titleKey: "settings.row.notifications", systemImage: "bell.fill")
+                        }
+                    }
+                    if placeholderRows.contains(.safariHelp) {
+                        Divider().overlay(DesignColors.outlineVariant.opacity(0.2))
+                        NavigationLink {
+                            ComingSoonState(
+                                title: "settings.row.safariHelp",
+                                message: "settings.safariHelp.comingSoon.message"
+                            )
+                        } label: {
+                            SettingsRow(titleKey: "settings.row.safariHelp", systemImage: "safari")
+                        }
                     }
                 }
             }

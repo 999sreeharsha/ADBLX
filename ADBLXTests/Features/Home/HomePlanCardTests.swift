@@ -178,14 +178,14 @@ struct ProtectionBreakdownTests {
         let breakdown = ProtectionBreakdown.make(plan: free, safariProtectionEnabled: true, dnsAvailable: true)
 
         #expect(breakdown.stillOn == [.safariAdsTrackers, .allowlist, .filterUpdates])
-        #expect(breakdown.turnedOff == [.youtubeAds, .cookieBanners, .indianSites, .systemWideBlocking, .iCloudSync])
+        #expect(breakdown.turnedOff == [.youtubeAds, .cookieBanners, .indianSites, .systemWideBlocking])
     }
 
     @Test("system-wide blocking is not listed in a build without DNS Protection")
     func noDNS() {
         let breakdown = ProtectionBreakdown.make(plan: free, safariProtectionEnabled: true, dnsAvailable: false)
 
-        #expect(breakdown.turnedOff == [.youtubeAds, .cookieBanners, .indianSites, .iCloudSync])
+        #expect(breakdown.turnedOff == [.youtubeAds, .cookieBanners, .indianSites])
     }
 
     @Test("Safari ads & trackers is not claimed while its extensions are off")
@@ -203,7 +203,7 @@ struct ProtectionBreakdownTests {
         )
 
         #expect(breakdown.turnedOff.isEmpty)
-        #expect(breakdown.stillOn.count == 8)
+        #expect(breakdown.stillOn.count == 7)
     }
 
     @Test("system-wide blocking is never listed without DNS, whatever the plan", arguments: [
