@@ -26,7 +26,7 @@ Scan reports are in the gitignored `CLAUDE-SECURITY-*` folders at the repo root.
 | **Pre-launch blockers** | | | | |
 | SEC-09 | Manifest isn't authenticated or validated | HIGH | Overruled | Verification and list cap built; waiting on K1/K2, the first signed manifest and the device memory check |
 | SEC-10 | `PublicSuffixList` widens allowlisted domains | MEDIUM | Overruled | Fixed for country codes; private gTLD suffixes open |
-| SEC-11 | Web-extension rule payload needs an audit | To confirm | Review | Open |
+| SEC-11 | Web-extension rule payload needs an audit | To confirm | Review | Read end to end: no network path, no scriptlets; selector escape closed |
 | **With the DNS track** | | | | |
 | SEC-12 | No DNS over TCP; responses over 4096 bytes truncated | MEDIUM | Manual | Open |
 | SEC-13 | Tunnel start check allows `.free` | LOW | Panel | Open |
@@ -177,6 +177,14 @@ If the extension could evaluate strings arriving from the network, a compromised
 Check the scriptlet path specifically, because a grep for `eval` won't catch it:
 - Can a manifest rule name a scriptlet that isn't bundled?
 - Can scriptlet arguments reach `innerHTML`, `setAttribute('on…')` or `style` in a way that executes?
+
+**Read end to end (2026-11-07):**
+- **Source:** the only publisher of web-extension rules is `WebExtensionBootstrap`, from `defaultRulesJSON`, a constant compiled into the app. No manifest or network data reaches these rules, so a compromised manifest can't change them.
+- **Validation:** `WebExtensionSchemaValidator` runs on every publish (size, schema version, the YouTube selectors and parameters, the disable mask's domains). It doesn't check `cosmetics` or `antiAdblock`, which nothing reads today.
+- **Use in the page:** `content.js` uses the rules only as CSS selectors (`querySelector`, `querySelectorAll`) and joins the hide selectors into one `<style>` element through `textContent`. No `eval`, `Function`, `innerHTML`, `setAttribute` or script injection, and nothing reads `cosmetics` or `antiAdblock`.
+- **Scriptlets:** there is no scriptlet engine, so no rule can name a scriptlet or pass it arguments. Both questions above have no path to check.
+- **Hardened:** because the hide selectors are joined into one CSS rule, a selector containing `}` could have closed it and added CSS of its own (restyling, or a `url()` fetch as a tracking pixel). The validator now rejects `{`, `}`, `@` and `url(` in selectors (`WebExtensionSchemaValidatorTests`). Harmless while the rules are compiled in; it matters if they ever come from the network.
+- **If rules ever come from the network:** validate every section, not only `youtube`, and sign them like the manifest.
 
 ## With the DNS track
 
