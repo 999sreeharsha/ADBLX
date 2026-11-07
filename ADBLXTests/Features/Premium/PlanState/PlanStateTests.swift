@@ -1,5 +1,6 @@
 import Testing
 import Foundation
+import Observation
 @testable import ADBLX
 
 private final class StubTrialSource: @unchecked Sendable {
@@ -180,7 +181,7 @@ struct PlanStateModelTests {
         #expect(model.state == .trial(daysRemaining: 9, endsAt: end))
     }
 
-    @Test("an entitlement change re-derives the plan state without a manual refresh")
+    @Test("an entitlement change re-derives the plan state without a manual refresh", .timeLimit(.minutes(1)))
     func entitlementChangeRefreshes() async throws {
         let paid = StubPaidSource(nil)
         let entitlement = MockSubscriptionService(state: .free)
@@ -194,9 +195,20 @@ struct PlanStateModelTests {
 
         paid.set(.lifetime)
         entitlement.updateState(.lifetime)
-        for _ in 0..<50 where model.state != .premium(.lifetime) { try await Task.sleep(nanoseconds: 50_000_000) }
+        await waitForState(of: model) { $0 == .premium(.lifetime) }
         #expect(model.state == .premium(.lifetime))
         model.stopObserving()
+    }
+}
+
+/// Suspends until `condition` holds for the model's state, checked now and after each change to it,
+/// so a test never guesses how long a re-derivation takes. Bound it with a `.timeLimit` trait.
+@MainActor
+private func waitForState(of model: PlanStateModel, until condition: (PlanState) -> Bool) async {
+    while !condition(model.state) {
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            withObservationTracking { _ = model.state } onChange: { continuation.resume() }
+        }
     }
 }
 

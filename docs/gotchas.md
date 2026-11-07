@@ -535,15 +535,35 @@ look like a pass.
 
 Found in: corrupt-metadata recovery tests, 2026-11-05
 
-## Some tests still wait with fixed sleeps (follow-up)
+## Tests wait on a signal, not a fixed sleep
 
-`CrossFeatureEntitlementSyncTests`, `EntitlementTeardownTests` and `PlanStateTests`
-still `Task.sleep` for a fixed time and then assume a background task has run. Under
-load they will fail the way the `Transaction.updates` test did (fixed on
-`fix/metadata-recovery` with `FakeStoreEntitlementSource.wait(until:)`). Replace each sleep with
-a wait on the condition the test is waiting for, and give the test a `.timeLimit`.
+A test that sleeps for a guessed time and then assumes a background task has run fails
+under load (the `Transaction.updates` test did, fixed with
+`FakeStoreEntitlementSource.wait(until:)`). Wait on the effect the test cares about and give
+the test a `.timeLimit` instead.
 
-Found in: review of the `Transaction.updates` test fix, 2026-11-06
+Done (2026-11-07, `fix/fixed-sleep-waits`): `CrossFeatureEntitlementSyncTests`,
+`EntitlementTeardownTests` and the plan-state test in `PlanStateTests.swift`. The tools:
+- `TestSignal` (`ADBLXTests/Features/Premium/TestSignal.swift`): send from a production
+  callback, wait with a condition. Values sent before the wait are kept.
+- `SignalingFileManager`: inject into `WebExtensionEntitlementPublisher` to get each
+  `entitlement.json` it writes.
+- `RealDNSProtectionService.setStatusChangeHandler`: teardown reports `.disconnected` after
+  writing the settings.
+- For an `@Observable` model, `withObservationTracking` on the property (`waitForState` in
+  `PlanStateTests.swift`).
+
+Set any handler before the state that triggers it: `MockSubscriptionService` hands a new
+subscriber its current state at once, so a service built while the mock is `.free` can tear
+down before the test is listening.
+
+Still sleeping, not yet sorted into "waits for a background task" (to fix) and deliberate
+holds (fine): `WebExtensionEntitlementCoordinatorTests`, `PremiumEntitlementReconcilerTests`,
+`TrialExpiredDecisionViewModelTests`, `TrialExpiryRouterTests`, `ProtectionViewModelTests`,
+`PremiumPaywallTests`, `DNSUpstreamForwarderTests` and `DNSRealQuad9ResolutionTests` (both
+in the DNS session's area).
+
+Found in: review of the `Transaction.updates` test fix, 2026-11-06; fixed 2026-11-07
 
 ## Security findings live in `docs/Security/Findings.md`
 

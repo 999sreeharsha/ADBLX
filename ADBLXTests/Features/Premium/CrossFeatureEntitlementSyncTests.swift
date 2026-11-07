@@ -4,7 +4,9 @@ import Testing
 import ADBLXShared
 @testable import ADBLX
 
-@Suite("CrossFeatureEntitlementSync", .serialized)
+/// Each step waits for what it changes to be reported (the web extension's entitlement.json write,
+/// the DNS service's `.disconnected`) instead of sleeping, since both observers run detached.
+@Suite("CrossFeatureEntitlementSync", .serialized, .timeLimit(.minutes(1)))
 struct CrossFeatureEntitlementSyncTests {
     private func createTempDirectory() -> URL {
         let tempURL = FileManager.default.temporaryDirectory
@@ -61,12 +63,10 @@ struct CrossFeatureEntitlementSyncTests {
         let settingsStore = DNSProtectionSettingsStore(userDefaults: defaults)
 
         let mockEntitlement = MockSubscriptionService(state: .free)
-        let dnsService = RealDNSProtectionService(
-            settingsStore: settingsStore,
-            entitlementService: mockEntitlement
-        )
+        let files = SignalingFileManager()
         let webExtensionCoordinator = WebExtensionEntitlementCoordinator(
             entitlementService: mockEntitlement,
+            publisher: WebExtensionEntitlementPublisher(fileManager: files),
             baseAppGroupURL: tempBase
         )
 
@@ -84,10 +84,19 @@ struct CrossFeatureEntitlementSyncTests {
         }))
 
         // 2. .free -> .trial
-        settingsStore.setEnabled(true)
         let trialExpiry = Date().addingTimeInterval(15 * 86400)
         mockEntitlement.updateState(.trial(expiresAt: trialExpiry))
-        try await Task.sleep(nanoseconds: 80_000_000)
+        await files.written.wait { $0.state == .premiumActive }
+
+        // DNS Protection is turned on during the trial. Made now, the service is handed a premium
+        // state when it subscribes, so no teardown can run before its handler is set.
+        let dnsService = RealDNSProtectionService(
+            settingsStore: settingsStore,
+            entitlementService: mockEntitlement
+        )
+        let dnsStatuses = TestSignal<DNSConnectionStatus>()
+        dnsService.setStatusChangeHandler { dnsStatuses.send($0) }
+        settingsStore.setEnabled(true)
 
         #expect(mockEntitlement.currentState.hasPremiumAccess == true)
         #expect(readPersistedEntitlement(base: tempBase)?.state == .premiumActive)
@@ -100,7 +109,8 @@ struct CrossFeatureEntitlementSyncTests {
         // 3. .trial -> .monthly (Capability remains premiumActive)
         let monthExpiry = Date().addingTimeInterval(30 * 86400)
         mockEntitlement.updateState(.monthly(expiresAt: monthExpiry))
-        try await Task.sleep(nanoseconds: 80_000_000)
+        let monthValidUntil = EntitlementState.monthly(expiresAt: monthExpiry).validUntil?.timeIntervalSince1970
+        await files.written.wait { $0.validUntil == monthValidUntil }
 
         #expect(mockEntitlement.currentState == .monthly(expiresAt: monthExpiry))
         #expect(mockEntitlement.currentState.hasPremiumAccess == true)
@@ -120,7 +130,8 @@ struct CrossFeatureEntitlementSyncTests {
 
         // 4. .monthly -> .free (Downgrade: DNS tears down, WebExtension writes free, Updates halt premium)
         mockEntitlement.updateState(.free)
-        try await Task.sleep(nanoseconds: 120_000_000)
+        await files.written.wait { $0.state == .free }
+        await dnsStatuses.wait { $0 == .disconnected }
 
         #expect(mockEntitlement.currentState.hasPremiumAccess == false)
         #expect(settingsStore.loadSettings().isEnabled == false)
@@ -140,7 +151,7 @@ struct CrossFeatureEntitlementSyncTests {
 
         // 5. .free -> .lifetime
         mockEntitlement.updateState(.lifetime)
-        try await Task.sleep(nanoseconds: 80_000_000)
+        await files.written.wait { $0.state == .premiumActive && $0.validUntil == nil }
 
         #expect(mockEntitlement.currentState.hasPremiumAccess == true)
         #expect(readPersistedEntitlement(base: tempBase)?.state == .premiumActive)
