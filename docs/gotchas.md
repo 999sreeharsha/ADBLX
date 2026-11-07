@@ -443,10 +443,12 @@ cookiebot.com (classic dialog in the page DOM, no shadow root).
 - **Bundled too.** The entry is in `BundledPremiumCatalog` and
   `installBundledPremiumSnapshot`; the reconciler installs it for an entitled user
   who has Fanboy but not the fixes, at the next launch or foreground.
-- **Three copies to keep equal:** the backend payload, the bundled copy in
-  `ADBLX/Resources/Filters/`, and the manifest checksum
-  (`ShieldFixesListTests` checks the first two). After editing the list, bump
-  `backend/metadata/shield-fixes.json` and run the Publisher.
+- **Four copies to keep equal:** the backend payload, the bundled copy in
+  `ADBLX/Resources/Filters/`, the manifest checksum, and the bundled manifest
+  (`ShieldFixesListTests` checks the first two; `BundledManifestTests` the bundled
+  list against the bundled manifest). After editing the list, bump
+  `backend/metadata/shield-fixes.json`, run the Publisher, sign and deploy, then run
+  `Scripts/refresh-bundled-manifest.sh` (next entry).
 - **Not deployed.** The registry, manifest and docs are regenerated locally;
   nothing is on gh-pages until someone runs `backend/tools/publish-pages.sh`.
 - **`sourceURL` layout (decided 2026-11-06): `<base>/filters/<group>/<id>.txt`,
@@ -556,7 +558,8 @@ Found in: security audit and review, 2026-11-05
 ## Pre-launch: the PRD promises free weekly auto-updates, but nothing schedules them
 
 `docs/adblock-prd-v1.1.md` (feature table, "Automatic filter updates") lists
-"✅ (weekly)" for the free plan and "daily + push-triggered" for Premium. No
+"✅ (weekly)" for the free plan and "frequent" for Premium (it said "daily +
+push-triggered" until 2026-11-06, when manual manifest signing made daily unguaranteed). No
 `BGAppRefreshTask` or `BGTaskScheduler` exists in the app. What does exist is the
 foreground update in `ADBLXApp.swift` (`coordinator.run()` on app open, throttled by
 `UpdateThrottle` to 6 hours). The Home plan card therefore says "Filter updates when
@@ -564,8 +567,56 @@ you open the app", which matches the code. "Background Updates" is also listed a
 Premium feature on the paywall, so a free user cannot get background updates today.
 
 Before App Store submission, either build it (a `BGAppRefreshTask` that calls
-`UpdateCoordinator.run()`, free weekly and Premium daily, with the entitlement check
+`UpdateCoordinator.run()`, free weekly and Premium more often, with the entitlement check
 inside the coordinator) or amend the PRD and the paywall. Until then, no marketing
 copy, App Store text or in-app string may say "automatic weekly updates".
 
 Found in: Home plan card (Phase 4b) review, 2026-11-06
+
+## Manifest publishing is manual (Option B, 2026-11-06)
+
+Any future automation must follow `docs/Security/PublishingAutomation.md`: no AI agent ever
+has access to a signing key.
+
+Found in: manifest signing key decision, 2026-11-06
+
+## The bundled manifest is the app's rollback floor; refresh it before every archive
+
+`ADBLX/Resources/Filters/bundled-manifest.json` is the manifest the bundled lists came
+from. Its `manifestVersion` is the oldest manifest the app accepts, so a fresh install
+can't be served an older, still validly signed one (`BundledManifest`,
+`docs/Security/ManifestTrust.md`, Rollback).
+
+- Don't edit it or the bundled `.txt` lists by hand. `Scripts/refresh-bundled-manifest.sh`
+  downloads the live manifest, verifies its signature against the keys pinned in
+  `ManifestTrust.swift`, checks every bundled list against its checksum, and only then
+  copies them in. It needs the keys pinned and a signed manifest live.
+- The archive fails if the bundled manifest is over 30 days old
+  (`Scripts/check-manifest-trust.sh`), so the floor keeps up with releases.
+- Missing or unreadable, the minimum is `.distantFuture`: every manifest is rejected.
+- The enclave keygen test in the Publisher
+  (`test_keygenWithSecureEnclaveWritesAKeyThatLoadsAsTheSameEnclaveKey`) fails with
+  `-25308` while the Mac's screen is locked. That is the keychain refusing a user-presence
+  key in a locked session, not a regression.
+
+Found in: iOS manifest verification, Task 3, 2026-11-07
+
+## Every downloaded manifest is verified, and a rejection is silent by design
+
+`ManifestClient` returns a manifest only once `ManifestVerifier` accepts it
+(`docs/Security/ManifestTrust.md`). Three things follow:
+
+- **Until K1 and K2 are pinned, updates never install anything.** Every manifest is rejected
+  on its signature and the app stays on its bundled lists. The sheet shows the ordinary
+  "Unable to check for updates" text and nothing else says why. The DEBUG Developer screen's
+  "Manifest rejections" row and the `manifest rejected reason=<case>` log line do.
+- **A rejection advances the update throttle**, so after one the next automatic check waits
+  the full 6 hours. Use the sheet's manual update to retry sooner.
+- **Test manifests must be signed and follow the rules.** Build the client with
+  `SignedManifests.signingClient` (or serve `SignedManifests.responses`) and give fixtures a
+  timestamp `manifestVersion` and `sourceURL`s of the form
+  `<manifest directory>/filters/<group>/<id>.txt`. A fixture that breaks a rule is rejected
+  before the code under test runs, and a test that only expects "some error" passes for the
+  wrong reason; assert the specific error.
+
+Found in: iOS manifest verification, Tasks 4 and 5, 2026-11-07

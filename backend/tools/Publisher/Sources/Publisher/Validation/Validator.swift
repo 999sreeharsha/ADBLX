@@ -3,6 +3,14 @@ import Foundation
 enum Validator {
     static let validGroups: Set<String> = ["ads", "privacy", "annoyances", "regional"]
 
+    /// An id becomes a file name (`Filters/<id>.json`) and part of a URL on every device. The app
+    /// rejects a manifest with any other id (docs/Security/ManifestTrust.md, Filter IDs).
+    static let idPattern = "^[a-z0-9][a-z0-9-]{0,63}$"
+
+    static func isValidID(_ id: String) -> Bool {
+        id.range(of: idPattern, options: .regularExpression) != nil
+    }
+
     /// Registry-level checks only. Pure function — no filesystem access.
     /// Accumulates every independent error found; does not stop at the first.
     static func validateRegistry(_ registry: Registry) -> [ValidationError] {
@@ -10,6 +18,10 @@ enum Validator {
 
         if registry.filters.isEmpty {
             errors.append(.emptyRegistry)
+        }
+
+        for entry in registry.filters where !isValidID(entry.id) {
+            errors.append(.invalidID(id: entry.id))
         }
 
         for entry in registry.filters where !validGroups.contains(entry.group) {

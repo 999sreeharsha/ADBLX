@@ -6,6 +6,9 @@ enum PublisherPaths {
     static let metadataDirectory = URL(fileURLWithPath: "backend/metadata")
     static let payloadDirectory = URL(fileURLWithPath: "backend/public/filters")
     static let manifestOutput = URL(fileURLWithPath: "backend/public/manifest.json")
+    static let signaturesOutput = URL(fileURLWithPath: "backend/public/signatures", isDirectory: true)
+    /// Every command runs from the repository root (the paths above are relative to it).
+    static let repositoryRoot = URL(fileURLWithPath: FileManager.default.currentDirectoryPath, isDirectory: true)
     static let filterRegistryDocsOutput = URL(fileURLWithPath: "backend/docs/FilterRegistry.md")
 }
 
@@ -19,7 +22,10 @@ struct PublisherCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "publisher",
         abstract: "Registry to manifest publisher for ADBLX's filter distribution backend.",
-        subcommands: [ValidateCommand.self, GenerateDocsCommand.self, PublishCommand.self, GenerateCommand.self]
+        subcommands: [
+            ValidateCommand.self, GenerateDocsCommand.self, PublishCommand.self, GenerateCommand.self,
+            KeygenCommand.self, SignCommand.self, VerifyCommand.self
+        ]
     )
 }
 
@@ -53,6 +59,8 @@ enum PublisherPipeline {
             return "Registry is empty (zero registered filters)"
         case .invalidGroup(let id, let found):
             return "Invalid group \"\(found)\" for filter \"\(id)\" (expected: ads|privacy|annoyances|regional)"
+        case .invalidID(let id):
+            return "Invalid filter id \(id.debugDescription) (expected lowercase letters, digits and hyphens, starting with a letter or digit, at most 64 characters)"
         case .duplicateRegistryID(let id):
             return "Duplicate registry id \"\(id)\""
         case .missingMetadata(let id):

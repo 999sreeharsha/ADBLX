@@ -3,6 +3,7 @@ import Foundation
 enum ValidationError: Error, Equatable {
     case emptyRegistry
     case invalidGroup(id: String, found: String)
+    case invalidID(id: String)
     case duplicateRegistryID(id: String)
     case missingMetadata(id: String)
     case metadataIDMismatch(filename: String, declaredID: String)
@@ -13,7 +14,7 @@ enum ValidationError: Error, Equatable {
     /// Registry=0, Metadata=1, Payload=2 — fixed category order for deterministic reporting.
     private var categoryRank: Int {
         switch self {
-        case .emptyRegistry, .invalidGroup, .duplicateRegistryID:
+        case .emptyRegistry, .invalidGroup, .invalidID, .duplicateRegistryID:
             return 0
         case .missingMetadata, .metadataIDMismatch, .orphanedMetadata, .duplicateMetadata:
             return 1
@@ -26,7 +27,7 @@ enum ValidationError: Error, Equatable {
         switch self {
         case .emptyRegistry:
             return ""
-        case .invalidGroup(let id, _), .duplicateRegistryID(let id),
+        case .invalidGroup(let id, _), .invalidID(let id), .duplicateRegistryID(let id),
              .missingMetadata(let id), .orphanedMetadata(let id),
              .duplicateMetadata(let id), .missingPayload(let id, _):
             return id

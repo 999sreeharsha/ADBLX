@@ -73,7 +73,7 @@ One app, three blocking layers, a dynamically updatable filter catalog, and a fr
 |---|---|---|
 | Safari ad blocking (base filters) | ✅ | ✅ |
 | Tracker blocking (EasyPrivacy) | ✅ | ✅ |
-| Automatic filter updates | ✅ (weekly) | ✅ (daily + push-triggered) |
+| Automatic filter updates | ✅ (weekly) | ✅ (frequent; push-triggered planned, see Open Question 4) |
 | Per-site allowlist | ✅ | ✅ |
 | Cookie-banner / annoyance filters | ❌ | ✅ |
 | Regional filter lists | ❌ | ✅ |

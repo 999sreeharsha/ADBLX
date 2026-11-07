@@ -10,6 +10,8 @@ ADBLX — with no exception for debug builds.
 - Sizes (e.g. memory estimate in bytes, file size)
 - Versions (e.g. filter version string, manifest version)
 - Checksums (e.g. SHA-256 hex digest)
+- Fixed enum codes (e.g. `manifest rejected reason=signature`): a case name from a closed
+  set in the code, never a value derived from a URL, domain or list content
 
 ## Forbidden
 

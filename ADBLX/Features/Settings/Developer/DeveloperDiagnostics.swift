@@ -16,6 +16,13 @@ nonisolated struct DeveloperDiagnostics: Sendable {
     var trial = "unknown"
     var groupCounts: [GroupCount] = []
     var reloads: [ReloadResultLog.Entry] = []
+    var manifestRejections = "none"
+
+    /// So a rejection that outlasts a deploy shows up during testing (ManifestTrust.md).
+    static func manifestRejections(_ log: ManifestRejectionLog) -> String {
+        guard let reason = log.lastReason, log.consecutive > 0 else { return "none" }
+        return "\(log.consecutive) in a row, last \(reason)"
+    }
 
     static func caseName(of state: EntitlementState) -> String {
         switch state {
@@ -63,7 +70,8 @@ nonisolated struct DeveloperDiagnostics: Sendable {
         service: StoreKitSubscriptionService,
         trial: TrialSource,
         store: FilterStore,
-        reloadLog: ReloadResultLog = .shared
+        reloadLog: ReloadResultLog = .shared,
+        rejectionLog: ManifestRejectionLog = .shared
     ) async -> DeveloperDiagnostics {
         await service.refreshEntitlements()
         let snapshot = await service.snapshot()
@@ -78,6 +86,7 @@ nonisolated struct DeveloperDiagnostics: Sendable {
             .flatMap { try? JSONDecoder().decode([InstalledFilter].self, from: $0) } ?? []
         result.groupCounts = groupRuleCounts(from: filters)
         result.reloads = reloadLog.entries()
+        result.manifestRejections = manifestRejections(rejectionLog)
         return result
     }
 }

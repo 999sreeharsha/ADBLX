@@ -39,7 +39,7 @@ Commit 3 deliberately does not answer:
 
 ```json
 {
-  "manifestVersion": "2026-08-01",
+  "manifestVersion": "2026-08-01T09:30:00Z",
   "entries": [
     {
       "id": "easylist",
@@ -60,7 +60,7 @@ Commit 3 deliberately does not answer:
 
 | Field | Type | Required | Meaning |
 |---|---|:---:|---|
-| `manifestVersion` | string | ✅ | Identifies the published manifest snapshot. Date-based (see Versioning below). Changes whenever the set of published entries or their metadata changes. It is not the application version and does not imply a change to this JSON schema. |
+| `manifestVersion` | string | ✅ | Identifies the published manifest snapshot. A UTC timestamp (see `manifestVersion` below). Changes whenever the set of published entries or their metadata changes. It is not the application version and does not imply a change to this JSON schema. |
 | `entries` | array of Entry | ✅ | Every filter currently published. Order is not meaningful (no compile-order semantics — see `docs/FilterRegistry.md`). |
 
 ### Entry fields
@@ -84,8 +84,15 @@ Field names are exact JSON keys — `JSONDecoder()` is used with no
 
 ### `manifestVersion`
 
-Date-based string, formatted `YYYY-MM-DD` (matching each entry's `version`
-format and PRD §6.2's "date-based" versioning). Example: `"2026-08-01"`.
+A UTC timestamp, formatted `YYYY-MM-DDTHH:MM:SSZ`: always UTC, always `Z`, no
+fractional seconds. Fixed width, so comparing two versions as strings orders
+them in time. Example: `"2026-08-01T09:30:00Z"`. Manifests published before
+2026-11-06 used a date only (`YYYY-MM-DD`); a reader treats one as that day at
+`00:00:00Z`.
+
+The app's rollback rule rejects a manifest whose version is older than the one
+it has, or equal with different bytes, so the version must move forward on
+every publish that changes the manifest (`docs/Security/ManifestTrust.md`).
 
 `manifestVersion` identifies the published manifest snapshot. It changes
 whenever the set of published entries or their metadata changes. It is not

@@ -33,6 +33,14 @@ targets:
         inputFiles:
           - $(SRCROOT)/ADBLX/Features/BrokenSite/BrokenSiteModels.swift
         basedOnDependencyAnalysis: false
+      - name: "Check Manifest Trust"
+        script: |
+          "$SRCROOT/Scripts/check-manifest-trust.sh"
+        inputFiles:
+          - $(SRCROOT)/ADBLX/Filtering/Updates/ManifestTrust.swift
+          - $(SRCROOT)/ADBLX/Filtering/Updates/ManifestTrust+Debug.swift
+          - $(SRCROOT)/ADBLX/Resources/Filters/bundled-manifest.json
+        basedOnDependencyAnalysis: false
     dependencies:
       - target: ADBLXAdsBlocker
         embed: true

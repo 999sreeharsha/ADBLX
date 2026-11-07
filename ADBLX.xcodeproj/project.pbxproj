@@ -481,6 +481,7 @@
 			buildPhases = (
 				485054795346E4BCB1BA4384 /* SwiftLint */,
 				D2FA85A4CBBB39729F018E05 /* Check Report Recipient */,
+				D2CE282C30E5987A0BEFBA84 /* Check Manifest Trust */,
 				091621AA814C583EA42F511D /* Sources */,
 				AD6FA0F3423771E4849031F3 /* Resources */,
 				A41DA53F33D9B41B4EC02D5C /* Frameworks */,
@@ -782,6 +783,28 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "if which swiftlint > /dev/null; then\n  swiftlint\nelse\n  echo \"warning: SwiftLint not installed. Run: brew install swiftlint\"\nfi\n";
+		};
+		D2CE282C30E5987A0BEFBA84 /* Check Manifest Trust */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/ADBLX/Filtering/Updates/ManifestTrust.swift",
+				"$(SRCROOT)/ADBLX/Filtering/Updates/ManifestTrust+Debug.swift",
+				"$(SRCROOT)/ADBLX/Resources/Filters/bundled-manifest.json",
+			);
+			name = "Check Manifest Trust";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"$SRCROOT/Scripts/check-manifest-trust.sh\"\n";
 		};
 		D2FA85A4CBBB39729F018E05 /* Check Report Recipient */ = {
 			isa = PBXShellScriptBuildPhase;

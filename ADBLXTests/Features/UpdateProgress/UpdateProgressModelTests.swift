@@ -33,7 +33,7 @@ struct UpdateProgressModelTests {
         try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("manifest.json"))
         try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("installed_filters.json"))
 
-        let manifest = FilterManifest(manifestVersion: "1", entries: [])
+        let manifest = FilterManifest(manifestVersion: SignedManifests.version, entries: [])
         let manifestData = try JSONEncoder().encode(manifest)
         let manifestResponse = HTTPURLResponse(
             url: manifestEndpoint, statusCode: 200, httpVersion: nil, headerFields: ["ETag": "\"v1\""]
@@ -46,7 +46,7 @@ struct UpdateProgressModelTests {
             store: store, writer: AtomicRuleWriter(), reloader: ReloadCoordinator()
         )
         let coordinator = UpdateCoordinator(
-            manifestClient: ManifestClient(session: session, endpoint: manifestEndpoint),
+            manifestClient: SignedManifests.signingClient(session: session, endpoint: manifestEndpoint),
             manifestStore: ManifestStore(filterStore: store),
             downloadClient: FilterDownloadClient(session: session),
             pipeline: pipeline, store: store, reloader: ReloadCoordinator(),
@@ -71,7 +71,7 @@ struct UpdateProgressModelTests {
             store: store, writer: AtomicRuleWriter(), reloader: ReloadCoordinator()
         )
         let coordinator = UpdateCoordinator(
-            manifestClient: ManifestClient(session: session, endpoint: manifestEndpoint),
+            manifestClient: SignedManifests.signingClient(session: session, endpoint: manifestEndpoint),
             manifestStore: ManifestStore(filterStore: store),
             downloadClient: FilterDownloadClient(session: session),
             pipeline: pipeline, store: store, reloader: ReloadCoordinator(),

@@ -66,3 +66,6 @@ playground.xcworkspace
 # Deployment worktree
 .gh-pages-worktree/
 
+
+# Manifest signing keys belong outside the repository (docs/Security/ManifestTrust.md).
+*.key

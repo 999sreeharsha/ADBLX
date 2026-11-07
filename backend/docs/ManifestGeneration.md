@@ -19,7 +19,7 @@ Commit 4 answers:
 - What are the generator's inputs, and what owns each manifest field.
 - The `backend/metadata/{id}.json` sidecar shape that supplies each filter's
   `version`.
-- How `sourceURL` and `manifestVersion` are derived rather than configured.
+- How `sourceURL` is derived, and how `manifestVersion` is supplied.
 - Deterministic generation rules (ordering, formatting).
 - Failure conditions.
 
@@ -51,7 +51,15 @@ Commit 4 deliberately does not answer:
 ## Output
 
 `backend/public/manifest.json`, matching `docs/ManifestSpecification.md`
-exactly.
+exactly. It is not signed yet.
+
+`publisher sign` then writes `backend/public/signatures/<sha256>.sig`, an
+ECDSA P-256 signature over the manifest's exact bytes, named after their SHA-256,
+with a key kept outside the repository. Earlier signatures stay for 7 days, for
+devices whose CDN edge still serves an older manifest, then `sign` deletes them;
+`signatures/index.json` records when each was written. Signatures are randomized, so
+the `.sig` file differs between runs even though the manifest doesn't. See `docs/Security/ManifestTrust.md` for the
+commands, keys and what the app checks.
 
 ## `backend/metadata/{id}.json` — per-filter metadata sidecar
 
@@ -102,11 +110,11 @@ v1.
 | `checksumSHA256` | Generated exactly as specified in `ManifestSpecification.md` — SHA-256 of `backend/public/filters/{group}/{id}.txt` |
 | `ruleCount` | Generated — number of rules represented by the published payload at `backend/public/filters/{group}/{id}.txt`, using the same counting methodology as the eventual publisher implementation |
 | `sourceURL` | Derived — see below |
-| `manifestVersion` | Derived — see below |
+| `manifestVersion` | `--manifest-version`, checked against the committed manifest — see below |
 
-No field is manually typed per publish run. The only human-supplied value in
-the entire pipeline is `publishBaseURL`, and it is supplied once per
-deployment, not once per filter or per publish.
+No per-filter field is manually typed per publish run. The human-supplied
+values are `publishBaseURL`, supplied once per deployment, and
+`--manifest-version`, supplied on each publish that changes the manifest.
 
 ### `sourceURL` derivation
 
@@ -133,23 +141,31 @@ registered v1 filters — EasyList, EasyPrivacy, Fanboy Annoyances — are
 plain-text lists). If the derived path does not exist under
 `backend/public/filters/`, generation fails (see Failure conditions).
 
-### `manifestVersion` derivation
+### `manifestVersion`
 
-```text
-manifestVersion = max(entry.version for entry in entries)
-```
+`publish --manifest-version 2026-11-06T09:30:00Z` (also accepted by
+`generate`). `ManifestVersion.resolve` compares the new entries with the
+committed `backend/public/manifest.json`:
 
-Lexical comparison, valid because `version` is fixed-format `YYYY-MM-DD`.
-`manifestVersion` therefore only advances when at least one entry's own
-version advances — publishing with unchanged inputs produces an unchanged
-`manifestVersion`, and by extension a byte-identical `manifest.json`.
+- **Entries unchanged:** the committed version is kept and `--manifest-version`
+  is ignored, so re-running with the same inputs gives a byte-identical file.
+- **Entries changed** (content, a flag, a name, a list added or removed):
+  `--manifest-version` is required and must be later than the committed
+  version, or `publish` exits with a validation failure and writes nothing.
+- A committed date-only version (`YYYY-MM-DD`, the format before 2026-11-06)
+  counts as that day at `00:00:00Z` and is never kept.
+
+It used to be the newest entry's `version`, which stayed the same when a list
+was removed or a flag changed, so the app's rollback rule couldn't tell a new
+manifest from a replayed old one. See `docs/Security/ManifestTrust.md`
+(Rollback).
 
 ## Determinism rule
 
 > Given identical registry content, identical `backend/metadata/{id}.json`
-> files, identical published payloads, and the same `publishBaseURL`,
-> generation MUST produce byte-identical `manifest.json` output, regardless
-> of when or on what machine it runs.
+> files, identical published payloads, the same `publishBaseURL` and the same
+> committed manifest, generation MUST produce byte-identical `manifest.json`
+> output, regardless of when or on what machine it runs.
 
 This is what makes generation safe to run in CI, safe to diff in review, and
 safe to use as a reproducibility/regression check (re-running generation

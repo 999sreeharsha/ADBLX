@@ -60,6 +60,9 @@ struct DeveloperDiagnosticsView: View {
                     row(count.group.rawValue, "\(count.ruleCount)")
                 }
             }
+            Section("Filter updates") {
+                row("Manifest rejections", diagnostics?.manifestRejections ?? "none")
+            }
             Section("Last reload") {
                 if (diagnostics?.reloads ?? []).isEmpty {
                     Text(verbatim: "No reloads this launch").foregroundStyle(.secondary)

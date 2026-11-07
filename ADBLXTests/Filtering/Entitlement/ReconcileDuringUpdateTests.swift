@@ -8,7 +8,7 @@ import Foundation
 @Suite("Reconcile during update", .serialized)
 struct ReconcileDuringUpdateTests {
     private let manifestURL = URL(string: "https://example.com/manifest.json")!
-    private let listURL = URL(string: "https://example.com/easylist.json")!
+    private let listURL = URL(string: "https://example.com/filters/ads/easylist.txt")!
     private let ids = GroupExtensionIdentifiers(
         ads: "com.ADBLX.ADBLX.AdsBlocker", privacy: "com.ADBLX.ADBLX.PrivacyBlocker",
         annoyances: "com.ADBLX.ADBLX.AnnoyancesBlocker", regional: "com.ADBLX.ADBLX.RegionalBlocker"
@@ -37,10 +37,10 @@ struct ReconcileDuringUpdateTests {
         // The update will install a new free Ads list. Each HTTP call is slow, so the
         // transaction holds the gate for a while.
         let listData = Data("[{\"trigger\":{\"url-filter\":\"ads\"},\"action\":{\"type\":\"block\"}}]".utf8)
-        let manifest = FilterManifest(manifestVersion: "1", entries: [
+        let manifest = FilterManifest(manifestVersion: SignedManifests.version, entries: [
             .init(id: "easylist", name: "EasyList", group: .ads, sourceURL: listURL, version: "2026-10-29",
                   checksumSHA256: Checksum.sha256Hex(of: listData), ruleCount: 1, enabledByDefault: true, premium: false),
-            .init(id: "fanboy-annoyances", name: "Annoyances", group: .annoyances, sourceURL: listURL, version: "v1",
+            .init(id: "fanboy-annoyances", name: "Annoyances", group: .annoyances, sourceURL: SignedManifests.sourceURL(manifestURL, group: .annoyances, id: "fanboy-annoyances"), version: "v1",
                   checksumSHA256: Checksum.sha256Hex(of: premiumData), ruleCount: 1, enabledByDefault: true, premium: true)
         ])
         let session = HoldingHTTPSession(
@@ -55,7 +55,7 @@ struct ReconcileDuringUpdateTests {
         let gate = FilterTransactionGate()
         let entitlement = StubEntitlementService(isPremiumEntitled: false)
         let coordinator = UpdateCoordinator(
-            manifestClient: ManifestClient(session: session, endpoint: manifestURL),
+            manifestClient: SignedManifests.signingClient(session: session, endpoint: manifestURL),
             manifestStore: ManifestStore(filterStore: store),
             downloadClient: FilterDownloadClient(session: session),
             pipeline: pipeline, store: store, reloader: ReloadCoordinator(),

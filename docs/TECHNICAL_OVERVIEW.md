@@ -147,7 +147,7 @@ group.com.ADBLX.shared/
 │   ├── Annoyances.json Regional.json   Written ONLY by AtomicRuleWriter. Read by the 4 CB extensions.
 ├── Metadata/
 │   ├── installed_filters.json       [InstalledFilter]  (ruleCount is GROUP-level, not per-source)
-│   ├── manifest.json                CachedManifest (FilterManifest + ETag)
+│   ├── manifest.json                CachedManifest (FilterManifest + ETag + signatureVerified)
 │   ├── statistics.json              RuleStatistics (last compile pass)
 │   ├── filter_preferences.json      Per-category / per-list enable flags
 │   ├── allowlist.json               [AllowlistEntry]  (user allowlist)
@@ -289,7 +289,10 @@ All of `ADBLX/Filtering/` is **main-app-target only**. The 4 CB extensions never
 `UpdateCoordinator` (an `actor`) runs one transaction:
 
 ```
-checking:   ManifestStore.load() → ManifestClient.fetch(previousETag:)   [304 → upToDate, stop]
+checking:   ManifestStore.load() → ManifestClient.fetch(previousETag:cached:)   [304 → upToDate, stop]
+              on 200: fetch signatures/<sha256>.sig → ManifestVerifier       [signature, then every rule]
+              rejected → nothing written, pending reloads retried, throw ManifestRejection
+              unchanged (same version and content) → save new ETag, upToDate
             UpdatePlanner.plan(manifest, installed, isPremiumEntitled)     [pure diff, no I/O]
 downloading: for every .install group: FilterDownloadClient.download each entry,
              then Checksum.verify(sha256) every file      [ALL groups verified before ANY write]
@@ -303,9 +306,11 @@ on any failure past download: FilterStore.restore(snapshot)   [→ .rolledBack]
 finally:    FilterDownloadClient.cleanupWorkspace()      [every exit path]
 ```
 
-- **ETag / `If-None-Match` / 304** caching in `ManifestClient`. `HTTPSession` protocol seam → `MockHTTPSession` for tests (no test hits a real endpoint).
+- **ETag / `If-None-Match` / 304** caching in `ManifestClient`. `HTTPSession` protocol seam → `MockHTTPSession` for tests (only the disabled live suite hits a real endpoint). Test manifests are signed with a test key through `SignedManifests` (`ADBLXTests/Filtering/Updates/`).
+- **Manifest signatures (SEC-09):** `ManifestVerifier` with the keys and allowed base in `ManifestTrust`, and the built-in minimum from `BundledManifest`. See `docs/Security/ManifestTrust.md`. Until K1 and K2 are pinned, every manifest is rejected and the app stays on its bundled lists.
+- **`RedirectGuard`** is the delegate of the app's one `URLSession`: no redirect off the original host or off HTTPS.
 - `UpdatePlanner` emits `.install(group:entries:)` / `.keep` / `.remove(filterID:)` / `.skipPremium(entry)`.
-- **`UpdateThrottle`** (an `actor`, `update_throttle.json`, 6h interval) is the scheduling policy, deliberately kept outside the transactional actor. `recordSuccess` only on success — a failed update stays retryable next launch.
+- **`UpdateThrottle`** (an `actor`, `update_throttle.json`, 6h interval) is the scheduling policy, deliberately kept outside the transactional actor; `AutomaticUpdate.runIfDue` applies it at launch. It records on success and on a rejected manifest; any other failure stays retryable next launch.
 - In-flight guard: concurrent callers await the same task; a generation counter closes a 3+-caller race.
 - **Manifest endpoint (live):** `https://999sreeharsha.github.io/ADBLX/manifest.json` (GitHub Pages + Fastly CDN). Verified end-to-end on an iPhone 14 (200 + ETag, then 304, full OTA install + rollback).
 
@@ -409,7 +414,7 @@ Swift + `swift-argument-parser`. Commands:
 |---|---|
 | `validate` | 1:1 consistency check across registry ↔ metadata ↔ payloads (accumulates all errors). Writes nothing. |
 | `generate-docs` | Regenerates `backend/docs/FilterRegistry.md`. |
-| `publish --publish-base-url <url>` | validate → for each filter: read payload, SHA-256, count rules (non-empty, non-`!` lines) → `ManifestBuilder` (sorts entries by id, `manifestVersion = max(entry.version)`) → `ManifestJSONWriter` (**hand-built JSON string, fixed key order** — ADR-0001, because `JSONEncoder` key order is non-deterministic on Swift 6.3) → atomic write to `backend/public/manifest.json`. |
+| `publish --publish-base-url <url>` | validate → for each filter: read payload, SHA-256, count rules (non-empty, non-`!` lines) → `ManifestBuilder` (sorts entries by id) → `ManifestVersion.resolve` (keeps the committed `manifestVersion` when entries are unchanged, otherwise requires a later `--manifest-version` UTC timestamp) → `ManifestJSONWriter` (**hand-built JSON string, fixed key order** — ADR-0001, because `JSONEncoder` key order is non-deterministic on Swift 6.3) → atomic write to `backend/public/manifest.json`. |
 | `generate --publish-base-url <url>` | validate + generate-docs + publish. |
 
 All-or-nothing; the existing `manifest.json` is untouched on any failure. **`PublisherPaths` are hardcoded** (no injection seam) → no true end-to-end CLI test. 44 unit/integration tests (golden fixtures use `cdn.adblx.com` and synthetic payloads).

@@ -71,7 +71,7 @@ final class PublisherIntegrationTests: XCTestCase {
 
         let manifest = ManifestBuilder.build(
             registry: registry, metadataByID: metadataByID, payloadInfoByID: payloadInfoByID,
-            publishBaseURL: publishBaseURL
+            publishBaseURL: publishBaseURL, manifestVersion: "2026-07-16T00:00:00Z"
         )
         return (manifest, report)
     }

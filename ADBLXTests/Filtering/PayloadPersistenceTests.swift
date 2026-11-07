@@ -91,7 +91,7 @@ struct PayloadPersistenceTests {
         let entries = [
             FilterManifest.Entry(
                 id: "fanboy-annoyances", name: "Fanboy", group: .annoyances,
-                sourceURL: URL(string: "https://example.com/fanboy.txt")!, version: "bundled-baseline",
+                sourceURL: URL(string: "https://example.com/filters/annoyances/fanboy-annoyances.txt")!, version: "bundled-baseline",
                 checksumSHA256: Checksum.sha256Hex(of: fanboy), ruleCount: 1, enabledByDefault: false, premium: true),
             FilterManifest.Entry(
                 id: "shield-fixes", name: "SHIELD Fixes", group: .annoyances, sourceURL: fixesURL,
@@ -100,13 +100,13 @@ struct PayloadPersistenceTests {
         ]
         let session = MockHTTPSession(responses: [
             manifestEndpoint: .success((
-                try JSONEncoder().encode(FilterManifest(manifestVersion: "2", entries: entries)),
+                try JSONEncoder().encode(FilterManifest(manifestVersion: SignedManifests.version, entries: entries)),
                 HTTPURLResponse(url: manifestEndpoint, statusCode: 200, httpVersion: nil, headerFields: ["ETag": "\"v2\""])!
             )),
             fixesURL: .success((newFixes, HTTPURLResponse(url: fixesURL, statusCode: 200, httpVersion: nil, headerFields: nil)!)),
         ])
         let coordinator = UpdateCoordinator(
-            manifestClient: ManifestClient(session: session, endpoint: manifestEndpoint),
+            manifestClient: SignedManifests.signingClient(session: session, endpoint: manifestEndpoint),
             manifestStore: ManifestStore(filterStore: store),
             downloadClient: FilterDownloadClient(session: session),
             pipeline: pipeline, store: store, reloader: ReloadCoordinator(), extensionIdentifiers: ids,

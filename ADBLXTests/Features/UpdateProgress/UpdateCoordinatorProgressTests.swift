@@ -6,7 +6,7 @@ import Foundation
 @Suite("UpdateCoordinator onPhaseChange", .serialized)
 struct UpdateCoordinatorProgressTests {
     private let manifestEndpoint = URL(string: "https://example.com/manifest.json")!
-    private let filterSourceURL = URL(string: "https://example.com/easylist.txt")!
+    private let filterSourceURL = URL(string: "https://example.com/filters/ads/easylist.txt")!
     private let groupExtensionIdentifiers = GroupExtensionIdentifiers(
         ads: "com.ADBLX.ADBLX.AdsBlocker",
         privacy: "com.ADBLX.ADBLX.PrivacyBlocker",
@@ -21,7 +21,7 @@ struct UpdateCoordinatorProgressTests {
         try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("manifest.json"))
         try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("installed_filters.json"))
 
-        let manifest = FilterManifest(manifestVersion: "1", entries: [])
+        let manifest = FilterManifest(manifestVersion: SignedManifests.version, entries: [])
         let manifestData = try JSONEncoder().encode(manifest)
         let manifestResponse = HTTPURLResponse(
             url: manifestEndpoint, statusCode: 200, httpVersion: nil, headerFields: ["ETag": "\"v1\""]
@@ -34,7 +34,7 @@ struct UpdateCoordinatorProgressTests {
             store: store, writer: AtomicRuleWriter(), reloader: ReloadCoordinator()
         )
         let coordinator = UpdateCoordinator(
-            manifestClient: ManifestClient(session: session, endpoint: manifestEndpoint),
+            manifestClient: SignedManifests.signingClient(session: session, endpoint: manifestEndpoint),
             manifestStore: ManifestStore(filterStore: store),
             downloadClient: FilterDownloadClient(session: session),
             pipeline: pipeline, store: store, reloader: ReloadCoordinator(),
@@ -59,7 +59,7 @@ struct UpdateCoordinatorProgressTests {
         try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("manifest.json"))
         try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("installed_filters.json"))
 
-        let manifest = FilterManifest(manifestVersion: "1", entries: [])
+        let manifest = FilterManifest(manifestVersion: SignedManifests.version, entries: [])
         let manifestData = try JSONEncoder().encode(manifest)
         let manifestResponse = HTTPURLResponse(
             url: manifestEndpoint, statusCode: 200, httpVersion: nil, headerFields: ["ETag": "\"v1\""]
@@ -72,7 +72,7 @@ struct UpdateCoordinatorProgressTests {
             store: store, writer: AtomicRuleWriter(), reloader: ReloadCoordinator()
         )
         let coordinator = UpdateCoordinator(
-            manifestClient: ManifestClient(session: session, endpoint: manifestEndpoint),
+            manifestClient: SignedManifests.signingClient(session: session, endpoint: manifestEndpoint),
             manifestStore: ManifestStore(filterStore: store),
             downloadClient: FilterDownloadClient(session: session),
             pipeline: pipeline, store: store, reloader: ReloadCoordinator(),

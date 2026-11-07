@@ -16,7 +16,7 @@ final class ManifestTests: XCTestCase {
 
         let manifest = ManifestBuilder.build(
             registry: registry, metadataByID: metadata, payloadInfoByID: payload,
-            publishBaseURL: "https://cdn.adblx.com"
+            publishBaseURL: "https://cdn.adblx.com", manifestVersion: "2026-07-20T00:00:00Z"
         )
 
         XCTAssertEqual(manifest.entries.count, 1)
@@ -32,7 +32,7 @@ final class ManifestTests: XCTestCase {
         XCTAssertEqual(entry.premium, false)
     }
 
-    func test_manifestVersionIsMaxOfEntryVersions() {
+    func test_manifestVersionIsTheOneGivenNotDerivedFromEntries() {
         let registry = Registry(registryVersion: 1, filters: [
             makeEntry(id: "easylist", group: "ads"),
             makeEntry(id: "easyprivacy", group: "privacy")
@@ -48,10 +48,10 @@ final class ManifestTests: XCTestCase {
 
         let manifest = ManifestBuilder.build(
             registry: registry, metadataByID: metadata, payloadInfoByID: payload,
-            publishBaseURL: "https://cdn.adblx.com"
+            publishBaseURL: "https://cdn.adblx.com", manifestVersion: "2026-07-20T00:00:00Z"
         )
 
-        XCTAssertEqual(manifest.manifestVersion, "2026-07-20")
+        XCTAssertEqual(manifest.manifestVersion, "2026-07-20T00:00:00Z")
     }
 
     func test_entriesAreSortedAscendingByID() {
@@ -70,7 +70,7 @@ final class ManifestTests: XCTestCase {
 
         let manifest = ManifestBuilder.build(
             registry: registry, metadataByID: metadata, payloadInfoByID: payload,
-            publishBaseURL: "https://cdn.adblx.com"
+            publishBaseURL: "https://cdn.adblx.com", manifestVersion: "2026-07-20T00:00:00Z"
         )
 
         XCTAssertEqual(manifest.entries.map(\.id), ["alpha", "zebra"])

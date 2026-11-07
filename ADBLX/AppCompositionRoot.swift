@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 
 /// Where UpdateCoordinator fetches manifest.json from. A separate abstraction from
@@ -52,8 +53,11 @@ public enum AppCompositionRoot {
     /// and FilterDownloadClient both receive this same instance rather than each reaching
     /// for URLSession.shared independently.
     static func makeHTTPSession() -> HTTPSession {
-        URLSession.shared
+        sharedHTTPSession
     }
+
+    /// One session for the app's lifetime: a session holds its delegate until invalidated.
+    private static let sharedHTTPSession = URLSession(configuration: .default, delegate: RedirectGuard(), delegateQueue: nil)
 
     /// The single `FilterPreferencesStore` instance — same "one instance per backend
     /// type" principle as makeFilterStore(). No factory or service constructs its own.
@@ -169,11 +173,18 @@ public enum AppCompositionRoot {
         )
     }
 
-    static func makeUpdateCoordinator(pipeline: FilterPipeline, store: FilterStore) -> UpdateCoordinator {
-        let session = makeHTTPSession()
+    /// `session` and `trustedKeys` exist for tests; the app always takes the defaults.
+    static func makeUpdateCoordinator(
+        pipeline: FilterPipeline,
+        store: FilterStore,
+        session: HTTPSession = makeHTTPSession(),
+        trustedKeys: [P256.Signing.PublicKey] = ManifestTrust.pinnedPublicKeys
+    ) -> UpdateCoordinator {
         let endpointProvider: ManifestEndpointProvider = AppManifestEndpointProvider()
         return UpdateCoordinator(
-            manifestClient: ManifestClient(session: session, endpoint: endpointProvider.manifestURL),
+            manifestClient: ManifestClient(
+                session: session, endpoint: endpointProvider.manifestURL, verifier: ManifestTrust.verifier(trustedKeys: trustedKeys)
+            ),
             manifestStore: ManifestStore(filterStore: store),
             downloadClient: FilterDownloadClient(session: session),
             pipeline: pipeline,

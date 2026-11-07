@@ -8,9 +8,24 @@ enum ManifestBuilder {
         registry: Registry,
         metadataByID: [String: FilterMetadata],
         payloadInfoByID: [String: PayloadInfo],
-        publishBaseURL: String
+        publishBaseURL: String,
+        manifestVersion: String
     ) -> Manifest {
-        let entries: [ManifestEntry] = registry.filters.map { entry in
+        Manifest(
+            manifestVersion: manifestVersion,
+            entries: entries(registry: registry, metadataByID: metadataByID, payloadInfoByID: payloadInfoByID, publishBaseURL: publishBaseURL)
+        )
+    }
+
+    /// The entries alone: `ManifestVersion.resolve` compares them with the committed manifest's
+    /// before the version is known.
+    static func entries(
+        registry: Registry,
+        metadataByID: [String: FilterMetadata],
+        payloadInfoByID: [String: PayloadInfo],
+        publishBaseURL: String
+    ) -> [ManifestEntry] {
+        registry.filters.map { entry in
             let metadata = metadataByID[entry.id]!
             let payload = payloadInfoByID[entry.id]!
             let sourceURL = "\(publishBaseURL)/filters/\(entry.group)/\(entry.id).txt"
@@ -27,9 +42,5 @@ enum ManifestBuilder {
                 premium: entry.premium
             )
         }.sorted { $0.id < $1.id }
-
-        let manifestVersion = entries.map(\.version).max() ?? ""
-
-        return Manifest(manifestVersion: manifestVersion, entries: entries)
     }
 }

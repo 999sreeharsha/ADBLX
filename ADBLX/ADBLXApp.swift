@@ -113,19 +113,9 @@ struct ADBLXApp: App {
                     // lapsed user never downloads premium lists.
                     await reconciler.startObserving()
                     await reconciler.reconcile()
-                    let throttle = AppCompositionRoot.makeUpdateThrottle(store: store)
-                    guard await throttle.shouldRun(now: Date()) else { return }
-                    do {
-                        let result = try await coordinator.run()
-                        switch result {
-                        case .upToDate, .updated:
-                            try await throttle.recordSuccess(at: Date())
-                        case .rolledBack, .rollbackFailed:
-                            break
-                        }
-                    } catch {
-                        // Failed launches remain retryable on the next launch.
-                    }
+                    guard await AutomaticUpdate.runIfDue(
+                        coordinator: coordinator, throttle: AppCompositionRoot.makeUpdateThrottle(store: store)
+                    ) else { return }
                     // The manifest's never-block list for DNS Protection, from the manifest just cached.
                     // Not shipped in Release, so nothing is fetched there.
                     if BuildFeatures.dnsProtection, let entry = try? await manifestStore.load()?.manifest.dnsNeverBlock {

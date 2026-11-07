@@ -21,6 +21,16 @@ struct PlanRowTextTests {
 
 @Suite("Developer diagnostics")
 struct DeveloperDiagnosticsTests {
+    @Test("manifest rejections show the consecutive count and the last reason's case name only")
+    func manifestRejectionDescription() {
+        let log = ManifestRejectionLog()
+        #expect(DeveloperDiagnostics.manifestRejections(log) == "none")
+
+        log.recordRejection(.signature)
+        log.recordRejection(.belowMinimum)
+        #expect(DeveloperDiagnostics.manifestRejections(log) == "2 in a row, last belowMinimum")
+    }
+
     @Test("entitlement case names carry no dates")
     func caseNames() {
         let date = Date(timeIntervalSince1970: 2_000_000_000)

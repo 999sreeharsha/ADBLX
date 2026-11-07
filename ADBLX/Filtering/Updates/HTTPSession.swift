@@ -4,9 +4,44 @@ import Foundation
 /// can be unit-tested with canned responses — no real network, no `URLProtocol` stubbing.
 protocol HTTPSession: Sendable {
     func data(for request: URLRequest) async throws -> (Data, URLResponse)
+    /// Throws `HTTPSessionError.tooLarge` for a body over `maxBytes`.
+    func data(for request: URLRequest, maxBytes: Int) async throws -> (Data, URLResponse)
 }
 
-extension URLSession: HTTPSession {}
+enum HTTPSessionError: Error, Equatable {
+    case tooLarge
+}
+
+extension HTTPSession {
+    /// For test sessions, which hold the whole body anyway: checks the declared length, then
+    /// the received byte count.
+    func data(for request: URLRequest, maxBytes: Int) async throws -> (Data, URLResponse) {
+        let (data, response) = try await data(for: request)
+        guard response.expectedContentLength <= maxBytes, data.count <= maxBytes else { throw HTTPSessionError.tooLarge }
+        return (data, response)
+    }
+}
+
+extension URLSession: HTTPSession {
+    /// Stops reading as soon as the declared length or the bytes received pass `maxBytes`, so an
+    /// oversized body is never held in memory. Byte by byte, so only for small bodies.
+    func data(for request: URLRequest, maxBytes: Int) async throws -> (Data, URLResponse) {
+        let (bytes, response) = try await bytes(for: request)
+        guard response.expectedContentLength <= maxBytes else {
+            bytes.task.cancel()
+            throw HTTPSessionError.tooLarge
+        }
+        var data = Data()
+        for try await byte in bytes {
+            data.append(byte)
+            if data.count > maxBytes {
+                bytes.task.cancel()
+                throw HTTPSessionError.tooLarge
+            }
+        }
+        return (data, response)
+    }
+}
 
 /// Test/debug helper: returns a canned `Result` keyed by exact request URL.
 /// Lives in the main target (not the test target) so it's reusable across every

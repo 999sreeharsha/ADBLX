@@ -24,7 +24,7 @@ Scan reports are in the gitignored `CLAUDE-SECURITY-*` folders at the repo root.
 | SEC-07 | Benchmark spike files are in the tunnel folder | LOW | Manual | Fixed |
 | SEC-08 | Each ad skip sends two clicks | LOW | Manual | Fixed; check skip on a device |
 | **Pre-launch blockers** | | | | |
-| SEC-09 | Manifest isn't authenticated or validated | HIGH | Overruled | Open |
+| SEC-09 | Manifest isn't authenticated or validated | HIGH | Overruled | Verification built; waiting on K1/K2 and the first signed manifest; list size cap open |
 | SEC-10 | `PublicSuffixList` widens allowlisted domains | MEDIUM | Overruled | Open |
 | SEC-11 | Web-extension rule payload needs an audit | To confirm | Review | Open |
 | **With the DNS track** | | | | |
@@ -120,7 +120,33 @@ The call sits inside a `logger.info` interpolation, but info messages are normal
 The panel rejected these items because it treats the HTTPS manifest as trusted. That trust is one personal GitHub account feeding rules to every user, so all of it is one work item.
 
 **Fix:**
-- **Signature:** Ed25519 over the exact bytes `ManifestJSONWriter` emits, published as `manifest.json.sig`, with two pinned public keys for rotation. Fetch the signature only on a 200 response, never on a 304.
+Design: `docs/Security/ManifestTrust.md`.
+
+**Built (2026-11-07, `feat/manifest-signing`):**
+- Publisher: `keygen` (`--secure-enclave` for K1), `sign`, `verify`, 7-day signature
+  pruning, the timestamp `manifestVersion` and the ID pattern in `Validator`.
+- App: `ManifestVerifier` checks the signature, then the strict version, the built-in
+  minimum (`BundledManifest`), the cached version, IDs, duplicates and the `sourceURL`
+  layout; any failure rejects the whole manifest. `ManifestClient` fetches the
+  hash-named signature, caps the manifest at 256 KB and the signature at 1 KB.
+- A rejection writes nothing and saves no ETag, still retries pending reloads, advances the
+  throttle and shows the network-failure text (`AutomaticUpdate`). Caches from before
+  verification lose their ETag.
+- `RedirectGuard` refuses redirects off the original host or off HTTPS, for every request.
+- Archive gate: `Scripts/check-manifest-trust.sh` fails without two production keys, with a
+  test key pinned, or with a bundled manifest over 30 days old.
+- Duplicate IDs are now rejected before planning, so the `Dictionary(uniqueKeysWithValues:)`
+  traps below can no longer be reached from a downloaded manifest.
+
+**Still open:**
+- K1 and K2 aren't generated, so production builds reject every manifest and stay on the
+  bundled lists. Pinning them and publishing the first signed manifest are on the release
+  checklist (`docs/AppStoreSetup.md`).
+- The list size cap and streaming to disk (last bullet below).
+
+The original items:
+
+- **Signature:** ECDSA P-256 (K1 in the Secure Enclave) over the exact bytes `ManifestJSONWriter` emits, published as `signatures/<sha256 of the manifest>.sig` so a CDN can't pair a manifest with another's signature, with two pinned public keys for rotation. Fetch the signature only on a 200 response, never on a 304.
 - **Rollback:** reject a `manifestVersion` lower than the cached one, since a signature alone still allows replaying an old manifest. The field is a date string (`backend/docs/ManifestSpecification.md`), so confirm the comparison and how same-day republishes behave.
 - **Filter IDs:** `entry.id` reaches file paths unchecked (`FilterStore.swift:89`, `:105`; `FilterDownloadClient.swift`). Validate against `^[a-z0-9][a-z0-9-]{0,63}$`.
 - **Duplicate IDs:** `UpdatePlan.swift:35` and `UpdateCoordinator.swift:170` use `Dictionary(uniqueKeysWithValues:)`, which traps. Reject the whole manifest rather than keeping the first entry. First-wins hides publisher bugs and makes behaviour depend on entry order. This also closes the `filterLists` dedup gotcha.
