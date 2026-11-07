@@ -35,7 +35,7 @@ Scan reports are in the gitignored `CLAUDE-SECURITY-*` folders at the repo root.
 | **Decide and record** | | | | |
 | SEC-16 | Clock set forward extends the trial | LOW | Panel | Blocked on the PD-01 trial decision |
 | SEC-17 | macOS `entitlement.json` is user-editable | LOW | Panel | Accepted |
-| SEC-18 | Web-extension rule checksum is never verified | LOW | Manual | Open |
+| SEC-18 | Web-extension rule checksum is never verified | LOW | Manual | Fixed (field removed) |
 
 ## Fix now
 
@@ -242,6 +242,8 @@ These can't be reached in a release while DNS Protection stays off (see the open
 `SafariWebExtensionBridgeProcessor.swift:131` passes `sha256Rules` through, and nothing checks it. Verifying it wouldn't protect anything: the rules and the checksum sit in the same App Group with the same writer, and `AtomicRuleWriter` already prevents partial writes.
 
 **Decision:** drop the field from the bridge response and the JS together. Grep `content.js` for any use of it first, because removing it only from the Swift side breaks JS that reads it. Keep the manifest's per-filter SHA-256: downloads cross a real trust boundary, unlike the App Group read.
+
+**Fixed (2026-11-07):** it was still there on 2026-11-07, so it's now gone from `WebExtensionFetchGenerationResponse`, the bridge processor and `background.js` (state, storage and the rules response). `content.js` never read it. The bridge still requires the generation's manifest to decode, since it's written last and so marks a complete generation. Tests: the bridge response has no `checksum`, and `background.js` doesn't pass one on even from a native side that still sends it.
 
 ## Coverage
 

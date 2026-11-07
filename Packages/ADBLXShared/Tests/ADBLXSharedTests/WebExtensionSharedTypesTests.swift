@@ -134,14 +134,13 @@ final class WebExtensionSharedTypesTests: XCTestCase {
         let response = WebExtensionFetchGenerationResponse(
             generation: 42,
             generationStatus: .ok,
-            rulesJSON: mockRulesJSON,
-            checksum: "sha256mock"
+            rulesJSON: mockRulesJSON
         )
         
         let dict = response.toDictionary()
         XCTAssertEqual(dict["generation"] as? Int, 42)
         XCTAssertEqual(dict["generationStatus"] as? String, "ok")
-        XCTAssertEqual(dict["checksum"] as? String, "sha256mock")
+        XCTAssertNil(dict["checksum"], "SEC-18: the response carries no checksum")
         XCTAssertNotNil(dict["rules"])
         
         let data = try JSONEncoder().encode(response)

@@ -96,7 +96,7 @@ public final class SafariWebExtensionBridgeProcessor {
             readAttempt = readGenerationPayload(generationNumber: generationNumber, baseAppGroupURL: baseURL)
         }
         
-        guard let (rulesJSON, checksum) = readAttempt else {
+        guard let rulesJSON = readAttempt else {
             let response = WebExtensionFetchGenerationResponse(
                 generation: generationNumber,
                 generationStatus: .unavailable
@@ -107,13 +107,14 @@ public final class SafariWebExtensionBridgeProcessor {
         let response = WebExtensionFetchGenerationResponse(
             generation: generationNumber,
             generationStatus: .ok,
-            rulesJSON: rulesJSON,
-            checksum: checksum
+            rulesJSON: rulesJSON
         )
         return response.toDictionary()
     }
     
-    private func readGenerationPayload(generationNumber: UInt64, baseAppGroupURL: URL) -> (rulesJSON: String, checksum: String)? {
+    /// The generation's rules, once its manifest also reads: the manifest is written last, so a
+    /// generation without one isn't complete.
+    private func readGenerationPayload(generationNumber: UInt64, baseAppGroupURL: URL) -> String? {
         guard let genDir = WebExtensionAppGroupPaths.generationDirectory(generationNumber: generationNumber, base: baseAppGroupURL) else {
             return nil
         }
@@ -124,10 +125,10 @@ public final class SafariWebExtensionBridgeProcessor {
         guard let rulesData = try? Data(contentsOf: rulesURL),
               let rulesString = String(data: rulesData, encoding: .utf8),
               let manifestData = try? Data(contentsOf: manifestURL),
-              let manifest = try? JSONDecoder().decode(WebExtensionGenerationManifest.self, from: manifestData) else {
+              (try? JSONDecoder().decode(WebExtensionGenerationManifest.self, from: manifestData)) != nil else {
             return nil
         }
         
-        return (rulesString, manifest.sha256Rules)
+        return rulesString
     }
 }

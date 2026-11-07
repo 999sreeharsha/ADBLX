@@ -16,7 +16,6 @@ let inMemoryState = {
     // Epoch ms after which premiumActive must be treated as expired; 0 = no expiry.
     validUntilMs: 0,
     rules: null,
-    checksum: null,
     rulesFetchedAtWallClockMs: 0,
     lastVersionCheckWallClockMs: 0
 };
@@ -38,7 +37,6 @@ async function hydrateFromStorage() {
             inMemoryState.entitlementState = data.entitlementState || "unavailable";
             inMemoryState.validUntilMs = data.validUntilMs || 0;
             inMemoryState.rules = data.rules || null;
-            inMemoryState.checksum = data.checksum || null;
             inMemoryState.rulesFetchedAtWallClockMs = data.rulesFetchedAtWallClockMs || 0;
             inMemoryState.lastVersionCheckWallClockMs = data.lastVersionCheckWallClockMs || 0;
         }
@@ -60,7 +58,6 @@ async function persistToStorage() {
             entitlementState: inMemoryState.entitlementState,
             validUntilMs: inMemoryState.validUntilMs,
             rules: inMemoryState.rules,
-            checksum: inMemoryState.checksum,
             rulesFetchedAtWallClockMs: inMemoryState.rulesFetchedAtWallClockMs,
             lastVersionCheckWallClockMs: inMemoryState.lastVersionCheckWallClockMs
         };
@@ -122,7 +119,6 @@ function evaluateEffectiveConfig(nowWallClock) {
                 layer3Enabled: true,
                 generation: inMemoryState.generation,
                 rules: inMemoryState.rules,
-                checksum: inMemoryState.checksum,
                 isGracePeriod: inMemoryState.generationStatus === "unavailable"
             };
         }
@@ -222,7 +218,6 @@ async function getLayer3State(force = false) {
                 if (fetchRes && fetchRes.generationStatus === "ok" && fetchRes.rules) {
                     inMemoryState.generation = remoteGen;
                     inMemoryState.rules = fetchRes.rules;
-                    inMemoryState.checksum = fetchRes.checksum || null;
                     inMemoryState.rulesFetchedAtWallClockMs = checkTimestamp;
                 }
             }
