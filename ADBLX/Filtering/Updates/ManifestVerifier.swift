@@ -96,6 +96,11 @@ nonisolated struct ManifestVerifier {
             let expected = "\(directory)filters/\(entry.group.rawValue)/\(entry.id).txt"
             guard entry.sourceURL.scheme == "https", entry.sourceURL.absoluteString == expected else { throw .sourceURL }
         }
+        // The DNS never-block list has one published location, like a filter entry has one.
+        if let neverBlock = manifest.dnsNeverBlock {
+            let expected = "\(directory)filters/dns/never-block.txt"
+            guard neverBlock.sourceURL.scheme == "https", neverBlock.sourceURL.absoluteString == expected else { throw .sourceURL }
+        }
         return .accepted(manifest)
     }
 

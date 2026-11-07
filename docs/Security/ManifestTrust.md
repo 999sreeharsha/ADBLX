@@ -217,6 +217,9 @@ the manifest instead of being skipped.
 - Must be `https`, and must equal `<base>/filters/<group>/<id>.txt`, where `<base>` is the
   directory the manifest was fetched from. This is the layout decided on 2026-11-06
   (`docs/gotchas.md`). Any other host, path or scheme rejects the manifest.
+- The optional `dnsNeverBlock` entry has its own single location, `<base>/filters/dns/never-block.txt`,
+  checked the same way (`ManifestVerifierNeverBlockTests`). It is also covered by the signature
+  and by the same-version-must-be-identical rule like every other field.
 - The app pins the allowed bases: today `https://999sreeharsha.github.io/ADBLX`, later the
   brand domain. Moving hosts means adding the brand domain to `allowedBases` in a release
   *before* the site moves, and moving only once that release is what users run.
