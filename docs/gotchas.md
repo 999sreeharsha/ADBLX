@@ -599,7 +599,11 @@ Before DNS Protection ships:
 3. Call `DNSNeverBlockUpdater` from the same place that runs `UpdateCoordinator` (done in
    `ADBLXApp.swift`, Debug builds only) and republish the DNS generation when it installs a
    new list, so the tunnel picks it up without waiting for a DNS restart or allowlist edit.
-4. Run `publish-pages.sh` so the list is actually on the host.
+4. Add a test that the Publisher's own output (manifest bytes plus signature, with `dnsNeverBlock`
+   in it) passes the real `ManifestVerifier`, not only hand-built manifests. Today the verifier
+   tests and the Publisher tests each use their own fixtures, so a URL or key-order mismatch
+   between them would only show on the live site.
+5. Run `publish-pages.sh` so the list is actually on the host.
 
 Until then, a bank or gateway missing from the seed is blocked if a list blocks it.
 

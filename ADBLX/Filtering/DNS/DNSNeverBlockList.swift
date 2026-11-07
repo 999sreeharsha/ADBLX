@@ -69,9 +69,12 @@ actor DNSNeverBlockStore {
         return try? JSONDecoder().decode(DNSNeverBlockInstalled.self, from: data)
     }
 
-    /// What to publish: the installed list, or the seed when none is installed or it can't be read.
+    /// What to publish: the installed list, or the seed when none is installed, it can't be read,
+    /// or it has no domains. Never an empty list while a seed exists: an empty never-block list
+    /// would leave payments to whatever the blocklists say.
     func current() async -> [String] {
-        await installed()?.domains ?? seed()
+        if let domains = await installed()?.domains, !domains.isEmpty { return domains }
+        return seed()
     }
 
     func install(_ list: DNSNeverBlockInstalled) async throws {

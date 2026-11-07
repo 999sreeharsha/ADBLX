@@ -263,6 +263,25 @@ struct DNSNeverBlockUpdateTests {
         #expect(await store.installed() == nil)
     }
 
+    @Test("an installed list with no domains is never used: the seed stands in, so payments aren't blocked")
+    func emptyInstalledFallsBack() async throws {
+        let (store, _) = makeStore()
+        try await store.install(DNSNeverBlockInstalled(version: "2026-11-07", checksumSHA256: "x", domains: []))
+        #expect(await store.current() == ["seed.example"])
+    }
+
+    @Test("a rejected update leaves the installed list in place, not the seed and not nothing")
+    func rejectedUpdateKeepsInstalled() async throws {
+        let (store, _) = makeStore()
+        _ = try await DNSNeverBlockUpdater(store: store, session: CountingSession(body: Data(text.utf8))).update(to: entry())
+        var bad = entry(version: "2026-11-08")
+        bad.checksumSHA256 = String(repeating: "0", count: 64)
+        let updater = DNSNeverBlockUpdater(store: store, session: CountingSession(body: Data("evil.example\n".utf8)))
+        await #expect(throws: DNSNeverBlockError.checksumMismatch) { try await updater.update(to: bad) }
+        #expect(await store.current() == ["npci.org.in", "online-metrix.net", "razorpay.com"])
+        #expect(await store.installed()?.version == "2026-11-07")
+    }
+
     @Test("a corrupt stored file falls back to the seed")
     func corruptStore() async throws {
         let (store, filterStore) = makeStore()
