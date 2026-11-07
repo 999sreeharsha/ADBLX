@@ -134,8 +134,10 @@ which rows are load-bearing and which aren't before building on top of them:
   Remove a row from `SettingsPlaceholderRow` only when its feature is real.
 - **Language opens the app's page in iOS Settings** (`SettingsView.languageSettingsURL`).
   iOS shows a per-app language choice there only when the app has more than one localization.
-  Today `Localizable.xcstrings` has English only, so the page opens with no language option
-  until a second language is added.
+  Today `Localizable.xcstrings` has English only, so the row is a `SettingsPlaceholderRow` too:
+  hidden in Release until the bundle has a second localization, then shown in every build with
+  no flag change. `SettingsReleaseRowsTests.oneLocalizationToday` fails when that happens, as a
+  reminder to check the Settings page offers the language.
 
 None of this is a defect in what shipped — every one of these was an explicit
 design-doc decision (`docs/superpowers/specs/2026-07-26-sprint5b-feature-live-data-design.md`,

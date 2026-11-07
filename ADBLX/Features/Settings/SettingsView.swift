@@ -164,17 +164,19 @@ struct SettingsView: View {
                             detail: appearance.displayNameKey
                         )
                     }
-                    Divider().overlay(DesignColors.outlineVariant.opacity(0.2))
-                    Button {
-                        if let url = Self.languageSettingsURL { openURL(url) }
-                    } label: {
-                        generalRow(
-                            titleKey: "settings.row.language", systemImage: "character.bubble",
-                            detail: Text(
-                                Locale.current.localizedString(forIdentifier: Locale.current.identifier)
-                                    ?? Locale.current.identifier
+                    if placeholderRows.contains(.language) {
+                        Divider().overlay(DesignColors.outlineVariant.opacity(0.2))
+                        Button {
+                            if let url = Self.languageSettingsURL { openURL(url) }
+                        } label: {
+                            generalRow(
+                                titleKey: "settings.row.language", systemImage: "character.bubble",
+                                detail: Text(
+                                    Locale.current.localizedString(forIdentifier: Locale.current.identifier)
+                                        ?? Locale.current.identifier
+                                )
                             )
-                        )
+                        }
                     }
                     if placeholderRows.contains(.notifications) {
                         Divider().overlay(DesignColors.outlineVariant.opacity(0.2))
