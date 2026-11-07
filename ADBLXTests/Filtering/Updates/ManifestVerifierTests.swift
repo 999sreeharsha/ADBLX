@@ -189,6 +189,21 @@ struct ManifestVerifierTests {
         expectRejected(.rollback) { () throws(ManifestRejection) in try verify(bytes(changed), cached: cached) }
     }
 
+    // Every field counts, not only the filter entries: the DNS never-block list rides in the
+    // same manifest.
+    @Test("The same version with a different never-block entry is rejected")
+    func equalVersionWithDifferentNeverBlockIsRejected() {
+        var cached = manifest()
+        cached.dnsNeverBlock = DNSNeverBlockEntry(
+            version: "2026-11-06", sourceURL: URL(string: "\(Self.base.absoluteString)/dns/never-block.txt")!,
+            checksumSHA256: String(repeating: "a", count: 64), domainCount: 10
+        )
+        var changed = cached
+        changed.dnsNeverBlock?.domainCount = 11
+
+        expectRejected(.rollback) { () throws(ManifestRejection) in try verify(bytes(changed), cached: cached) }
+    }
+
     @Test("A date-only cached version compares as midnight UTC")
     func dateOnlyCachedVersionIsMidnight() throws {
         let cached = manifest("2026-11-06")

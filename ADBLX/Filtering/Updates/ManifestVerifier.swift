@@ -72,7 +72,11 @@ nonisolated struct ManifestVerifier {
         if let cached, let cachedVersion = ManifestVersionFormat.lenientDate(cached.manifestVersion) {
             if version < cachedVersion { throw .rollback }
             if version == cachedVersion {
-                guard manifest.entries == cached.entries else { throw .rollback }
+                // Every field but the version string, already compared as a time (a date-only
+                // cached value equals midnight). A new manifest field is covered automatically.
+                var sameVersion = cached
+                sameVersion.manifestVersion = manifest.manifestVersion
+                guard manifest == sameVersion else { throw .rollback }
                 return .unchanged
             }
         }
