@@ -53,8 +53,10 @@ the refresh task never compiles:
 
 - **Refresh task** (`com.ADBLX.ADBLX.filter-refresh`): fetch the manifest, verify its
   signature, plan against the installed lists and the current entitlement, download and verify
-  the changed lists. Network-bound and cheap. Target: under about 20 seconds on the iPhone 14
-  for a full set of changed lists (about 5.3 MB), checked in the spike. Writes only to
+  the changed lists. Network-bound and cheap. Target: under about 15 seconds on the iPhone 14
+  for a full set of changed lists (about 5.3 MB), measured inside a real background task. The
+  slowest supported chip is the A14 (NFR-01) and the iPhone 14 has an A15, so the margin under
+  the roughly 30-second budget covers the gap. Writes only to
   `Staged/`, never to `Compiled/`, `Metadata/` or `Filters/`, so being killed costs nothing but
   the staged files.
 - **Processing task** (`com.ADBLX.ADBLX.filter-install`, a `BGProcessingTaskRequest` with
@@ -64,7 +66,7 @@ the refresh task never compiles:
 - **Launch** installs anything still staged before its own throttled update, so a phone that's
   never charged and idle still gets the update at its next open.
 
-If the spike shows even a full download doesn't fit in about 20 seconds, the refresh stages
+If the spike shows even a full download doesn't fit in about 15 seconds on the iPhone 14, the refresh stages
 lists one at a time across runs (each list verified on its own) rather than moving to background
 `URLSession` downloads. That's still one task, just resumed; see "Whole groups only" below.
 
@@ -233,6 +235,12 @@ records every changed group as pending.
 
 ### Info.plist entries and background modes
 
+Decided in ADR-0014. Landed with task 2 (2026-11-08), since the timing spike needs real background
+tasks: the `info:` entry, `Scripts/check-background-modes.sh` with its test and CI step, and
+`AppInfoPlistBackgroundTests`. The entry also sets `CFBundleShortVersionString` and
+`CFBundleVersion` to `$(MARKETING_VERSION)` and `$(CURRENT_PROJECT_VERSION)`: XcodeGen otherwise
+writes literal values that would override the build settings.
+
 The app target has no Info.plist file today: `project.yml` sets `GENERATE_INFOPLIST_FILE: YES`
 and `INFOPLIST_KEY_*` build settings. There's no `INFOPLIST_KEY_` setting for
 `BGTaskSchedulerPermittedIdentifiers`, so the app gets a small partial plist that Xcode merges
@@ -318,9 +326,19 @@ lands first.
      written during an abandoned transaction and comes back after recovery.
    - Order: recovery runs before the reconcile in the launch sequence (a stub that records the
      order).
-2. **Spike:** time `prepare` (every list changed) and the compile separately, on the simulator;
-   the owner times both on the iPhone 14. Confirms the 20-second target for the refresh, or
-   switches to one list per run.
+2. **Spike** (harness built 2026-11-08, DEBUG only: Developer screen, "Background timing"). The
+   refresh identifier runs the download (the live manifest, then every list, downloaded and
+   checksummed, then discarded); the processing identifier compiles the bundled lists into a
+   scratch store. Each run records the device model, foreground or background, Wi-Fi or cellular,
+   Low Power Mode and thermal state, and stays on the Developer screen to copy. **Simulator runs
+   don't count:** the simulator only checks the measuring code. The decision comes from the
+   owner's iPhone 14, with each task forced from the debugger while the app is in the background:
+   - the refresh on Wi-Fi, on Jio mobile data and on Airtel mobile data (noting the carrier);
+   - the refresh once in Low Power Mode;
+   - the compile once.
+   Under about 15 seconds for the full download on the iPhone 14 confirms the single refresh;
+   otherwise the refresh stages one list per run. The foreground buttons are for comparison
+   only.
 3. **`prepare` / `apply` split** with staging. Tests:
    - A `304` stages nothing. A staged update applies the same result as `run()`. The cached
      manifest and ETag are unchanged until `apply` commits.

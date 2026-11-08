@@ -34,6 +34,11 @@ struct ADBLXApp: App {
             configuration: .mock, store: store, pipeline: pipeline, updateCoordinator: updateCoordinator
         )
         _hasCompletedOnboarding = State(initialValue: OnboardingCompletionStore().hasCompletedOnboarding)
+        #if DEBUG
+        // Task 2's timing spike until task 6 registers the real handlers. Must run before the
+        // first scene, and never in the test host, which can't register the same identifier twice.
+        if !Self.isRunningTests { BackgroundTimingSpike.register() }
+        #endif
     }
 
     var body: some Scene {

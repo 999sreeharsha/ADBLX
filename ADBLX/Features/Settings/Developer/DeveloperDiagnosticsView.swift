@@ -1,5 +1,6 @@
 #if DEBUG
 import SwiftUI
+import UIKit
 
 /// DEBUG-only screen for device testing of entitlement and filter state. Not localized and
 /// not shipped: it is compiled out of release builds.
@@ -9,6 +10,8 @@ struct DeveloperDiagnosticsView: View {
     @State private var isRecompiling = false
     @State private var recompileSummary: String?
     @State private var tunnel = DNSTunnelDiagnosticsModel(transport: SystemDNSTunnelDiagnosticsTransport())
+    @State private var timingRuns: [TimingRun] = []
+    @State private var timingStatus: String?
 
     var body: some View {
         List {
@@ -63,6 +66,46 @@ struct DeveloperDiagnosticsView: View {
             Section("Filter updates") {
                 row("Manifest rejections", diagnostics?.manifestRejections ?? "none")
             }
+            Section {
+                Button {
+                    do {
+                        try BackgroundTimingSpike.schedule()
+                        timingStatus = "Both requests submitted"
+                    } catch {
+                        timingStatus = "Submit failed: \(error)"
+                    }
+                } label: { Text(verbatim: "Schedule both background tasks") }
+                Button {
+                    timingStatus = "Running download in the foreground…"
+                    Task { await BackgroundTimingSpike.runInForeground(.download); await loadTiming(); timingStatus = nil }
+                } label: { Text(verbatim: "Download now (foreground, comparison only)") }
+                Button {
+                    timingStatus = "Running compile in the foreground…"
+                    Task { await BackgroundTimingSpike.runInForeground(.compile); await loadTiming(); timingStatus = nil }
+                } label: { Text(verbatim: "Compile now (foreground, comparison only)") }
+                if let timingStatus {
+                    Text(verbatim: timingStatus).foregroundStyle(.secondary)
+                }
+                ForEach(Array(timingRuns.enumerated()), id: \.offset) { _, run in
+                    Text(verbatim: run.summary).font(.caption.monospaced())
+                }
+                if !timingRuns.isEmpty {
+                    Button {
+                        UIPasteboard.general.string = timingRuns.map(\.summary).joined(separator: "\n\n")
+                    } label: { Text(verbatim: "Copy all runs") }
+                    Button(role: .destructive) {
+                        Task { await TimingLog.shared.clear(); await loadTiming() }
+                    } label: { Text(verbatim: "Clear runs") }
+                }
+                Button { Task { await loadTiming() } } label: { Text(verbatim: "Refresh runs") }
+            } header: {
+                Text(verbatim: "Background timing (task 2 spike)")
+            } footer: {
+                Text(verbatim: "Only runs started by iOS as a background task count. Schedule, send the app to the "
+                     + "background, then force a task from the debugger: e -l objc -- (void)[[BGTaskScheduler "
+                     + "sharedScheduler] _simulateLaunchForTaskWithIdentifier:@\"com.ADBLX.ADBLX.filter-refresh\"] "
+                     + "(or filter-install). Note the carrier with each cellular run.")
+            }
             Section("Last reload") {
                 if (diagnostics?.reloads ?? []).isEmpty {
                     Text(verbatim: "No reloads this launch").foregroundStyle(.secondary)
@@ -88,7 +131,7 @@ struct DeveloperDiagnosticsView: View {
             }
         }
         .navigationTitle("Developer")
-        .task { await load(); await tunnel.refresh() }
+        .task { await load(); await tunnel.refresh(); await loadTiming() }
     }
 
     /// Resets to the real plan on relaunch, so a forced state never outlives the session.
@@ -112,6 +155,10 @@ struct DeveloperDiagnosticsView: View {
             store: AppCompositionRoot.makeFilterStore()
         )
         await planStateModel?.refresh()
+    }
+
+    private func loadTiming() async {
+        timingRuns = await TimingLog.shared.runs()
     }
 
     private func recompile() async {

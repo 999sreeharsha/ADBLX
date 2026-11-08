@@ -32,6 +32,9 @@ jobs:
       - name: Test the archive's manifest trust check
         run: Scripts/check-manifest-trust.test.sh
 
+      - name: Test the Release build's background modes check
+        run: Scripts/check-background-modes.test.sh
+
       - name: Select Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
@@ -94,6 +97,8 @@ jobs:
             -destination 'generic/platform=iOS' -derivedDataPath build/release \
             CODE_SIGNING_ALLOWED=NO build
           Scripts/check-release-no-dns.sh build/release/Build/Products/Release-iphoneos/ADBLX.app
+          # ADR-0014: the merged plist's background keys, and no DEBUG timing spike.
+          Scripts/check-background-modes.sh build/release/Build/Products/Release-iphoneos/ADBLX.app
 
       - name: Run unit tests (ADBLXTests only)
         run: |
