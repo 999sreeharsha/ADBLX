@@ -320,9 +320,11 @@ public actor DNSUpstreamForwarder {
             ? [config.ipv6Address].compactMap { $0 }
             : [config.ipv4Address] + [config.fallbackIPv4Address].compactMap { $0 }
         if !senderIP.isEmpty, !allowedHosts.isEmpty, !allowedHosts.contains(senderIP) {
+            counters?.increment(\.answersFromUnexpectedSender)
             return
         }
         if senderPort != 0 && senderPort != config.port {
+            counters?.increment(\.answersFromUnexpectedSender)
             return
         }
         

@@ -33,6 +33,8 @@ public struct DNSTunnelCountersSnapshot: Codable, Equatable, Sendable {
     public var lateAnswersFromFallbackIPv4: UInt64 = 0
     /// A client query arriving again (same port and id) while its first copy still waits upstream.
     public var duplicateClientQueries: UInt64 = 0
+    /// Replies dropped because their source address or port is not a configured upstream's.
+    public var answersFromUnexpectedSender: UInt64 = 0
     /// Truncated upstream answers followed over TCP to the upstream.
     public var upstreamTCPSucceeded: UInt64 = 0
     public var upstreamTCPFailed: UInt64 = 0
@@ -49,6 +51,11 @@ public struct DNSTunnelCountersSnapshot: Codable, Equatable, Sendable {
     public var unparsableTCP: UInt64 = 0
     public var unparsableUDP: UInt64 = 0
     public var unparsableICMP: UInt64 = 0
+    // ICMP by kind: echo requests (pings), destination unreachable (a reply the OS could not
+    // deliver, such as one to a closed client port), and every other type.
+    public var unparsableICMPEchoRequest: UInt64 = 0
+    public var unparsableICMPUnreachable: UInt64 = 0
+    public var unparsableICMPOther: UInt64 = 0
     public var unparsableOtherProtocol: UInt64 = 0
     public var unparsableToDNSAddress: UInt64 = 0
     public var unparsableSmall: UInt64 = 0

@@ -178,10 +178,10 @@ struct DNSTunnelDiagnosticsTests {
             "tcpSegments", "tcpQueries", "unparsablePackets", "socketResets", "passthrough",
             "answersFromPrimaryIPv4", "answersFromIPv6", "answersFromFallbackIPv4",
             "lateAnswersFromPrimaryIPv4", "lateAnswersFromIPv6", "lateAnswersFromFallbackIPv4",
-            "duplicateClientQueries", "upstreamTCPSucceeded", "upstreamTCPFailed", "truncatedToClient",
+            "duplicateClientQueries", "answersFromUnexpectedSender", "upstreamTCPSucceeded", "upstreamTCPFailed", "truncatedToClient",
             "queriesA", "queriesAAAA", "queriesHTTPS", "queriesOther",
             "unparsableIPv4", "unparsableIPv6", "unparsableTCP", "unparsableUDP", "unparsableICMP",
-            "unparsableOtherProtocol", "unparsableToDNSAddress", "unparsableSmall", "unparsableMedium", "unparsableLarge",
+            "unparsableICMPEchoRequest", "unparsableICMPUnreachable", "unparsableICMPOther", "unparsableOtherProtocol", "unparsableToDNSAddress", "unparsableSmall", "unparsableMedium", "unparsableLarge",
             "pathUpdates", "resetsInterfaceChange", "resetsReconnect", "resetsVirtualInterfacesOnly"
         ])
         for (key, value) in object {
