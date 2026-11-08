@@ -12,7 +12,7 @@ Effort: medium, Claude Security three-voter panel. Reports go to the gitignored
 | # | Area | Scope | Status | Report | Findings |
 |---|---|---|---|---|---|
 | 1 | CI and backend publishing | `.github/`, `backend/` except `backend/tools/Publisher` | Done 2026-11-08, verified (6/6 researchers returned) | `CLAUDE-SECURITY-20261108-105440` | None |
-| 2 | Protection feature | `ADBLX/Features/Protection` | Pending | | |
+| 2 | Protection feature | `ADBLX/Features/Protection` | Done 2026-11-08, verified (6/6 researchers returned) | `CLAUDE-SECURITY-20261108-110119` | None |
 | 3 | Home and Onboarding features | `ADBLX/Features/Home`, `ADBLX/Features/Onboarding` | Pending | | |
 
 Not queued (waiting on the owner): the `ADBLX/Filtering` folders the first audit scan only

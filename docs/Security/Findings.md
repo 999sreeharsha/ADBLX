@@ -257,7 +257,7 @@ These can't be reached in a release while DNS Protection stays off (see the open
 
 - **Scanned:** `Packages/ADBLXShared/Sources`; under `ADBLX/Filtering`, `DNS`, `WebExtension`, `Compilation`, `Validation`, `Storage`, `Deployment` (other `Filtering` folders only partly, in the first scan, which hit its usage limit); all extensions; `ADBLX/Features/Premium`, `Settings`, `BrokenSite`, `Sync`; and `backend/tools/Publisher`.
 - **Never in a scan's scope:** `Features/Protection`, `Features/Home`, `Features/Onboarding`, the rest of `backend/`, and `.github/`.
-- **Gap scans (2026-11-08, one area at a time; progress in `ScanProgress.md`):** `.github/` and `backend/` outside the Publisher: no findings.
+- **Gap scans (2026-11-08, one area at a time; progress in `ScanProgress.md`):** `.github/` and `backend/` outside the Publisher: no findings. `Features/Protection`: no findings.
 
 ## Closed or corrected
 
