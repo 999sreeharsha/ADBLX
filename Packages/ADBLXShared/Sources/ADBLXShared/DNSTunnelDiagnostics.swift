@@ -61,6 +61,13 @@ public struct DNSTunnelCountersSnapshot: Codable, Equatable, Sendable {
     public var unparsableSmall: UInt64 = 0
     public var unparsableMedium: UInt64 = 0
     public var unparsableLarge: UInt64 = 0
+    // How long the first answer took, from the query arriving (hedge included). Each bound is inclusive.
+    public var firstAnswerUnder50ms: UInt64 = 0
+    public var firstAnswerUnder100ms: UInt64 = 0
+    public var firstAnswerUnder250ms: UInt64 = 0
+    public var firstAnswerUnder500ms: UInt64 = 0
+    public var firstAnswerUnder1s: UInt64 = 0
+    public var firstAnswerOver1s: UInt64 = 0
     // Network path updates, and what caused each socket reset.
     public var pathUpdates: UInt64 = 0
     public var resetsInterfaceChange: UInt64 = 0

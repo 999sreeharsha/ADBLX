@@ -90,6 +90,8 @@ struct DNSTunnelDiagnosticsModelTests {
             "Unparsable IPv4", "Unparsable IPv6", "Unparsable TCP", "Unparsable UDP", "Unparsable ICMP",
             "ICMP echo request", "ICMP unreachable", "ICMP other type", "Unparsable other protocol", "Unparsable to DNS address",
             "Unparsable ≤64 B", "Unparsable ≤576 B", "Unparsable >576 B",
+            "First answer ≤50 ms", "First answer ≤100 ms", "First answer ≤250 ms", "First answer ≤500 ms",
+            "First answer ≤1 s", "First answer >1 s",
             "Path updates", "Resets: interface change", "Resets: reconnect", "Resets: virtual interfaces only"
         ])
         #expect(model.rows.allSatisfy { UInt64($0.value) != nil })

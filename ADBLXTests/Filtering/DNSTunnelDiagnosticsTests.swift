@@ -182,6 +182,8 @@ struct DNSTunnelDiagnosticsTests {
             "queriesA", "queriesAAAA", "queriesHTTPS", "queriesOther",
             "unparsableIPv4", "unparsableIPv6", "unparsableTCP", "unparsableUDP", "unparsableICMP",
             "unparsableICMPEchoRequest", "unparsableICMPUnreachable", "unparsableICMPOther", "unparsableOtherProtocol", "unparsableToDNSAddress", "unparsableSmall", "unparsableMedium", "unparsableLarge",
+            "firstAnswerUnder50ms", "firstAnswerUnder100ms", "firstAnswerUnder250ms", "firstAnswerUnder500ms",
+            "firstAnswerUnder1s", "firstAnswerOver1s",
             "pathUpdates", "resetsInterfaceChange", "resetsReconnect", "resetsVirtualInterfacesOnly"
         ])
         for (key, value) in object {

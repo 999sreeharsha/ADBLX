@@ -91,3 +91,17 @@ public enum DNSQueryTypeBucket {
         }
     }
 }
+
+/// How long a query's first answer took, as one of a few buckets (each bound inclusive).
+public enum DNSAnswerLatencyBucket {
+    public static func counter(forSeconds seconds: TimeInterval) -> WritableKeyPath<DNSTunnelCountersSnapshot, UInt64> {
+        switch seconds {
+        case ...0.05: return \.firstAnswerUnder50ms
+        case ...0.1: return \.firstAnswerUnder100ms
+        case ...0.25: return \.firstAnswerUnder250ms
+        case ...0.5: return \.firstAnswerUnder500ms
+        case ...1.0: return \.firstAnswerUnder1s
+        default: return \.firstAnswerOver1s
+        }
+    }
+}

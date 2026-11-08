@@ -355,7 +355,9 @@ public actor DNSUpstreamForwarder {
         record(responder, success: true, network: pending.network)
         for loser in pending.asked[..<position] { record(loser, success: false, network: pending.network) }
         
-        let latencyMs = (clock.now - pending.requestTimestamp) * 1000.0
+        let elapsed = clock.now - pending.requestTimestamp
+        counters?.increment(DNSAnswerLatencyBucket.counter(forSeconds: elapsed))
+        let latencyMs = elapsed * 1000.0
         DNSForwarderMetrics.logResponseCorrelated(upstreamTxID: upstreamTxID, clientTxID: pending.clientTxID, latencyMs: latencyMs)
         
         // The upstream cut its own answer short: get the whole one over TCP rather than hand the
