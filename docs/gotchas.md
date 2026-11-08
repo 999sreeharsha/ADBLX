@@ -653,9 +653,12 @@ can't be served an older, still validly signed one (`BundledManifest`,
   (`Scripts/check-manifest-trust.sh`), so the floor keeps up with releases.
 - Missing or unreadable, the minimum is `.distantFuture`: every manifest is rejected.
 - The enclave keygen test in the Publisher
-  (`test_keygenWithSecureEnclaveWritesAKeyThatLoadsAsTheSameEnclaveKey`) fails with
-  `-25308` while the Mac's screen is locked. That is the keychain refusing a user-presence
-  key in a locked session, not a regression.
+  (`test_keygenWithSecureEnclaveWritesAKeyThatLoadsAsTheSameEnclaveKey`) can't create its
+  user-presence key while the Mac's screen is locked (`errSecInteractionNotAllowed`, -25308),
+  so it **skips** then, with a message saying so. Before 2026-11-08 it failed instead, which
+  showed up as an unnamed one-off Publisher failure in unattended suite runs (confirmed from
+  the system log: `ctkd` "unable to generate key" for `xctest` during a lock). Any other
+  keychain error still fails it.
 
 Found in: iOS manifest verification, Task 3, 2026-11-07
 
