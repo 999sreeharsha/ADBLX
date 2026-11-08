@@ -7,12 +7,13 @@ extension FilterStore {
     /// made the suite order-dependent.
     nonisolated static func temporary(
         fileManager: FileManager = .default,
-        swapPaths: @escaping @Sendable (URL, URL) throws -> Void = { try FilterStore.swapPathsAtomically($0, $1) }
+        swapPaths: @escaping @Sendable (URL, URL) throws -> Void = { try FilterStore.swapPathsAtomically($0, $1) },
+        transactionHook: (@Sendable (TransactionStep) async -> Void)? = nil
     ) -> FilterStore {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("FilterStore-\(UUID().uuidString)", isDirectory: true)
         try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
-        return FilterStore(fileManager: fileManager, overrideBaseURL: url, swapPaths: swapPaths)
+        return FilterStore(fileManager: fileManager, overrideBaseURL: url, swapPaths: swapPaths, transactionHook: transactionHook)
     }
 }
 

@@ -55,26 +55,22 @@ struct RollbackRestoreTests {
         #expect(try inode(of: compiled) != liveInode)
     }
 
-    // After a restore stops part-way, the swapped directories' newer contents sit in Previous/.
-    // Restoring that a second time would put the newer state back.
-    @Test("a snapshot whose restore stopped part-way is refused a second time")
-    func spentSnapshotIsRefused() async throws {
-        let store = FilterStore.temporary(swapPaths: { saved, live in
-            if live.lastPathComponent == "Metadata" { throw CocoaError(.fileWriteUnknown) }
-            try FilterStore.swapPathsAtomically(saved, live)
-        })
+    // A restore that stopped part-way resumes rather than being refused:
+    // InterruptedTransactionRecoveryTests.interruptedRollbackFinishesOnRetry.
+
+    @Test("a restore that already finished is refused a second time")
+    func finishedSnapshotIsRefused() async throws {
+        let store = FilterStore.temporary()
         let compiled = try await store.directoryURL(.compiled)
         try before.write(to: compiled.appendingPathComponent("Ads.json"))
-        try await store.writeMetadata(before, filename: "installed_filters.json")
         let snapshot = try await store.snapshotForRollback()
         try after.write(to: compiled.appendingPathComponent("Ads.json"))
-        try await store.writeMetadata(after, filename: "installed_filters.json")
-        await #expect(throws: CocoaError.self) { try await store.restore(snapshot) }
+        try await store.restore(snapshot)
+        try after.write(to: compiled.appendingPathComponent("Ads.json"))
 
         await #expect(throws: FilterStoreError.snapshotSpent) { try await store.restore(snapshot) }
 
-        #expect(try await store.read("Ads.json", in: .compiled) == before)
-        #expect(try await store.read("installed_filters.json", in: .metadata) == after)
+        #expect(try await store.read("Ads.json", in: .compiled) == after)
     }
 
     @Test("a restore whose first swap fails changes nothing and can be tried again")
@@ -95,7 +91,7 @@ struct RollbackRestoreTests {
         #expect(try await store.read("Ads.json", in: .compiled) == before)
     }
 
-    @Test("a new snapshot after a spent one restores normally")
+    @Test("a new snapshot after a part-way restore finishes that restore first, then restores normally")
     func newSnapshotAfterSpentOne() async throws {
         let failOnMetadata = Flag(true)
         let store = FilterStore.temporary(swapPaths: { saved, live in

@@ -17,6 +17,17 @@ nonisolated struct PendingReloads: Sendable {
         await entries().map(\.identifier)
     }
 
+    /// Records a reload as owed before it's attempted. A transaction calls this before its commit,
+    /// so if the process dies between the commit and the reload, the committed state still says
+    /// Safari needs these blockers reloaded. `record(after:)` then clears the ones that reload.
+    func mark(_ identifiers: [String]) async throws {
+        let previous = await entries()
+        let added = identifiers.filter { id in !previous.contains { $0.identifier == id } }
+        guard !added.isEmpty else { return }
+        let pending = previous + added.map { Entry(identifier: $0, unknownStateAttempts: 0) }
+        try await store.writeMetadata(try JSONEncoder().encode(pending), filename: Self.filename)
+    }
+
     /// Drops every attempted blocker that reloaded, and adds every one whose reload failed unless
     /// the user turned it off. One whose state couldn't be read is kept for a few attempts only:
     /// it may never be readable, and retrying it for ever would cost a reload every run.

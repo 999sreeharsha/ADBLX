@@ -135,9 +135,9 @@ user never gets a premium list installed from the stage. The files mustn't wait 
 
 ### When a transaction counts as finished (all transactions, not only background)
 
-**The commit point is one atomic rename of `Previous/` to `Previous.committed/`, as the last
+**The commit point is one atomic rename of `Previous/` to `Previous.done/`, as the last
 step of the transaction.** `Previous/` existing at launch means the last transaction did not
-commit, so restoring it is always right. Deleting `Previous.committed/` afterwards is cleanup,
+commit, so restoring it is always right. Deleting `Previous.done/` afterwards is cleanup,
 and a kill partway through it is harmless. Today the commit is a recursive delete of
 `Previous/`: a kill partway would leave a partial snapshot, and `FilterPipeline` ignores the
 delete's error (`try?`), which under the new rule would silently undo a committed allowlist edit
@@ -182,7 +182,7 @@ an older snapshot never counts.
 `FilterStore.recoverInterruptedTransaction()` runs:
 
 - `Previous.partial/`: delete.
-- `Previous.committed/` or `Previous.spent/`: delete.
+- `Previous.done/` or `Previous.spent/`: delete.
 - `Previous/`: restore it, finishing any rollback the markers show was interrupted.
 - After a restore, **mark all four blockers in `pending_reloads.json` and reload all four.** The
   run may have reloaded some blockers before it died, so what Safari holds can differ from the
@@ -291,24 +291,27 @@ Each ends green with a test that fails without it. Task 1 is independent of back
 lands first.
 
 1. **The commit point and launch recovery.** `FilterStore.commit(_:)` (rename to
-   `Previous.committed/`, flush) replaces `discardRollbackSnapshot()` in all four snapshot users,
+   `Previous.done/`, flush) replaces `discardRollbackSnapshot()` in all four snapshot users,
    never with `try?`; the in-transaction order above, including pending-reload marks before the
    commit and `.immediate` reloads moved after it; `Previous.partial/`; the snapshot markers;
    `recoverInterruptedTransaction()` in the launch task inside the gate. A "kill" in tests is a
-   test-only hook (`TransactionStopPoint`) that suspends the transaction at a named step and
-   never resumes it. The test then opens a second `FilterStore`, with its own gate, on the same
-   container, as the next launch would. Tests, each written to fail first:
-   - **Killed after the reload, before the commit** (a `FilterPipeline` transaction reloading
-     `.immediate`, and an update whose manifest and ETag were already written): the next launch
-     restores `Compiled/`, `Metadata/` and `Filters/` byte-for-byte, reloads all four blockers
-     (a recording reloader), and the cached manifest and ETag are the old ones.
+   test-only hook (`FilterStore`'s `transactionHook`, steps `.beforeCommit` and `.afterCommit`)
+   that suspends the transaction at that step and never resumes it. The test then opens a second
+   `FilterStore`, with its own gate, on the same container, as the next launch would. Tests,
+   each written to fail first:
+   - **Killed at the commit** (built 2026-11-08). With every reload moved after the commit, "after
+     the reload, before the commit" can no longer happen inside a transaction. The latest
+     uncommitted state is an update stopped at `.beforeCommit` with its rules, manifest, ETag and
+     pending marks written. The test checks no reload happened by then, and that the next launch
+     restores the old rules, the old cached manifest and ETag, and reloads all four blockers. The
+     launch reload stays as a backstop for anything that reloads outside a transaction.
    - Killed after the commit, before the reload: nothing is restored, and the affected blockers
      are in `pending_reloads.json`, so the next retry reloads them.
    - Killed mid-snapshot (`Previous.partial/`): deleted, live state untouched.
    - Killed during a rollback, after the first of three swaps: recovery finishes the other two
      and every directory matches the pre-transaction state, with no marker left in a live
      directory.
-   - `Previous.committed/` or `Previous.spent/` at launch: deleted, live state untouched.
+   - `Previous.done/` or `Previous.spent/` at launch: deleted, live state untouched.
    - The commit rename fails (an injected `swapPaths`/move failure): the transaction restores
      and reports failure, and nothing is left for launch to undo.
    - Every file listed under "Everything the transaction writes is inside the snapshot" is

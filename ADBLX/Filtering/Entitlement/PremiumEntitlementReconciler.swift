@@ -44,6 +44,7 @@ actor PremiumEntitlementReconciler {
     private let extensionIdentifiers: GroupExtensionIdentifiers
     private let entitlementService: EntitlementService
     private let gate: FilterTransactionGate
+    private let pendingReloads: PendingReloads
 
     private var observationTask: Task<Void, Never>?
     private var didAttemptMetadataRecovery = false
@@ -58,7 +59,8 @@ actor PremiumEntitlementReconciler {
         reloader: ReloadCoordinator,
         extensionIdentifiers: GroupExtensionIdentifiers,
         entitlementService: EntitlementService,
-        gate: FilterTransactionGate = .shared
+        gate: FilterTransactionGate = .shared,
+        stateProvider: ContentBlockerStateProviding = SystemContentBlockerStateProvider()
     ) {
         self.store = store
         self.pipeline = pipeline
@@ -67,6 +69,7 @@ actor PremiumEntitlementReconciler {
         self.extensionIdentifiers = extensionIdentifiers
         self.entitlementService = entitlementService
         self.gate = gate
+        self.pendingReloads = PendingReloads(store: store, stateProvider: stateProvider)
     }
 
     /// Reconciles on every `EntitlementService` state change (purchase, lapse, a refund while
@@ -128,9 +131,11 @@ actor PremiumEntitlementReconciler {
             Self.logger.error("metadata recovery snapshot failed")
             return false
         }
+        let reinstalled: [String]
         do {
-            _ = try await pipeline.reinstallBundledBaseline()
-            try await store.discardRollbackSnapshot()
+            reinstalled = try await pipeline.reinstallBundledBaseline().map { identifier(for: $0.group) }
+            try await pendingReloads.mark(reinstalled)
+            try await store.commit(snapshot)
         } catch {
             Self.logger.error("metadata recovery failed")
             do {
@@ -141,6 +146,7 @@ actor PremiumEntitlementReconciler {
             _ = await reloader.reload(extensionIdentifiers: FilterGroup.allCases.map { identifier(for: $0) })
             return false
         }
+        await pendingReloads.record(after: await reloader.reload(extensionIdentifiers: reinstalled))
         // Force a full fetch: a 304 would otherwise leave the user on the bundled lists.
         try? await manifestStore.clearETag()
         // And let it run at the next opportunity: lists that came from updates are gone until then.
@@ -203,7 +209,8 @@ actor PremiumEntitlementReconciler {
             for group in groups {
                 _ = try await pipeline.remove(filterIDs: idsByGroup[group] ?? [], group: group, reloadStrategy: .deferred)
             }
-            try await store.discardRollbackSnapshot()
+            try await pendingReloads.mark(groups.map { identifier(for: $0) })
+            try await store.commit(snapshot)
         } catch {
             do {
                 try await store.restore(snapshot)
@@ -216,6 +223,7 @@ actor PremiumEntitlementReconciler {
         }
 
         let results = await reloader.reload(extensionIdentifiers: groups.map { identifier(for: $0) })
+        await pendingReloads.record(after: results)
         let failures = results.filter { !$0.success }.count
         return .downgraded(removedCount: premium.count, affectedGroups: groups, reloadFailures: failures)
     }

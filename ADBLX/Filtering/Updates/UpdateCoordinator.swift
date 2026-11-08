@@ -204,7 +204,8 @@ actor UpdateCoordinator {
                 _ = try await pipeline.remove(filterID: removal.filterID, group: removal.group, reloadStrategy: .deferred)
             }
             try await manifestStore.save(manifest, etag: etag)
-            try await store.discardRollbackSnapshot()
+            try await pendingReloads.mark(affectedExtensionIDs)
+            try await store.commit(snapshot)
             let reloadResults = await reloader.reload(extensionIdentifiers: Array(affectedExtensionIDs))
             await pendingReloads.record(after: reloadResults)
             onPhaseChange(.complete)

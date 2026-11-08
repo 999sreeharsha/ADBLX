@@ -141,7 +141,7 @@ actor FilterPipeline {
     /// caller that reverts the allowlist leaves no rules built from the reverted one.
     func syncAllowlist(reloadStrategy: ReloadStrategy = .immediate) async throws -> [PipelineResult] {
         try await gate.run {
-            try await inRollbackTransaction { try await recomposeInstalledGroups(reloadStrategy: reloadStrategy) }
+            try await inRollbackTransaction(reloadStrategy: reloadStrategy) { try await recomposeInstalledGroups() }
         }
     }
 
@@ -154,13 +154,13 @@ actor FilterPipeline {
         try await gate.run {
             let stale = await groupsFromAnotherCompiler()
             guard !stale.isEmpty else { return nil }
-            let results = try await inRollbackTransaction {
-                var results = try await recomposeInstalledGroups(reloadStrategy: reloadStrategy)
+            let results = try await inRollbackTransaction(reloadStrategy: reloadStrategy) {
+                var results = try await recomposeInstalledGroups()
                 // A group with rules but no installed source (empty, or allowlist only) isn't in
                 // that pass; left stale, it would trigger a full recompile on every launch.
                 let recomposed = Set(results.map(\.group))
                 for group in FilterGroup.allCases where stale.contains(group) && !recomposed.contains(group) {
-                    results.append(try await remove(filterIDs: [], group: group, reloadStrategy: reloadStrategy))
+                    results.append(try await remove(filterIDs: [], group: group, reloadStrategy: .deferred))
                 }
                 return results
             }
@@ -187,28 +187,50 @@ actor FilterPipeline {
     }
 
     /// Snapshot, run `body`, and restore every group if it throws. The caller holds the gate.
-    private func inRollbackTransaction(_ body: () async throws -> [PipelineResult]) async throws -> [PipelineResult] {
+    /// `body` must write with `.deferred`: Safari is reloaded only after the commit, so it never
+    /// gets rules a rollback then undoes. The blockers are marked pending before the commit, so a
+    /// process killed between the commit and the reload still owes Safari the reload.
+    private func inRollbackTransaction(
+        reloadStrategy: ReloadStrategy,
+        _ body: () async throws -> [PipelineResult]
+    ) async throws -> [PipelineResult] {
         let snapshot = try await store.snapshotForRollback()
-        let results: [PipelineResult]
+        var results: [PipelineResult]
+        var identifiers: [String] = []
         do {
             results = try await body()
+            for result in results {
+                let identifier = try await extensionIdentifier(for: result)
+                if !identifiers.contains(identifier) { identifiers.append(identifier) }
+            }
+            if reloadStrategy == .immediate { try await pendingReloads.mark(identifiers) }
+            try await store.commit(snapshot)
         } catch {
             try await store.restore(snapshot)
             throw error
         }
-        try? await store.discardRollbackSnapshot()
+        guard reloadStrategy == .immediate, !identifiers.isEmpty else { return results }
+        let reloadResults = await reloader.reload(extensionIdentifiers: identifiers)
+        for index in results.indices { results[index].reloadResults = reloadResults }
         // The next update run retries a reload that failed here.
-        await pendingReloads.record(after: results.first?.reloadResults ?? [])
+        await pendingReloads.record(after: reloadResults)
         return results
     }
 
-    private func recomposeInstalledGroups(reloadStrategy: ReloadStrategy) async throws -> [PipelineResult] {
+    private func extensionIdentifier(for result: PipelineResult) async throws -> String {
+        try await partitioner.partition(
+            CompiledRuleSet(group: result.group, rawJSON: Data(), ruleCount: 0, statistics: result.compileStatistics),
+            group: result.group
+        ).extensionIdentifier
+    }
+
+    /// Writes only; `inRollbackTransaction` reloads after its commit.
+    private func recomposeInstalledGroups() async throws -> [PipelineResult] {
         let existingFilters = (try? await loadInstalledFilters()) ?? []
         let installedGroups = Set(existingFilters.map(\.group))
         let targetGroups: [FilterGroup] = installedGroups.isEmpty ? [.ads] : Array(installedGroups).sorted(by: { $0.rawValue < $1.rawValue })
 
         var results: [PipelineResult] = []
-        var extensionsToReload: [String] = []
 
         for group in targetGroups {
             let groupFilters = existingFilters.filter { $0.group == group }
@@ -246,19 +268,6 @@ actor FilterPipeline {
                 reloadStrategy: .deferred
             )
             results.append(result)
-
-            let partition = try await partitioner.partition(
-                CompiledRuleSet(group: group, rawJSON: Data(), ruleCount: 0, statistics: result.compileStatistics),
-                group: group
-            )
-            extensionsToReload.append(partition.extensionIdentifier)
-        }
-
-        if reloadStrategy == .immediate && !extensionsToReload.isEmpty {
-            let reloadResults = await reloader.reload(extensionIdentifiers: extensionsToReload)
-            for idx in results.indices {
-                results[idx].reloadResults = reloadResults
-            }
         }
 
         return results
@@ -439,16 +448,17 @@ extension FilterPipeline {
 
     /// Reinstalls the free bundled lists, failing unless all of them install, for a caller that
     /// will roll back: a partial result would look like the other groups have no sources.
-    /// Callers must already hold the transaction gate.
+    /// Callers must already hold the transaction gate, and reload the groups returned once they
+    /// commit: nothing is reloaded here, since Safari mustn't get rules that may yet be rolled back.
     func reinstallBundledBaseline() async throws -> [PipelineResult] {
-        let results = try await installBundledSnapshots(includePremium: false)
+        let results = try await installBundledSnapshots(includePremium: false, reloadStrategy: .deferred)
         guard Set(results.map(\.group)) == [.ads, .privacy] else {
             throw FilterPipelineError.bundledSnapshotMissing
         }
         return results
     }
 
-    private func installBundledSnapshots(includePremium: Bool) async throws -> [PipelineResult] {
+    private func installBundledSnapshots(includePremium: Bool, reloadStrategy: ReloadStrategy = .immediate) async throws -> [PipelineResult] {
         var results: [PipelineResult] = []
         var atLeastOneInstalled = false
 
@@ -465,7 +475,7 @@ extension FilterPipeline {
                         data: adsData
                     )]
                 )
-                let result = try await install(adsComp, reloadStrategy: .immediate)
+                let result = try await install(adsComp, reloadStrategy: reloadStrategy)
                 results.append(result)
                 atLeastOneInstalled = true
             } catch {
@@ -483,7 +493,7 @@ extension FilterPipeline {
                         data: fallbackData
                     )]
                 )
-                let result = try await install(fallbackComp, reloadStrategy: .immediate)
+                let result = try await install(fallbackComp, reloadStrategy: reloadStrategy)
                 results.append(result)
                 atLeastOneInstalled = true
             } catch {
@@ -504,7 +514,7 @@ extension FilterPipeline {
                         data: privacyData
                     )]
                 )
-                let result = try await install(privacyComp, reloadStrategy: .immediate)
+                let result = try await install(privacyComp, reloadStrategy: reloadStrategy)
                 results.append(result)
                 atLeastOneInstalled = true
             } catch {

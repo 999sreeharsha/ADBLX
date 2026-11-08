@@ -29,7 +29,7 @@ struct LiveOTAUpdateIntegrationTests {
     func doubleFailureRollbackIntegrity() async throws {
         let appGroupURL = try await containerURL()
         let previousDirURL = appGroupURL.appendingPathComponent("Previous")
-        try await store.discardRollbackSnapshot()
+        try await store.recoverInterruptedTransaction()
 
         // -------------------------------------------------------------
         // STEP 1: Establish baseline on device disk

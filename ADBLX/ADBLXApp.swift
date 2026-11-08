@@ -90,45 +90,64 @@ struct ADBLXApp: App {
                 let coordinator = updateCoordinator
                 let reconciler = entitlementReconciler
                 let store = filterStore
-                Task.detached(priority: .utility) {
-                    let manifestStore = ManifestStore(filterStore: store)
-                    let subscriptionService = AppCompositionRoot.makeSubscriptionService()
-                    // Must be the resolved (not cached) value: it gates the bundled premium
-                    // lists and is published to the Safari Web Extension, and the cached state
-                    // is still `.free` this early in launch until the transaction listener's
-                    // first refresh lands.
-                    let entitlement = await subscriptionService.refreshEntitlements()
-                    let isPremium = entitlement.hasPremiumAccess
-                    await ContentBlockerBootstrap.ensureInitialRulesInstalled(
-                        pipeline: pipeline, manifestStore: manifestStore, isPremiumEntitled: isPremium
-                    )
-                    WebExtensionBootstrap.ensureInitialWebExtensionRulesInstalled(
-                        isPremium: isPremium, validUntil: entitlement.validUntil
-                    )
-                    _ = AppCompositionRoot.makeWebExtensionEntitlementCoordinator()
-                    _ = AppCompositionRoot.makeTrialNotificationScheduler()
-                    // Level-triggered: corrects any drift between installed premium filters and
-                    // entitlement (missed expiry, offline refund, legacy installs), then keeps
-                    // watching for live changes. Runs before the update transaction so a
-                    // lapsed user never downloads premium lists.
-                    await reconciler.startObserving()
-                    await reconciler.reconcile()
-                    // Rules from an older compiler are rebuilt at launch until it succeeds (with a
-                    // gap after a failure, and a limit per build), before the throttled update,
-                    // which may not run at all. Takes the gate.
-                    await CompilerRecompile.runIfDue(
-                        pipeline: pipeline, throttle: AppCompositionRoot.makeRecompileThrottle(store: store)
-                    )
-                    guard await AutomaticUpdate.runIfDue(
-                        coordinator: coordinator, throttle: AppCompositionRoot.makeUpdateThrottle(store: store)
-                    ) else { return }
-                    // The manifest's never-block list for DNS Protection, from the manifest just cached.
-                    // Not shipped in Release, so nothing is fetched there.
-                    if BuildFeatures.dnsProtection, let entry = try? await manifestStore.load()?.manifest.dnsNeverBlock {
-                        let neverBlock = DNSNeverBlockStore(filterStore: store)
-                        _ = try? await DNSNeverBlockUpdater(store: neverBlock, session: AppCompositionRoot.makeHTTPSession()).update(to: entry)
+                let launch = LaunchSequence(
+                    recoverInterruptedTransaction: {
+                        // A transaction killed before its commit is undone before anything else
+                        // reads the filter directories, and Safari reloads every blocker.
+                        await LaunchRecovery.run(
+                            store: store, reloader: ReloadCoordinator(),
+                            extensionIdentifiers: AppCompositionRoot.extensionIdentifiers
+                        )
+                    },
+                    bootstrap: {
+                        let subscriptionService = AppCompositionRoot.makeSubscriptionService()
+                        // Must be the resolved (not cached) value: it gates the bundled premium
+                        // lists and is published to the Safari Web Extension, and the cached state
+                        // is still `.free` this early in launch until the transaction listener's
+                        // first refresh lands.
+                        let entitlement = await subscriptionService.refreshEntitlements()
+                        let isPremium = entitlement.hasPremiumAccess
+                        await ContentBlockerBootstrap.ensureInitialRulesInstalled(
+                            pipeline: pipeline, manifestStore: ManifestStore(filterStore: store), isPremiumEntitled: isPremium
+                        )
+                        WebExtensionBootstrap.ensureInitialWebExtensionRulesInstalled(
+                            isPremium: isPremium, validUntil: entitlement.validUntil
+                        )
+                        _ = AppCompositionRoot.makeWebExtensionEntitlementCoordinator()
+                        _ = AppCompositionRoot.makeTrialNotificationScheduler()
+                    },
+                    reconcile: {
+                        // Level-triggered: corrects any drift between installed premium filters and
+                        // entitlement (missed expiry, offline refund, legacy installs), then keeps
+                        // watching for live changes. Runs before the update transaction so a
+                        // lapsed user never downloads premium lists.
+                        await reconciler.startObserving()
+                        await reconciler.reconcile()
+                    },
+                    recompile: {
+                        // Rules from an older compiler are rebuilt at launch until it succeeds (with a
+                        // gap after a failure, and a limit per build), before the throttled update,
+                        // which may not run at all. Takes the gate.
+                        await CompilerRecompile.runIfDue(
+                            pipeline: pipeline, throttle: AppCompositionRoot.makeRecompileThrottle(store: store)
+                        )
+                    },
+                    update: {
+                        await AutomaticUpdate.runIfDue(
+                            coordinator: coordinator, throttle: AppCompositionRoot.makeUpdateThrottle(store: store)
+                        )
+                    },
+                    afterUpdate: {
+                        // The manifest's never-block list for DNS Protection, from the manifest just cached.
+                        // Not shipped in Release, so nothing is fetched there.
+                        if BuildFeatures.dnsProtection,
+                           let entry = try? await ManifestStore(filterStore: store).load()?.manifest.dnsNeverBlock {
+                            let neverBlock = DNSNeverBlockStore(filterStore: store)
+                            _ = try? await DNSNeverBlockUpdater(store: neverBlock, session: AppCompositionRoot.makeHTTPSession()).update(to: entry)
+                        }
                     }
-                }
+                )
+                Task.detached(priority: .utility) { await launch.run() }
             }
         }
     }
