@@ -7,7 +7,7 @@ import ADBLXShared
 
 /// DEBUG counters for the mobile-data investigation (2026-11-08): which upstream answered, which
 /// answered too late, what the unparsable packets are, and why sockets were reset. Counts only.
-@Suite("DNS upstream diagnostics")
+@Suite("DNS upstream diagnostics", .timeLimit(.minutes(1)))
 struct DNSUpstreamDiagnosticsTests {
     private static let fallbackIP = "149.112.112.112"
 
@@ -18,7 +18,7 @@ struct DNSUpstreamDiagnosticsTests {
         DNSUpstreamForwarder(
             config: UpstreamResolverConfig(
                 ipv4Address: "9.9.9.9", ipv6Address: "2620:fe::fe", fallbackIPv4Address: Self.fallbackIP,
-                timeoutSeconds: 2, maxInFlightQueries: 8
+                timeoutSeconds: 2, hedgeDelaySeconds: 0.4, maxInFlightQueries: 8
             ),
             socketFactory: { host, _, isIPv6 in isIPv6 ? v6 : (host == Self.fallbackIP ? fallback : primary) },
             clock: clock, tcpTransport: tcp, counters: counters
@@ -36,10 +36,13 @@ struct DNSUpstreamDiagnosticsTests {
 
     // MARK: - Which upstream answered
 
-    @Test("an answer from the first upstream is counted as primary")
+    /// An IPv6 upstream whose sends fail, so the IPv4 primary is asked at once.
+    private func unreachableIPv6() -> ScriptedUpstreamSocket { ScriptedUpstreamSocket(failure: SendFailure()) }
+
+    @Test("an answer from the IPv4 primary is counted as primary")
     func primaryAnswer() async throws {
         let counters = DNSTunnelCounters(), sink = PacketSink()
-        let fwd = make(primary: answering("9.9.9.9"), v6: ScriptedUpstreamSocket(senderIP: "2620:fe::fe"),
+        let fwd = make(primary: answering("9.9.9.9"), v6: unreachableIPv6(),
                        fallback: ScriptedUpstreamSocket(senderIP: Self.fallbackIP), clock: ManualDNSClock(), counters: counters)
         try await fwd.start { p, _ in sink.append(p) }
         let (packet, query) = parsed(TestDNS.query("a.example"))
@@ -49,26 +52,25 @@ struct DNSUpstreamDiagnosticsTests {
         #expect(counters.snapshot.answersFromIPv6 == 0 && counters.snapshot.answersFromFallbackIPv4 == 0)
     }
 
-    @Test("a retry answered over IPv6 is counted as IPv6, and the primary as late if it answers afterwards")
-    func ipv6AnswerAndLatePrimary() async throws {
+    @Test("a hedge answered by IPv4 is counted as primary, and IPv6 as late if it answers afterwards")
+    func hedgeAnswerAndLateIPv6() async throws {
         let counters = DNSTunnelCounters(), sink = PacketSink(), clock = ManualDNSClock()
-        let primary = ScriptedUpstreamSocket()
-        let fwd = make(primary: primary, v6: answering("2620:fe::fe"),
+        let fwd = make(primary: answering("9.9.9.9"), v6: ScriptedUpstreamSocket(senderIP: "2620:fe::fe"),
                        fallback: ScriptedUpstreamSocket(senderIP: Self.fallbackIP), clock: clock, counters: counters)
         try await fwd.start { p, _ in sink.append(p) }
         let dns = TestDNS.query("slow.example")
         let (packet, query) = parsed(dns)
-        guard case .forwarded(let firstID) = await fwd.forward(query: query, originalPacket: packet) else { return }
+        guard case .forwarded(let id) = await fwd.forward(query: query, originalPacket: packet) else { return }
         await clock.waitForSleepers(1)
-        clock.advance(by: 2)
+        clock.advance(by: 0.4)
         await sink.waitForCount(1)
-        #expect(counters.snapshot.answersFromIPv6 == 1)
+        #expect(counters.snapshot.answersFromPrimaryIPv4 == 1)
 
         var late = TestDNS.response(to: dns)
-        late[0] = UInt8(firstID >> 8); late[1] = UInt8(firstID & 0xFF)
-        await fwd.handleUpstreamResponse(data: late, senderIP: "9.9.9.9", senderPort: 53, isIPv6: false)
-        #expect(counters.snapshot.lateAnswersFromPrimaryIPv4 == 1)
-        #expect(counters.snapshot.answersFromPrimaryIPv4 == 0)
+        late[0] = UInt8(id >> 8); late[1] = UInt8(id & 0xFF)
+        await fwd.handleUpstreamResponse(data: late, senderIP: "2620:fe::fe", senderPort: 53, isIPv6: true)
+        #expect(counters.snapshot.lateAnswersFromIPv6 == 1)
+        #expect(counters.snapshot.answersFromIPv6 == 0)
         #expect(sink.count == 1)
     }
 
@@ -113,7 +115,7 @@ struct DNSUpstreamDiagnosticsTests {
             let dns = TestDNS.query("big.example", udpSize: 1232)
             let tcp = ScriptedTCPTransport(ok ? .success(TestDNS.response(to: dns, answerBytes: 100)) : .failure(SendFailure()))
             let truncating = ScriptedUpstreamSocket { TestDNS.response(to: $0, truncated: true) }
-            let fwd = make(primary: truncating, v6: ScriptedUpstreamSocket(senderIP: "2620:fe::fe"),
+            let fwd = make(primary: truncating, v6: unreachableIPv6(),
                            fallback: ScriptedUpstreamSocket(senderIP: Self.fallbackIP), clock: ManualDNSClock(), counters: counters, tcp: tcp)
             try await fwd.start { p, _ in sink.append(p) }
             let (packet, query) = parsed(dns)
@@ -131,7 +133,7 @@ struct DNSUpstreamDiagnosticsTests {
         let dns = TestDNS.query("huge.example")   // no EDNS: 512 bytes
         let tcp = ScriptedTCPTransport(.success(TestDNS.response(to: dns, answerBytes: 900)))
         let truncating = ScriptedUpstreamSocket { TestDNS.response(to: $0, truncated: true) }
-        let fwd = make(primary: truncating, v6: ScriptedUpstreamSocket(senderIP: "2620:fe::fe"),
+        let fwd = make(primary: truncating, v6: unreachableIPv6(),
                        fallback: ScriptedUpstreamSocket(senderIP: Self.fallbackIP), clock: ManualDNSClock(), counters: counters, tcp: tcp)
         try await fwd.start { p, _ in sink.append(p) }
         let (packet, query) = parsed(dns)

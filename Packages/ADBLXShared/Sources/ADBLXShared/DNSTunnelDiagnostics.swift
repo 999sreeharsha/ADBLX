@@ -9,9 +9,10 @@ public struct DNSTunnelCountersSnapshot: Codable, Equatable, Sendable {
     public var blockedQueries: UInt64 = 0
     public var forwardedQueries: UInt64 = 0
     public var responsesWritten: UInt64 = 0
+    /// Queries no upstream answered within the outer timeout (each one is a SERVFAIL).
     public var upstreamTimeouts: UInt64 = 0
     public var upstreamSendErrors: UInt64 = 0
-    /// Queries tried a second time on another upstream after a timeout or send failure.
+    /// Queries sent to another upstream as well: at the hedge delay, or at once after a failed send.
     public var upstreamRetries: UInt64 = 0
     public var servfailsSent: UInt64 = 0
     public var truncatedUpstreamAnswers: UInt64 = 0

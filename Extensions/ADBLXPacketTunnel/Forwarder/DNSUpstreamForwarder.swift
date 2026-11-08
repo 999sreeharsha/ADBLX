@@ -17,6 +17,11 @@ public actor DNSUpstreamForwarder {
     private let tcpTransport: DNSUpstreamTCPTransport?
     private let counters: DNSTunnelCounters?
     
+    /// What each network has shown about the upstreams, by network key (see `resetSockets`).
+    private var scoreboards: [String: UpstreamScoreboard] = [:]
+    private var networkKey = ""
+    private static let maxRememberedNetworks = 8
+    
     public init(
         config: UpstreamResolverConfig = UpstreamResolverConfig(),
         socketFactory: @escaping @Sendable (String, UInt16, Bool) throws -> any DNSUpstreamSocketProtocol = { host, port, isIPv6 in
@@ -76,100 +81,124 @@ public actor DNSUpstreamForwarder {
     }
     
     private func initializeSockets() throws {
-        // IPv4 Socket
-        let v4Socket = try socketFactory(config.ipv4Address, config.port, false)
-        v4Socket.setResponseHandler { [weak self] data, senderIP, senderPort in
+        ipv4Socket = try makeSocket(config.ipv4Address, isIPv6: false)
+        if let v6Address = config.ipv6Address { ipv6Socket = try makeSocket(v6Address, isIPv6: true) }
+        if let fallbackAddress = config.fallbackIPv4Address { fallbackSocket = try makeSocket(fallbackAddress, isIPv6: false) }
+    }
+    
+    private func makeSocket(_ host: String, isIPv6: Bool) throws -> any DNSUpstreamSocketProtocol {
+        let socket = try socketFactory(host, config.port, isIPv6)
+        socket.setResponseHandler { [weak self] data, senderIP, senderPort in
             Task { [weak self] in
-                await self?.handleUpstreamResponse(data: data, senderIP: senderIP, senderPort: senderPort, isIPv6: false)
+                await self?.handleUpstreamResponse(data: data, senderIP: senderIP, senderPort: senderPort, isIPv6: isIPv6)
             }
         }
-        self.ipv4Socket = v4Socket
-        
-        // IPv6 Socket
-        if let v6Address = config.ipv6Address {
-            let v6Socket = try socketFactory(v6Address, config.port, true)
-            v6Socket.setResponseHandler { [weak self] data, senderIP, senderPort in
-                Task { [weak self] in
-                    await self?.handleUpstreamResponse(data: data, senderIP: senderIP, senderPort: senderPort, isIPv6: true)
-                }
-            }
-            self.ipv6Socket = v6Socket
-        }
-        
-        // Fallback IPv4 upstream, used only for a retry.
-        if let fallbackAddress = config.fallbackIPv4Address {
-            let socket = try socketFactory(fallbackAddress, config.port, false)
-            socket.setResponseHandler { [weak self] data, senderIP, senderPort in
-                Task { [weak self] in
-                    await self?.handleUpstreamResponse(data: data, senderIP: senderIP, senderPort: senderPort, isIPv6: false)
-                }
-            }
-            self.fallbackSocket = socket
-        }
+        return socket
     }
     
     /// Replaces every upstream socket (after a network change, when the old ones may be bound to
-    /// a path that is gone) and sends each query still waiting again on the new sockets.
-    public func resetSockets() throws {
+    /// a path that is gone) and sends each query still waiting again, to the same upstreams, on
+    /// the new sockets. `networkKey` names the network now in use, so queries from here on are
+    /// ordered by what was learned on it.
+    public func resetSockets(networkKey: String? = nil) throws {
         ipv4Socket?.close(); ipv4Socket = nil
         ipv6Socket?.close(); ipv6Socket = nil
         fallbackSocket?.close(); fallbackSocket = nil
         try initializeSockets()
         counters?.increment(\.socketResets)
+        if let networkKey { switchNetwork(to: networkKey) }
         for (upstreamTxID, pending) in pendingTransactions {
-            guard let socket = pending.attempt == 0 ? firstSocket(for: pending) : retryTarget(for: pending) else { continue }
-            var payload = pending.clientQuery
-            payload.withUnsafeMutableBytes { raw in
-                let base = raw.baseAddress!.assumingMemoryBound(to: UInt8.self)
-                base[0] = UInt8((upstreamTxID >> 8) & 0xFF)
-                base[1] = UInt8(upstreamTxID & 0xFF)
-            }
-            let resend = payload
-            Task { [weak self] in
-                do { try await socket.send(payload: resend) } catch { await self?.failPending(upstreamTxID: upstreamTxID) }
+            for upstream in pending.asked {
+                Task { [weak self] in
+                    guard let self else { return }
+                    if await !self.transmit(upstreamTxID, to: upstream) { await self.askNext(upstreamTxID) }
+                }
             }
         }
     }
     
-    // MARK: - Retry on a second upstream
+    // MARK: - Choosing upstreams
     
-    private func firstSocket(for pending: PendingQuery) -> (any DNSUpstreamSocketProtocol)? {
-        pending.ipVersion == .v6 ? (ipv6Socket ?? ipv4Socket) : ipv4Socket
+    /// The upstreams that exist, in the default order: IPv6, the IPv4 primary, the IPv4 fallback.
+    private var availableUpstreams: [UpstreamID] {
+        var list: [UpstreamID] = []
+        if ipv6Socket != nil { list.append(.ipv6) }
+        if ipv4Socket != nil { list.append(.primaryIPv4) }
+        if fallbackSocket != nil { list.append(.fallbackIPv4) }
+        return list
     }
     
-    /// Where a retry goes: the other IP family first (an IPv6-only network can't reach the IPv4
-    /// literal), then the second IPv4 upstream, then whatever else is left.
-    private func retryTarget(for pending: PendingQuery) -> (any DNSUpstreamSocketProtocol)? {
-        let first = firstSocket(for: pending)
-        for candidate in [ipv6Socket, fallbackSocket, ipv4Socket] {
-            if let candidate, candidate !== first { return candidate }
+    /// The order a new query asks the upstreams in, from what this network has shown.
+    private func orderedUpstreams() -> [UpstreamID] {
+        (scoreboards[networkKey] ?? UpstreamScoreboard()).ordered(availableUpstreams)
+    }
+    
+    /// Names the network in use without touching the sockets (the first path update).
+    public func useNetwork(_ key: String) {
+        switchNetwork(to: key)
+    }
+
+    private func switchNetwork(to key: String) {
+        networkKey = key
+        // A handful of networks is plenty; forgetting them all only costs relearning.
+        if scoreboards[key] == nil, scoreboards.count >= Self.maxRememberedNetworks { scoreboards.removeAll() }
+    }
+    
+    private func record(_ upstream: UpstreamID, success: Bool, network: String) {
+        scoreboards[network, default: UpstreamScoreboard()].record(upstream, success: success)
+    }
+    
+    private func socket(for upstream: UpstreamID) -> (any DNSUpstreamSocketProtocol)? {
+        switch upstream {
+        case .ipv6: return ipv6Socket
+        case .primaryIPv4: return ipv4Socket
+        case .fallbackIPv4: return fallbackSocket
         }
-        return nil
     }
     
-    /// Sends `failed` again on another upstream if it hasn't been retried. Returns the new
-    /// upstream id, or nil if there is nothing to retry on (the caller then gives up).
-    private func attemptRetry(_ failed: PendingQuery) async -> UInt16? {
-        guard failed.attempt == 0, let socket = retryTarget(for: failed) else { return nil }
-        let upstreamTxID = allocateNextUpstreamTxID()
-        var retry = failed.retried(upstreamTxID: upstreamTxID, at: clock.now)
-        retry.timeoutTask = scheduleTimeout(upstreamTxID: upstreamTxID)
-        pendingTransactions[upstreamTxID] = retry
-        counters?.increment(\.upstreamRetries)
-        var payload = failed.clientQuery
+    // MARK: - Asking upstreams
+    
+    /// Sends query `upstreamTxID` to `upstream`. A failed send counts against the upstream and
+    /// stops the query waiting on it. True if the send went out.
+    private func transmit(_ upstreamTxID: UInt16, to upstream: UpstreamID) async -> Bool {
+        guard let pending = pendingTransactions[upstreamTxID] else { return false }
+        var payload = pending.clientQuery
         payload.withUnsafeMutableBytes { raw in
             let base = raw.baseAddress!.assumingMemoryBound(to: UInt8.self)
             base[0] = UInt8((upstreamTxID >> 8) & 0xFF)
             base[1] = UInt8(upstreamTxID & 0xFF)
         }
         do {
+            guard let socket = socket(for: upstream) else { throw DNSUpstreamSocketError.unavailable }
             try await socket.send(payload: payload)
-            return upstreamTxID
+            return true
         } catch {
             counters?.increment(\.upstreamSendErrors)
-            pendingTransactions.removeValue(forKey: upstreamTxID)?.timeoutTask?.cancel()
-            return nil
+            record(upstream, success: false, network: pending.network)
+            pendingTransactions[upstreamTxID]?.asked.removeAll { $0 == upstream }
+            return false
         }
+    }
+    
+    /// Asks the next upstream not asked yet, moving straight past any whose send fails. With
+    /// nothing left to ask and nothing still waited on, the query fails (a SERVFAIL) at once.
+    /// True if a send went out.
+    @discardableResult
+    private func askNext(_ upstreamTxID: UInt16) async -> Bool {
+        while var pending = pendingTransactions[upstreamTxID], !pending.remaining.isEmpty {
+            let upstream = pending.remaining.removeFirst()
+            if pending.timesAsked > 0 { counters?.increment(\.upstreamRetries) }
+            pending.timesAsked += 1
+            pending.asked.append(upstream)
+            pendingTransactions[upstreamTxID] = pending
+            if await transmit(upstreamTxID, to: upstream) { return true }
+        }
+        if let pending = pendingTransactions[upstreamTxID], pending.asked.isEmpty {
+            pendingTransactions.removeValue(forKey: upstreamTxID)
+            pending.timeoutTask?.cancel()
+            fail(pending)
+        }
+        return false
     }
     
     // MARK: - Forwarding Query
@@ -225,64 +254,37 @@ public actor DNSUpstreamForwarder {
             exchangeContinuation: nil
         )
         
-        // 3. Select Socket. A client is never left waiting: no socket is a SERVFAIL.
-        let targetSocket: (any DNSUpstreamSocketProtocol)?
-        switch query.ipVersion {
-        case .v4:
-            targetSocket = ipv4Socket
-        case .v6:
-            targetSocket = ipv6Socket ?? ipv4Socket
-        }
-        guard let socket = targetSocket else {
+        // 3. Choose the upstreams. A client is never left waiting: none at all is a SERVFAIL.
+        let upstreams = orderedUpstreams()
+        guard !upstreams.isEmpty else {
             emitServfail(for: pending)
-            return .socketUnavailable("No socket available for \(query.ipVersion)")
+            return .socketUnavailable("No upstream socket available")
         }
+        pending.remaining = upstreams
+        pending.network = networkKey
         
-        // 4. Rewrite the DNS payload with the upstream transaction ID
-        var dnsPayload = clientQuery
-        dnsPayload.withUnsafeMutableBytes { raw in
-            let base = raw.baseAddress!.assumingMemoryBound(to: UInt8.self)
-            base[0] = UInt8((upstreamTxID >> 8) & 0xFF)
-            base[1] = UInt8(upstreamTxID & 0xFF)
-        }
-        
-        // 5. Record Pending Transaction & Schedule Timeout BEFORE send to eliminate fast-response race condition
-        pending.timeoutTask = scheduleTimeout(upstreamTxID: upstreamTxID)
+        // 4. Record the query and start its timers BEFORE sending, so a fast answer finds it.
+        pending.timeoutTask = scheduleTimers(upstreamTxID: upstreamTxID, start: pending.requestTimestamp, hedge: upstreams.count > 1)
         pendingTransactions[upstreamTxID] = pending
         DNSForwarderMetrics.logForwardedUpstream(upstreamTxID: upstreamTxID)
         
-        // 6. Send via UDP
-        do {
-            try await socket.send(payload: dnsPayload)
-        } catch {
-            counters?.increment(\.upstreamSendErrors)
-            if let dropped = pendingTransactions.removeValue(forKey: upstreamTxID) {
-                dropped.timeoutTask?.cancel()
-                if let retryID = await attemptRetry(dropped) { return .forwarded(upstreamTxID: retryID) }
-                emitServfail(for: dropped)
-            }
-            return .socketUnavailable(error.localizedDescription)
-        }
-        
-        return .forwarded(upstreamTxID: upstreamTxID)
+        // 5. Ask the preferred upstream (or the next, if its send fails).
+        if await askNext(upstreamTxID) { return .forwarded(upstreamTxID: upstreamTxID) }
+        return .socketUnavailable("No upstream accepted the query")
     }
     
     // MARK: - Exchange (a bare DNS message in, the answer out; used for TCP clients)
     
-    /// Asks the upstream over UDP, following a truncated answer to TCP. Nil if there is no answer
-    /// (timeout, send failure, no usable TCP fallback): the caller turns that into a SERVFAIL.
+    /// Asks the upstreams over UDP the same way as `forward`, following a truncated answer to TCP.
+    /// Nil if there is no answer (timeout, every send failed, no usable TCP fallback): the caller
+    /// turns that into a SERVFAIL.
     public func exchange(dnsPayload: Data) async -> Data? {
+        let upstreams = orderedUpstreams()
         guard dnsPayload.count >= 12,
               pendingTransactions.count < config.maxInFlightQueries,
-              let socket = ipv4Socket else { return nil }
+              !upstreams.isEmpty else { return nil }
         let upstreamTxID = allocateNextUpstreamTxID()
         let clientTxID = UInt16(dnsPayload[dnsPayload.startIndex]) << 8 | UInt16(dnsPayload[dnsPayload.startIndex + 1])
-        var upstreamPayload = dnsPayload
-        upstreamPayload.withUnsafeMutableBytes { raw in
-            let base = raw.baseAddress!.assumingMemoryBound(to: UInt8.self)
-            base[0] = UInt8((upstreamTxID >> 8) & 0xFF)
-            base[1] = UInt8(upstreamTxID & 0xFF)
-        }
         
         return await withCheckedContinuation { (continuation: CheckedContinuation<Data?, Never>) in
             var pending = PendingQuery(
@@ -292,25 +294,12 @@ public actor DNSUpstreamForwarder {
                 requestTimestamp: clock.now, timeoutTask: nil,
                 clientQuery: dnsPayload, exchangeContinuation: continuation
             )
-            pending.timeoutTask = scheduleTimeout(upstreamTxID: upstreamTxID)
+            pending.remaining = upstreams
+            pending.network = networkKey
+            pending.timeoutTask = scheduleTimers(upstreamTxID: upstreamTxID, start: pending.requestTimestamp, hedge: upstreams.count > 1)
             pendingTransactions[upstreamTxID] = pending
-            let payload = upstreamPayload
-            Task { [weak self] in
-                do {
-                    try await socket.send(payload: payload)
-                } catch {
-                    await self?.failPending(upstreamTxID: upstreamTxID)
-                }
-            }
+            Task { [weak self] in await self?.askNext(upstreamTxID) }
         }
-    }
-    
-    private func failPending(upstreamTxID: UInt16) async {
-        guard let pending = pendingTransactions.removeValue(forKey: upstreamTxID) else { return }
-        counters?.increment(\.upstreamSendErrors)
-        pending.timeoutTask?.cancel()
-        if await attemptRetry(pending) != nil { return }
-        fail(pending)
     }
     
     // MARK: - Handling Upstream Response
@@ -330,22 +319,31 @@ public actor DNSUpstreamForwarder {
         }
         
         let upstreamTxID = (UInt16(data[0]) << 8) | UInt16(data[1])
+        let responder: UpstreamID
         let source: (answered: WritableKeyPath<DNSTunnelCountersSnapshot, UInt64>, late: WritableKeyPath<DNSTunnelCountersSnapshot, UInt64>)
         if isIPv6 {
+            responder = .ipv6
             source = (\.answersFromIPv6, \.lateAnswersFromIPv6)
         } else if let fallback = config.fallbackIPv4Address, senderIP == fallback {
+            responder = .fallbackIPv4
             source = (\.answersFromFallbackIPv4, \.lateAnswersFromFallbackIPv4)
         } else {
+            responder = .primaryIPv4
             source = (\.answersFromPrimaryIPv4, \.lateAnswersFromPrimaryIPv4)
         }
-        guard let pending = pendingTransactions.removeValue(forKey: upstreamTxID) else {
-            // Already timed out (or retried elsewhere), or an id we never sent.
+        guard let pending = pendingTransactions[upstreamTxID], let position = pending.asked.firstIndex(of: responder) else {
+            // Already answered by another upstream, timed out, or an id we never sent this one.
             counters?.increment(source.late)
             return
         }
+        pendingTransactions.removeValue(forKey: upstreamTxID)
         counters?.increment(source.answered)
         
         pending.timeoutTask?.cancel()
+        
+        // The winner scores; an upstream asked before it, which had the head start, lost.
+        record(responder, success: true, network: pending.network)
+        for loser in pending.asked[..<position] { record(loser, success: false, network: pending.network) }
         
         let latencyMs = (clock.now - pending.requestTimestamp) * 1000.0
         DNSForwarderMetrics.logResponseCorrelated(upstreamTxID: upstreamTxID, clientTxID: pending.clientTxID, latencyMs: latencyMs)
@@ -422,23 +420,40 @@ public actor DNSUpstreamForwarder {
     
     // MARK: - Timeout
     
-    private func scheduleTimeout(upstreamTxID: UInt16) -> Task<Void, Never> {
-        let seconds = config.timeoutSeconds
+    /// One task per query: at the hedge delay it asks the next upstream (if the query is still
+    /// waiting and there is one), and at `timeoutSeconds` from `start` it gives up.
+    private func scheduleTimers(upstreamTxID: UInt16, start: TimeInterval, hedge: Bool) -> Task<Void, Never> {
+        let timeout = config.timeoutSeconds
+        let hedgeDelay = hedge ? config.hedgeDelaySeconds.flatMap { $0 < timeout ? $0 : nil } : nil
         let clock = self.clock
         return Task { [weak self] in
-            do { try await clock.sleep(seconds: seconds) } catch { return }
+            if let hedgeDelay {
+                do { try await clock.sleep(seconds: hedgeDelay) } catch { return }
+                guard let self, await self.hedge(upstreamTxID: upstreamTxID) else { return }
+            }
+            let left = start + timeout - clock.now
+            if left > 0 {
+                guard !Task.isCancelled else { return }
+                do { try await clock.sleep(seconds: left) } catch { return }
+            }
             await self?.handleTimeout(upstreamTxID: upstreamTxID)
         }
+    }
+    
+    /// The hedge delay passed without an answer: ask the next upstream as well. False once the
+    /// query is finished.
+    private func hedge(upstreamTxID: UInt16) async -> Bool {
+        guard pendingTransactions[upstreamTxID] != nil else { return false }
+        await askNext(upstreamTxID)
+        return pendingTransactions[upstreamTxID] != nil
     }
     
     private func handleTimeout(upstreamTxID: UInt16) {
         guard let pending = pendingTransactions.removeValue(forKey: upstreamTxID) else { return }
         DNSForwarderMetrics.logQueryTimeout(upstreamTxID: upstreamTxID, clientTxID: pending.clientTxID)
         counters?.increment(\.upstreamTimeouts)
-        Task { [weak self] in
-            guard let self else { return }
-            if await self.attemptRetry(pending) == nil { await self.fail(pending) }
-        }
+        for upstream in pending.asked { record(upstream, success: false, network: pending.network) }
+        fail(pending)
     }
     
     private func allocateNextUpstreamTxID() -> UInt16 {

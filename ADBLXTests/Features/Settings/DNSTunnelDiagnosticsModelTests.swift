@@ -80,8 +80,8 @@ struct DNSTunnelDiagnosticsModelTests {
         let model = DNSTunnelDiagnosticsModel(transport: ScriptedDiagnosticsTransport { _ in reply })
         await model.refresh()
         #expect(model.rows.map(\.label) == [
-            "Packets in", "Blocked", "Forwarded", "Responses written", "Upstream timeouts",
-            "Upstream send errors", "Upstream retries", "SERVFAIL sent", "Truncated upstream answers",
+            "Packets in", "Blocked", "Forwarded", "Responses written", "No answer in 2 s",
+            "Upstream send errors", "Second upstream asked", "SERVFAIL sent", "Truncated upstream answers",
             "TCP segments", "TCP queries", "Unparsable packets", "Socket resets",
             "Answered by IPv4 primary", "Answered by IPv6", "Answered by IPv4 fallback",
             "Late from IPv4 primary", "Late from IPv6", "Late from IPv4 fallback",
