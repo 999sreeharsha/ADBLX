@@ -148,6 +148,14 @@ public actor DNSUpstreamForwarder {
         scoreboards[network, default: UpstreamScoreboard()].record(upstream, success: success)
     }
     
+    private func address(of upstream: UpstreamID) -> String? {
+        switch upstream {
+        case .ipv6: return config.ipv6Address
+        case .primaryIPv4: return config.ipv4Address
+        case .fallbackIPv4: return config.fallbackIPv4Address
+        }
+    }
+    
     private func socket(for upstream: UpstreamID) -> (any DNSUpstreamSocketProtocol)? {
         switch upstream {
         case .ipv6: return ipv6Socket
@@ -352,16 +360,18 @@ public actor DNSUpstreamForwarder {
         // client a truncated answer it would retry over a connection we'd otherwise not answer.
         if DNSMessage.isTruncated(data) {
             counters?.increment(\.truncatedUpstreamAnswers)
-            Task { [weak self] in await self?.completeTruncated(pending) }
+            Task { [weak self] in await self?.completeTruncated(pending, from: responder) }
             return
         }
         deliver(data, for: pending)
     }
     
-    private func completeTruncated(_ pending: PendingQuery) async {
-        guard let transport = tcpTransport else { return fail(pending) }
+    /// Fetches the whole answer over TCP from the upstream that sent the truncated one: its path
+    /// just worked, where another family's may not (IPv4 is lost on some 4G networks).
+    private func completeTruncated(_ pending: PendingQuery, from upstream: UpstreamID) async {
+        guard let transport = tcpTransport, let host = address(of: upstream) else { return fail(pending) }
         do {
-            let full = try await transport.exchange(query: pending.clientQuery, host: config.ipv4Address, port: config.port)
+            let full = try await transport.exchange(query: pending.clientQuery, host: host, port: config.port)
             guard full.count >= 12 else {
                 counters?.increment(\.upstreamTCPFailed)
                 return fail(pending)
