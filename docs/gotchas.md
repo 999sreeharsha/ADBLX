@@ -134,8 +134,10 @@ which rows are load-bearing and which aren't before building on top of them:
   Remove a row from `SettingsPlaceholderRow` only when its feature is real.
 - **Language opens the app's page in iOS Settings** (`SettingsView.languageSettingsURL`).
   iOS shows a per-app language choice there only when the app has more than one localization.
-  Today `Localizable.xcstrings` has English only, so the page opens with no language option
-  until a second language is added.
+  Today `Localizable.xcstrings` has English only, so the row is a `SettingsPlaceholderRow` too:
+  hidden in Release until the bundle has a second localization, then shown in every build with
+  no flag change. `SettingsReleaseRowsTests.oneLocalizationToday` fails when that happens, as a
+  reminder to check the Settings page offers the language.
 
 None of this is a defect in what shipped — every one of these was an explicit
 design-doc decision (`docs/superpowers/specs/2026-07-26-sprint5b-feature-live-data-design.md`,
@@ -418,10 +420,16 @@ before `8b07893` is invalid. Re-measure G1 on a device after this fix.
 Compiler fixes reach installed rules (built 2026-11-07): each group's sidecar records
 `CompiledSources.currentCompilerVersion`, and launch runs
 `FilterPipeline.recompileIfCompilerChanged`, which recompiles every group inside the gate
-when any group's version differs (or is missing). All or nothing; a failure is retried at the
-next launch. **Bump `currentCompilerVersion` with any change that can alter compiled output**
-(`SafariRuleGenerator`, `NativeABPRuleCompiler`, the partitioner), or the fix won't reach
-existing installs. The DEBUG Developer screen's "Recompile all now" still forces it by hand.
+when any group's version differs (or is missing). All or nothing. A failure is retried at a
+later launch at least 15 minutes on, and after three consecutive failures not again until the
+app's version or build changes (`RecompileThrottle`, `recompile_attempts.json`), so a group
+that always fails doesn't cost a full recompile every launch. **Bump `currentCompilerVersion`
+with any change that can alter compiled output** (`SafariRuleGenerator`, `NativeABPRuleCompiler`,
+the partitioner), or the fix won't reach existing installs. `CompilerSourceFingerprintTests`
+hashes the compiler's sources and fails when they change without `CompiledSources.compilerFingerprint` being
+updated; its message gives the new hash. It can't tell whether the version was bumped too: for
+a change that only touches comments or formatting, update the hash alone. The DEBUG
+Developer screen's "Recompile all now" still forces it by hand.
 
 Found in: cookiebot.com banner still visible with Annoyances on, iPhone 14, 2026-10-31
 

@@ -6,10 +6,25 @@ import UIKit
 /// (`docs/gotchas.md`, "Settings screen (Sprint 5B)"), and nothing offers iCloud sync.
 @Suite("Settings rows in Release")
 struct SettingsReleaseRowsTests {
-    @Test("With the flag off, Notifications, Safari Help and iCloud Sync are hidden")
+    @Test("With the flag off, Notifications, Safari Help, iCloud Sync and Language are hidden")
     func placeholdersHiddenWithTheFlagOff() {
-        #expect(SettingsPlaceholderRow.visible(placeholdersEnabled: false).isEmpty)
-        #expect(SettingsPlaceholderRow.visible(placeholdersEnabled: true) == [.iCloudSync, .notifications, .safariHelp])
+        #expect(SettingsPlaceholderRow.visible(placeholdersEnabled: false, localizationCount: 1).isEmpty)
+        #expect(SettingsPlaceholderRow.visible(placeholdersEnabled: true, localizationCount: 1)
+            == [.iCloudSync, .notifications, .safariHelp, .language])
+    }
+
+    // With one localization, iOS's per-app language page offers nothing to choose.
+    @Test("Language appears in any build once the app has a second localization")
+    func languageNeedsASecondLocalization() {
+        #expect(SettingsPlaceholderRow.visible(placeholdersEnabled: false, localizationCount: 2) == [.language])
+    }
+
+    @Test("The app ships one localization, so a Release build hides Language")
+    func oneLocalizationToday() {
+        #expect(SettingsPlaceholderRow.appLocalizationCount == 1, """
+            A second localization was added: Release now shows the Language row. Check that iOS \
+            offers the language on the app's Settings page, then delete this test.
+            """)
     }
 
     @Test("The build's own flag decides the default")

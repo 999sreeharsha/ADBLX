@@ -142,10 +142,36 @@ struct BrokenSiteReporterTests {
 
         await viewModel.allowSite()
 
-        #expect(settings.added == ["example.com"])
-        #expect(viewModel.allowlistedDomain == "example.com")
+        #expect(settings.added == ["sub.example.com"])
+        #expect(viewModel.allowlistedDomain == "sub.example.com")
         #expect(viewModel.report == nil)
         #expect(viewModel.delivery == nil)
+    }
+
+    // An entry covers the domain and every subdomain (SafariAllowlistCompiler's `*domain`), so
+    // widening a report on myblog.wordpress.com to wordpress.com would unblock every blog there
+    // (SEC-10). Only a leading www. is dropped, so the bare domain is covered too, and never
+    // when that would leave a public suffix.
+    @Test("allowing a site allowlists the host the user was on, without a leading www.", arguments: [
+        ("https://myblog.wordpress.com/post?id=1", "myblog.wordpress.com"),
+        ("https://user.github.io/project", "user.github.io"),
+        ("https://shop.example.netlify.app", "shop.example.netlify.app"),
+        ("https://sub.example.com/a", "sub.example.com"),
+        ("https://shop.example.co.kr/item", "shop.example.co.kr"),
+        ("https://www.example.com/a", "example.com"),
+        ("WWW.Example.CO.UK", "example.co.uk"),
+        ("example.com", "example.com"),
+        ("www.co.uk", "www.co.uk"),
+        ("www.co.kr", "www.co.kr"),
+        ("www.github.io", "www.github.io")
+    ])
+    func allowlistsTheExactHost(input: String, expected: String) async throws {
+        let settings = RecordingSettingsService()
+
+        let allowlisted = try await makeReporter(settings: settings).allowlist(domain: input)
+
+        #expect(allowlisted == expected)
+        #expect(settings.added == [expected])
     }
 
     @Test("a failed allow is reported, not claimed")

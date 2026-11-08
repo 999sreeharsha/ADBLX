@@ -35,6 +35,14 @@ struct PublicSuffixListTests {
         #expect(PublicSuffixList.extractETLDPlusOne(from: host) == expected)
     }
 
+    @Test("Public suffixes are recognised, registrable domains aren't", arguments: [
+        ("com", true), ("co.uk", true), ("github.io", true), ("co.kr", true), ("com.mx", true),
+        ("example.com", false), ("example.co.uk", false), ("user.github.io", false), ("example.de", false)
+    ])
+    func publicSuffixes(host: String, expected: Bool) {
+        #expect(PublicSuffixList.isPublicSuffix(host) == expected)
+    }
+
     @Test("The result is never a bare registry suffix", arguments: ["x.co.kr", "y.com.mx", "z.ac.th"])
     func neverABareSuffix(host: String) {
         let result = PublicSuffixList.extractETLDPlusOne(from: host)

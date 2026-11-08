@@ -69,7 +69,7 @@ Reports are sent from the user's own mail app to `BrokenSiteReport.recipient`. B
 Before the first TestFlight upload:
 
 - [ ] **Signed manifest live on the site,** with both public keys (K1 and K2) pinned in the build. Every build requires a signature, with no unsigned transition, so a build reading an unsigned site can never update. `publisher verify` checks the committed files; then fetch the deployed `manifest.json` and confirm its SHA-256 names a file under `signatures/` on the site. See `docs/Security/ManifestTrust.md`.
-- [x] **Recompile on compiler change** (built 2026-11-07): the installed compiled rules record the compiler version, and launch recompiles every group from its stored lists when it differs. Bump `CompiledSources.currentCompilerVersion` with every compiler change. Testers update across compiler fixes, and without this they keep rules from the old compiler until a list update happens to recompile them (`docs/gotchas.md`, "Compiler: dropping an unsupported domain must never widen a rule").
+- [x] **Recompile on compiler change** (built 2026-11-07): the installed compiled rules record the compiler version, and launch recompiles every group from its stored lists when it differs. Bump `CompiledSources.currentCompilerVersion` with every compiler change (`CompilerSourceFingerprintTests` fails when the compiler changes and the stored fingerprint doesn't). A recompile that keeps failing stops after three tries until the next build. Testers update across compiler fixes, and without this they keep rules from the old compiler until a list update happens to recompile them (`docs/gotchas.md`, "Compiler: dropping an unsupported domain must never widen a rule").
 
 Before each App Store submission:
 

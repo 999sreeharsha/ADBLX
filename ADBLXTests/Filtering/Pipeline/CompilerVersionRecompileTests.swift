@@ -171,6 +171,76 @@ struct CompilerVersionRecompileTests {
         await holder.value
         #expect(try await recompile.value?.count == 3)
     }
+
+    // A group that fails every time (a full disk, a compiler bug on one list) must not cost a full
+    // recompile on every launch forever.
+    private func throttle(_ store: FilterStore, build: String = "1.0 (1)") -> RecompileThrottle {
+        RecompileThrottle(store: store, build: build)
+    }
+
+    private func failingLaunch(_ fixture: Fixture, build: String = "1.0 (1)", at now: Date) async {
+        await CompilerRecompile.runIfDue(
+            pipeline: fixture.pipeline, throttle: throttle(fixture.store, build: build), reloadStrategy: .deferred, now: now
+        )
+    }
+
+    @Test("After a failure, the next launch within the gap doesn't recompile; one after it does")
+    func failureWaitsForTheGap() async throws {
+        let fixture = try await installedFixture()
+        try await makeStale(.ads, version: nil, in: fixture.store)
+        fixture.compiler.failOn(.ads)
+        let start = Date(timeIntervalSince1970: 1_800_000_000)
+
+        await failingLaunch(fixture, at: start)
+        #expect(fixture.compiler.compiledGroups == [.ads])
+
+        fixture.compiler.failOn(.ads)
+        await failingLaunch(fixture, at: start.addingTimeInterval(RecompileThrottle.failureGap - 1))
+        #expect(fixture.compiler.compiledGroups.isEmpty, "recompiled inside the gap")
+
+        await failingLaunch(fixture, at: start.addingTimeInterval(RecompileThrottle.failureGap))
+        #expect(fixture.compiler.compiledGroups == [.ads])
+    }
+
+    @Test("After the last allowed consecutive failure, no launch recompiles again on the same build")
+    func stopsAfterConsecutiveFailures() async throws {
+        let fixture = try await installedFixture()
+        try await makeStale(.ads, version: nil, in: fixture.store)
+        var now = Date(timeIntervalSince1970: 1_800_000_000)
+        for _ in 0..<RecompileThrottle.maxConsecutiveFailures {
+            fixture.compiler.failOn(.ads)
+            await failingLaunch(fixture, at: now)
+            #expect(fixture.compiler.compiledGroups == [.ads])
+            now = now.addingTimeInterval(RecompileThrottle.failureGap)
+        }
+
+        fixture.compiler.failOn(nil)
+        await failingLaunch(fixture, at: now.addingTimeInterval(30 * 24 * 3600))
+        #expect(fixture.compiler.compiledGroups.isEmpty, "recompiled after giving up")
+
+        await failingLaunch(fixture, build: "1.1 (2)", at: now.addingTimeInterval(30 * 24 * 3600))
+        #expect(fixture.compiler.compiledGroups == [.ads, .annoyances, .privacy], "a new build should try again")
+    }
+
+    @Test("A success resets the failure count")
+    func successResetsTheCount() async throws {
+        let fixture = try await installedFixture()
+        var now = Date(timeIntervalSince1970: 1_800_000_000)
+        func launch(failing: Bool) async throws {
+            try await makeStale(.ads, version: nil, in: fixture.store)
+            fixture.compiler.failOn(failing ? .ads : nil)
+            await failingLaunch(fixture, at: now)
+            now = now.addingTimeInterval(RecompileThrottle.failureGap)
+        }
+        for _ in 1..<RecompileThrottle.maxConsecutiveFailures { try await launch(failing: true) }
+        try await launch(failing: false)
+        for _ in 1..<RecompileThrottle.maxConsecutiveFailures { try await launch(failing: true) }
+
+        try await makeStale(.ads, version: nil, in: fixture.store)
+        fixture.compiler.failOn(nil)
+        await failingLaunch(fixture, at: now)
+        #expect(fixture.compiler.compiledGroups == [.ads, .annoyances, .privacy], "stopped although a success came between")
+    }
 }
 
 /// Compiles as `PassthroughRuleCompiler` does, records each group compiled, and can fail on one.

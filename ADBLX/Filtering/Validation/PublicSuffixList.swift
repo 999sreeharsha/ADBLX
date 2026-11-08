@@ -71,4 +71,14 @@ public struct PublicSuffixList: Sendable {
         // Standard 2-label TLD extraction (e.g. example.com from sub.example.com)
         return "\(labels[labels.count - 2]).\(labels[labels.count - 1])"
     }
+
+    /// Whether `host` is, or may be, a public suffix itself: a bare TLD, a curated multi-part
+    /// suffix, or a registry-like second level under a country code (`co.kr`). For a caller that
+    /// must not shorten a host to one.
+    public static func isPublicSuffix(_ host: String) -> Bool {
+        let labels = host.lowercased().split(separator: ".").map(String.init)
+        guard labels.count >= 2 else { return true }
+        if multiPartSuffixes.contains(labels.joined(separator: ".")) { return true }
+        return labels.count == 2 && labels[1].count == 2 && registryLikeSecondLevels.contains(labels[0])
+    }
 }
