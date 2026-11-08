@@ -8,12 +8,16 @@ extension FilterStore {
     nonisolated static func temporary(
         fileManager: FileManager = .default,
         swapPaths: @escaping @Sendable (URL, URL) throws -> Void = { try FilterStore.swapPathsAtomically($0, $1) },
+        flushDirectory: @escaping @Sendable (URL) throws -> Void = { try FilterStore.flushDirectory($0) },
         transactionHook: (@Sendable (TransactionStep) async -> Void)? = nil
     ) -> FilterStore {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("FilterStore-\(UUID().uuidString)", isDirectory: true)
         try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
-        return FilterStore(fileManager: fileManager, overrideBaseURL: url, swapPaths: swapPaths, transactionHook: transactionHook)
+        return FilterStore(
+            fileManager: fileManager, overrideBaseURL: url, swapPaths: swapPaths,
+            flushDirectory: flushDirectory, transactionHook: transactionHook
+        )
     }
 }
 

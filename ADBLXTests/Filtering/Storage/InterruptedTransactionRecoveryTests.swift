@@ -135,9 +135,14 @@ struct InterruptedTransactionRecoveryTests {
         try await writeState(after, to: store)
         await #expect(throws: CocoaError.self) { try await store.restore(snapshot) }
 
-        let nextLaunch = FilterStore(overrideBaseURL: base)
+        let swapped = Events()
+        let nextLaunch = FilterStore(overrideBaseURL: base, swapPaths: { saved, live in
+            swapped.append(live.lastPathComponent)
+            try FilterStore.swapPathsAtomically(saved, live)
+        })
         #expect(try await nextLaunch.recoverInterruptedTransaction())
 
+        #expect(swapped.entries == ["Metadata", "Filters"], "Compiled/ was already swapped and must not be swapped back")
         try await expectState(before, in: nextLaunch)
         try expectNoLeftovers(in: base)
     }
@@ -158,6 +163,67 @@ struct InterruptedTransactionRecoveryTests {
         try await store.restore(snapshot)
 
         try await expectState(before, in: store)
+    }
+
+    // A rename is only a commit once it reaches the disk: lost to a power cut after Safari got
+    // the new rules, the next launch would roll back the user's change.
+    @Test("the commit rename is flushed to disk before the commit returns")
+    func commitFlushesBeforeReturning() async throws {
+        let events = Events()
+        let store = FilterStore.temporary(
+            flushDirectory: { directory in events.append("flush \(directory.lastPathComponent)") },
+            transactionHook: { step in if step == .afterCommit { events.append("afterCommit") } }
+        )
+        try await writeState(before, to: store)
+        let snapshot = try await store.snapshotForRollback()
+        let container = try await store.directoryURL(.compiled).deletingLastPathComponent().lastPathComponent
+        events.clear()
+
+        try await store.commit(snapshot)
+
+        #expect(events.entries.prefix(2) == ["flush \(container)", "afterCommit"])
+    }
+
+    @Test("a commit whose flush fails is undone, so the caller restores")
+    func failedCommitFlushIsUndone() async throws {
+        let failFlush = Flag(false)
+        let store = FilterStore.temporary(flushDirectory: { _ in
+            if failFlush.value { throw POSIXError(.EIO) }
+        })
+        try await writeState(before, to: store)
+        let snapshot = try await store.snapshotForRollback()
+        try await writeState(after, to: store)
+        failFlush.value = true
+
+        await #expect(throws: POSIXError.self) { try await store.commit(snapshot) }
+        failFlush.value = false
+        try await store.restore(snapshot)
+
+        try await expectState(before, in: store)
+    }
+
+    // Killed after the rename, Previous.done/ still holds a whole snapshot with its id.
+    @Test("launch never restores the Previous.done/ of a committed transaction")
+    func committedSnapshotIsNeverRestored() async throws {
+        let base = Self.makeBase()
+        let reached = Reached()
+        let store = FilterStore(overrideBaseURL: base, transactionHook: { step in
+            guard step == .afterCommit else { return }
+            await reached.arrive()
+            await Parked.forever()
+        })
+        try await writeState(before, to: store)
+        let snapshot = try await store.snapshotForRollback()
+        try await writeState(after, to: store)
+        Task { try await store.commit(snapshot) }
+        await reached.wait()
+        #expect(FileManager.default.fileExists(atPath: base.appendingPathComponent("Previous.done/snapshot-id").path))
+
+        let nextLaunch = FilterStore(overrideBaseURL: base)
+        #expect(try await nextLaunch.recoverInterruptedTransaction() == false)
+
+        try await expectState(after, in: nextLaunch)
+        try expectNoLeftovers(in: base)
     }
 
     @Test("a failed commit rename leaves the snapshot in place to restore")
@@ -260,6 +326,14 @@ actor Reached {
         if arrived { return }
         await withCheckedContinuation { waiters.append($0) }
     }
+}
+
+private nonisolated final class Events: @unchecked Sendable {
+    private let lock = NSLock()
+    private var stored: [String] = []
+    func append(_ event: String) { lock.withLock { stored.append(event) } }
+    func clear() { lock.withLock { stored = [] } }
+    var entries: [String] { lock.withLock { stored } }
 }
 
 private nonisolated final class Flag: @unchecked Sendable {

@@ -31,21 +31,24 @@ actor FilterStore {
     private let fileManager: FileManager
     private let overrideBaseURL: URL?
     private let swapPaths: @Sendable (URL, URL) throws -> Void
+    private let flush: @Sendable (URL) throws -> Void
     private let transactionHook: (@Sendable (TransactionStep) async -> Void)?
 
-    /// `transactionHook` is for tests only: it lets one stop a transaction at a step, as a killed
-    /// process would.
+    /// `flushDirectory` and `transactionHook` are for tests only: one fails a flush, the other
+    /// stops a transaction at a step, as a killed process would.
     init(
         appGroupIdentifier: String = AppGroup.identifier,
         fileManager: FileManager = .default,
         overrideBaseURL: URL? = nil,
         swapPaths: @escaping @Sendable (URL, URL) throws -> Void = { try FilterStore.swapPathsAtomically($0, $1) },
+        flushDirectory: @escaping @Sendable (URL) throws -> Void = { try FilterStore.flushDirectory($0) },
         transactionHook: (@Sendable (TransactionStep) async -> Void)? = nil
     ) {
         self.appGroupIdentifier = appGroupIdentifier
         self.fileManager = fileManager
         self.overrideBaseURL = overrideBaseURL
         self.swapPaths = swapPaths
+        self.flush = flushDirectory
         self.transactionHook = transactionHook
     }
 
@@ -188,19 +191,32 @@ actor FilterStore {
             throw error
         }
         // Before any live write, so a power loss can't keep the writes and lose the snapshot.
-        try? Self.flushDirectory(container)
+        try? flush(container)
         return RollbackSnapshot(id: id)
     }
 
     /// The transaction's commit point and last step: one rename of `Previous/` to
-    /// `Previous.done/`. If the rename fails the transaction did not commit, and the caller
-    /// restores as for any other failure. Deleting `Previous.done/` afterwards is clean-up.
+    /// `Previous.done/`, flushed to disk before this returns, so before the caller reloads Safari.
+    /// A rename lost to a power cut would bring `Previous/` back, and the next launch would undo a
+    /// change Safari already has. If the rename or its flush fails the transaction did not
+    /// commit: the rename is put back and the caller restores, as for any other failure.
+    /// Deleting `Previous.done/` afterwards is clean-up; launch deletes one left behind and never
+    /// restores it.
     func commit(_ snapshot: RollbackSnapshot) async throws {
         await transactionHook?(.beforeCommit)
         guard try snapshotID() == snapshot.id else { throw FilterStoreError.snapshotSpent }
-        try retire(try previousRootURL())
+        let previous = try previousRootURL()
+        let done = try doneRootURL()
+        if fileManager.fileExists(atPath: done.path) { try fileManager.removeItem(at: done) }
+        try fileManager.moveItem(at: previous, to: done)
+        do {
+            try flush(try containerURL())
+        } catch {
+            try? fileManager.moveItem(at: done, to: previous)
+            throw error
+        }
         await transactionHook?(.afterCommit)
-        try? fileManager.removeItem(at: try doneRootURL())
+        try? fileManager.removeItem(at: done)
     }
 
     /// Replaces the entire current contents of `Compiled/`, `Metadata/`, and `Filters/` with the
@@ -210,7 +226,9 @@ actor FilterStore {
     /// fully restored, never half-copied, and a full disk can't stop it.
     ///
     /// A restore that stops between swaps can be run again, in this run or at the next launch: a
-    /// directory whose marker has moved to the live side was already swapped and is skipped.
+    /// directory whose marker has moved to the live side was already swapped and is skipped. The
+    /// marker is inside the directory, so the swap itself records which side it's on, with no
+    /// separate write that could disagree with it. Each swap is flushed before the next.
     /// Retiring `Previous/` is the point the restore is finished; the markers left in the live
     /// directories are deleted after it, and a stray one carries an id no snapshot uses again.
     func restore(_ snapshot: RollbackSnapshot) throws {
@@ -252,14 +270,14 @@ actor FilterStore {
                 do {
                     try swapPaths(saved, liveDirectory)
                 } catch {
-                    try? Self.flushDirectory(container)
+                    try? flush(container)
                     throw error
                 }
+                try? flush(container)
             } else if !fileManager.fileExists(atPath: liveDirectory.appendingPathComponent(marker).path) {
                 throw FilterStoreError.snapshotSpent
             }
         }
-        try? Self.flushDirectory(container)
         // The swaps have happened; failing from here on would report a rollback that worked as
         // one that didn't.
         try? retire(previous)
@@ -274,7 +292,7 @@ actor FilterStore {
         let done = try doneRootURL()
         if fileManager.fileExists(atPath: done.path) { try fileManager.removeItem(at: done) }
         try fileManager.moveItem(at: previous, to: done)
-        try? Self.flushDirectory(try containerURL())
+        try? flush(try containerURL())
     }
 
     private func snapshotID() throws -> String? {
