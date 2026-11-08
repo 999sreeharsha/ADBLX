@@ -32,6 +32,9 @@ jobs:
       - name: Test the archive's manifest trust check
         run: Scripts/check-manifest-trust.test.sh
 
+      - name: Test the Release extension version check
+        run: Scripts/check-extension-versions.test.sh
+
       - name: Select Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
@@ -88,12 +91,13 @@ jobs:
           xcodebuild -project ADBLX.xcodeproj -scheme ADBLX \
             -destination "id=${{ steps.simulator.outputs.udid }}" build
 
-      - name: Release build has no DNS Protection
+      - name: Release build has no DNS Protection, and its extensions match the app's version
         run: |
           xcodebuild -project ADBLX.xcodeproj -scheme ADBLX -configuration Release \
             -destination 'generic/platform=iOS' -derivedDataPath build/release \
             CODE_SIGNING_ALLOWED=NO build
           Scripts/check-release-no-dns.sh build/release/Build/Products/Release-iphoneos/ADBLX.app
+          Scripts/check-extension-versions.sh build/release/Build/Products/Release-iphoneos/ADBLX.app
 
       - name: Run unit tests (ADBLXTests only)
         run: |

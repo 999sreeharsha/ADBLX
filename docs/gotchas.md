@@ -540,6 +540,22 @@ look like a pass.
 
 Found in: corrupt-metadata recovery tests, 2026-11-05
 
+## Each session works on its own branch, and one session at a time merges into the shared branch
+
+`feat/plan-state-downgrade` is the branch every session merges into. On 2026-11-08 another
+session committed two DNS commits onto it while a merge was being tested, so the tested merge
+could no longer fast-forward and had to be redone and tested again. Had it gone in anyway, the
+branch would have held a merge nobody had tested.
+
+- Commit only to your own branch (a worktree per session), never directly to the shared branch.
+- One session at a time merges into the shared branch. Before merging, tell the other sessions
+  you are about to.
+- Note the shared branch's tip when you start the merge test. Before moving the branch, check
+  the tip is still that commit. If it moved, merge again on top of the new tip and rerun the
+  suites; don't merge the tested result over it.
+
+Found in: merging `fix/publisher-enclave-skip`, 2026-11-08
+
 ## Tests wait on a signal, not a fixed sleep
 
 A test that sleeps for a guessed time and then assumes a background task has run fails
