@@ -385,6 +385,9 @@ Found in: entitlement purchase-bug fix (`FakeStoreEntitlementSource`), bisected 
   and returns SERVFAIL instead of silence; DEBUG counters and a pass-through switch are on the
   Developer screen. **Still needs a device:** the pass-through test, a payment flow on Wi-Fi,
   Jio and Airtel, and the IPv6-only-network hypothesis. The upstream resolver choice waits on it.
+- **Status 2026-11-08 (not closed).** On 4G, IPv4 to 9.9.9.9 is lost while IPv6 answers. The
+  forwarder now learns per network which upstream answers, races the next one after 0.4 s, and
+  gives up 2 s after the query (spec §2.9). Waiting on a 4G re-run with the new counters.
 
 Found in: device testing on iPhone 14, 2026-10-30
 
