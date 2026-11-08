@@ -351,6 +351,99 @@ tunnel); battery slightly better (fewer packets through the extension). Verify o
 a gateway on the never-block list: the name must not appear in the tunnel's counters, and the
 payment must complete on Wi-Fi, Jio and Airtel.
 
+### 2.8 Device results, 2026-11-08: mobile data timeouts (findings and design, nothing changed)
+
+**Data.** 5G mobile data, lists on, nothing visibly broke. in 1839, blocked 45, forwarded 1168,
+written 1211, upstream timeouts 948, retries 938, SERVFAIL 11, truncated 3, TCP segments 0,
+TCP queries 0, unparsable 626, socket resets 3, send errors 0. Wi-Fi earlier: timeouts 5,
+unparsable 11.
+
+**What the numbers already show (arithmetic, not guesses).**
+- Unparsable 626 = 1839 - 1168 - 45: every packet that was neither a query nor TCP.
+- Every first attempt that timed out was retried (938 of 948); the other 10 timeouts are retries
+  that timed out too, which matches 10 of the 11 SERVFAILs. So the first upstream answered 230 of
+  1168 in time (20%), and the retry answered 928 of 938 (99%).
+- With the Quad9 default the retry goes to the **IPv6** upstream first (`retryTarget`,
+  `DNSUpstreamForwarder.swift`; `upstreamIPv6 = "2620:fe::fe"`, `PacketTunnelProvider.swift:49`), not
+  to 149.112.112.112. So on this network IPv6 to Quad9 works and IPv4 to 9.9.9.9 mostly does not.
+- Send errors 0: `sendto` to 9.9.9.9 succeeds, so an IPv4 route exists (dual stack or CLAT). The
+  packets leave; the answers do not come back within 2 s.
+- Wi-Fi has 5 timeouts, so the IPv4 path problem is specific to mobile data.
+
+**1. Why the first upstream times out ~80% of the time on mobile data.**
+Hypotheses, in order, with the counter that settles each (added in this change):
+- (a) **IPv4 to 9.9.9.9 is lost on the carrier's IPv4 path** (CGNAT or 464XLAT/NAT64 dropping or
+  intercepting UDP/53 from the extension). Predicts: `Late from IPv4 primary` stays near 0.
+- (b) **IPv4 answers come back, but after 2 s** (slow path). Predicts: `Late from IPv4 primary`
+  close to the number of primary timeouts. Only then would a longer first timeout help.
+- (c) **The 230 primary successes came from a Wi-Fi part of the session.** The 3 socket resets
+  suggest a network change happened; if the counters were not reset after switching to mobile
+  data, IPv4 on mobile data may be failing ~100%, not ~80%. Please say whether you reset the
+  counts before the mobile data session.
+- First-lookup radio latency (an idle radio waking up, typically well under a second) cannot
+  explain 80%: the retry, sent 2 s later on the same radio, succeeds 99% of the time.
+- Side effect worth knowing: each timed-out lookup waits 2 s before the IPv6 retry. The OS resolver
+  resends a query it hasn't had an answer to, and each resend is forwarded again
+  (`Duplicate client queries` now counts these). So the 80% costs latency and extra radio traffic
+  even though nothing visibly broke.
+- Related finding: a truncated answer is followed over TCP to **`config.ipv4Address` always**
+  (`completeTruncated`, `DNSUpstreamForwarder.swift`), even when the UDP answer came over IPv6. On
+  this network that TCP attempt likely fails; `Upstream TCP failed` will show it (see 3).
+
+**Design (not built): choose the upstream per network, then hedge.**
+- **Per-path preferred upstream.** Keep a small in-memory score per network path (the
+  `NetworkPathSnapshot` the monitor already sees): answers in time vs. timeouts for each upstream.
+  Start each new path with IPv6 first when the path supports IPv6 (`NWPath.supportsIPv6`) and IPv4
+  first otherwise; switch preference when the other upstream does better over the last ~20
+  queries. Reset on path change. Use the preferred family for the TCP retry too.
+- **Hedge instead of waiting.** If the preferred upstream hasn't answered in ~400 ms, send the
+  same query to the next upstream and take whichever answers first (one extra packet, only for
+  slow lookups). The 2 s per-attempt timeout stays as the outer limit.
+- **Why not a 3-4 s first timeout:** if the IPv4 path is losing packets (hypothesis a), a longer
+  timeout only makes every lookup wait longer before the retry that works; the OS resolver would
+  resend more in the meantime. It helps only under (b). Decide after `Late from IPv4 primary` is
+  known.
+- Impact: main thread none; memory a few integers per path; I/O none; radio: hedging adds a packet
+  only for slow lookups and removes most 2 s waits and OS resends, so fewer radio-active seconds;
+  battery same or better. Verify with the new counters (late answers near 0 for the non-preferred
+  upstream, duplicate client queries down, SERVFAIL not up) and an Instruments energy log on mobile
+  data, before and after.
+
+**2. Counters added (DEBUG, counts only).** Answers by upstream (IPv4 primary, IPv6, IPv4
+fallback); late answers by upstream; duplicate client queries; upstream TCP succeeded/failed; answers
+cut to the client's limit (TC to client); UDP queries by type (A, AAAA, HTTPS, other); unparsable
+packets by IP version, transport (TCP, UDP, ICMP, other), whether addressed to the DNS address,
+and size (≤64, ≤576, >576 bytes); path updates and resets by cause (interface change, reconnect,
+virtual interfaces only).
+
+**Unparsable 626 on mobile vs 11 on Wi-Fi (finding, hypothesis).** The tunnel's IPv6 settings
+have an address (`fd00::2/128`) and no `includedRoutes` (`TunnelNetworkSettingsFactory`). If iOS
+treats that as routing some IPv6 traffic into the tunnel on an IPv6-capable network, app IPv6
+packets reach the tunnel and are dropped (IPv6 TCP is classified unparsable: the TCP path is
+IPv4-only, `TunnelPacketClassifier`). Happy Eyeballs would then fall back to IPv4 and nothing
+would *visibly* break, matching the report. Wi-Fi (likely IPv4-only) shows almost none. Predicts:
+`Unparsable IPv6` and `Unparsable TCP` dominate and `Unparsable to DNS address` is ~0. If so, the
+fix is to not configure IPv6 settings on the tunnel at all (DNS is IPv4-only), design only for now.
+
+**3. Why 3 truncated answers produced 0 TCP queries.** Expected. "TCP queries" counts clients
+connecting to the tunnel's fake DNS server over TCP. When the upstream truncates, the forwarder
+itself fetches the full answer over TCP from the upstream (`completeTruncated`) and returns it over
+UDP if it fits the client's limit; only an answer too big for the client is cut with TC, and only
+then does a client open TCP to us. So 0 TCP queries means none of the 3 needed that. Unknown so
+far: whether those upstream TCP fetches succeeded. One of the 11 SERVFAILs is not explained by
+retry timeouts and may be a failed TCP fetch to 9.9.9.9 over the broken IPv4 path (see the related
+finding in 1). `Upstream TCP OK/failed` and `Cut to fit, TC to client` now answer this.
+
+**4. Why 3 socket resets in one session.** A reset happens when the set of interface names in
+the path changes, or when the path comes back after being offline (`PathChangeFilter`). The key
+used every name in `availableInterfaces`, including virtual ones. Candidates: a real switch
+(Wi-Fi on/off), the cellular interface changing (`pdp_ip0`/`pdp_ip1`), or a virtual interface
+(`utun`, `ipsec`) appearing or going, which includes the tunnel's own interface and the
+carrier's VoWiFi/IMS tunnel. The new counters split resets into interface change, reconnect and
+virtual-only. If virtual-only resets dominate, the design fix is to key the path on physical
+interface types only (Wi-Fi, cellular, wired). Each reset is cheap (new sockets, resend), so 3 is
+not harmful; it matters only if it climbs.
+
 ## 3. What this spec does not change
 
 Compiler and Safari content blocking, entitlement checks, the DNS allowlist UI, and the upstream
