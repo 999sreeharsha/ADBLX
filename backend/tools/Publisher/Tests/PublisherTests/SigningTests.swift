@@ -15,6 +15,18 @@ final class SigningTests: XCTestCase {
         ]
     ))
 
+    /// Keygen's enclave keys require user presence, and macOS refuses to create one while the
+    /// screen is locked (`errSecInteractionNotAllowed`). That says nothing about the code, so the
+    /// test skips. Seen on unattended runs (docs/gotchas.md).
+    private func skippingWhenTheScreenIsLocked<T>(_ body: () throws -> T) throws -> T {
+        do {
+            return try body()
+        } catch let error as NSError
+            where error.domain == NSOSStatusErrorDomain && error.code == Int(errSecInteractionNotAllowed) {
+            throw XCTSkip("The screen is locked, so macOS won't create a user-presence enclave key (-25308).")
+        }
+    }
+
     private func temporaryDirectory() throws -> URL {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
@@ -225,12 +237,30 @@ final class SigningTests: XCTestCase {
         XCTAssertTrue(ManifestSigning.verify(manifest: manifest, signatureFile: signature, trustedKeys: [key.publicKey]))
     }
 
+    func test_aLockedScreenSkipsInsteadOfFailing() {
+        let locked = NSError(domain: NSOSStatusErrorDomain, code: Int(errSecInteractionNotAllowed))
+
+        XCTAssertThrowsError(try skippingWhenTheScreenIsLocked { throw locked }) { error in
+            XCTAssertTrue(error is XCTSkip, "got \(error)")
+        }
+    }
+
+    func test_anyOtherKeychainErrorStillFails() {
+        let other = NSError(domain: NSOSStatusErrorDomain, code: Int(errSecAuthFailed))
+
+        XCTAssertThrowsError(try skippingWhenTheScreenIsLocked { throw other }) { error in
+            XCTAssertEqual(error as NSError, other)
+        }
+    }
+
     // Loading needs no password, only signing does, so this runs unattended.
     func test_keygenWithSecureEnclaveWritesAKeyThatLoadsAsTheSameEnclaveKey() throws {
         try XCTSkipUnless(SecureEnclave.isAvailable, "no Secure Enclave on this machine")
         let file = try temporaryDirectory().appendingPathComponent("k1.key")
 
-        let publicKey = try SigningKeyGenerator.generate(to: file, repositoryRoot: try temporaryDirectory(), secureEnclave: true)
+        let publicKey = try skippingWhenTheScreenIsLocked {
+            try SigningKeyGenerator.generate(to: file, repositoryRoot: try temporaryDirectory(), secureEnclave: true)
+        }
 
         let loaded = try SigningKeySource.load(keyFile: file, environment: [:], repositoryRoot: try temporaryDirectory())
         XCTAssertTrue(loaded is SecureEnclave.P256.Signing.PrivateKey)
