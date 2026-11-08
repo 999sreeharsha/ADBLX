@@ -23,6 +23,43 @@ public struct DNSTunnelCountersSnapshot: Codable, Equatable, Sendable {
     /// Every query is forwarded and nothing is blocked (an empty blocklist).
     public var passthrough: Bool = false
 
+    // Which upstream answered in time, and which answered after we had given up on it.
+    public var answersFromPrimaryIPv4: UInt64 = 0
+    public var answersFromIPv6: UInt64 = 0
+    public var answersFromFallbackIPv4: UInt64 = 0
+    public var lateAnswersFromPrimaryIPv4: UInt64 = 0
+    public var lateAnswersFromIPv6: UInt64 = 0
+    public var lateAnswersFromFallbackIPv4: UInt64 = 0
+    /// A client query arriving again (same port and id) while its first copy still waits upstream.
+    public var duplicateClientQueries: UInt64 = 0
+    /// Truncated upstream answers followed over TCP to the upstream.
+    public var upstreamTCPSucceeded: UInt64 = 0
+    public var upstreamTCPFailed: UInt64 = 0
+    /// Answers cut to the client's UDP limit and sent with TC, so the client retries over TCP.
+    public var truncatedToClient: UInt64 = 0
+    // UDP queries by type.
+    public var queriesA: UInt64 = 0
+    public var queriesAAAA: UInt64 = 0
+    public var queriesHTTPS: UInt64 = 0
+    public var queriesOther: UInt64 = 0
+    // Unparsable packets by IP version, transport, destination and size.
+    public var unparsableIPv4: UInt64 = 0
+    public var unparsableIPv6: UInt64 = 0
+    public var unparsableTCP: UInt64 = 0
+    public var unparsableUDP: UInt64 = 0
+    public var unparsableICMP: UInt64 = 0
+    public var unparsableOtherProtocol: UInt64 = 0
+    public var unparsableToDNSAddress: UInt64 = 0
+    public var unparsableSmall: UInt64 = 0
+    public var unparsableMedium: UInt64 = 0
+    public var unparsableLarge: UInt64 = 0
+    // Network path updates, and what caused each socket reset.
+    public var pathUpdates: UInt64 = 0
+    public var resetsInterfaceChange: UInt64 = 0
+    public var resetsReconnect: UInt64 = 0
+    /// Resets where only virtual interfaces (utun, ipsec, ppp, llw, awdl) appeared or went.
+    public var resetsVirtualInterfacesOnly: UInt64 = 0
+
     public init() {}
 }
 

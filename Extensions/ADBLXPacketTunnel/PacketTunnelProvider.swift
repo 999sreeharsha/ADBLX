@@ -94,7 +94,8 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
         // Replaces the upstream sockets when the network changes (Wi-Fi <-> mobile data, offline <-> online).
         let monitor = DNSNetworkMonitor(
             observer: SystemNetworkPathObserver(), forwarder: fwd,
-            setReasserting: { [weak self] in self?.reasserting = $0 }
+            setReasserting: { [weak self] in self?.reasserting = $0 },
+            counters: counters
         )
         self.networkMonitor = monitor
         
@@ -173,6 +174,10 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
                     self.handleTCP(segment)
                 case .unparsable:
                     self.counters.increment(\.unparsablePackets)
+                    UnparsablePacketClassifier.record(
+                        UnparsablePacketClassifier.traits(of: packetData, dnsAddress: Self.ipv4Value(TunnelNetworkSettingsFactory.fakeDNSServer)),
+                        in: self.counters
+                    )
                 case .udpQuery(let query):
                     self.handleUDP(query, packetData: packetData, proto: proto)
                 }
@@ -187,6 +192,8 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
         if (totalIngressQueries % 100) == 0 {
             checkForGenerationUpdate()
         }
+        
+        counters.increment(DNSQueryTypeBucket.counter(for: query.qtype))
         
         // Check DNS Lookup Engine
         guard let engine = lookupEngine else { return }

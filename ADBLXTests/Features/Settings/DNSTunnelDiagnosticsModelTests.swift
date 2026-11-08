@@ -82,7 +82,15 @@ struct DNSTunnelDiagnosticsModelTests {
         #expect(model.rows.map(\.label) == [
             "Packets in", "Blocked", "Forwarded", "Responses written", "Upstream timeouts",
             "Upstream send errors", "Upstream retries", "SERVFAIL sent", "Truncated upstream answers",
-            "TCP segments", "TCP queries", "Unparsable packets", "Socket resets"
+            "TCP segments", "TCP queries", "Unparsable packets", "Socket resets",
+            "Answered by IPv4 primary", "Answered by IPv6", "Answered by IPv4 fallback",
+            "Late from IPv4 primary", "Late from IPv6", "Late from IPv4 fallback",
+            "Duplicate client queries", "Upstream TCP OK", "Upstream TCP failed", "Cut to fit, TC to client",
+            "Queries A", "Queries AAAA", "Queries HTTPS", "Queries other",
+            "Unparsable IPv4", "Unparsable IPv6", "Unparsable TCP", "Unparsable UDP", "Unparsable ICMP",
+            "Unparsable other protocol", "Unparsable to DNS address",
+            "Unparsable ≤64 B", "Unparsable ≤576 B", "Unparsable >576 B",
+            "Path updates", "Resets: interface change", "Resets: reconnect", "Resets: virtual interfaces only"
         ])
         #expect(model.rows.allSatisfy { UInt64($0.value) != nil })
         #expect(model.rows.first { $0.label == "Packets in" }?.value == "12")

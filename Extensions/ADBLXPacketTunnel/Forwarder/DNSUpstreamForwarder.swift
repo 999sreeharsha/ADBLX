@@ -199,6 +199,14 @@ public actor DNSUpstreamForwarder {
             return .capacityExceeded
         }
         
+        // Counted only: the OS resolver resends a query it got no answer to.
+        if pendingTransactions.values.contains(where: {
+            $0.exchangeContinuation == nil && $0.clientTxID == query.transactionID
+                && $0.clientSrcPort == query.srcPort && $0.ipVersion == query.ipVersion
+        }) {
+            counters?.increment(\.duplicateClientQueries)
+        }
+        
         // 2. Allocate Unique Upstream Transaction ID (Collision-Safe)
         let upstreamTxID = allocateNextUpstreamTxID()
         var pending = PendingQuery(
@@ -322,10 +330,20 @@ public actor DNSUpstreamForwarder {
         }
         
         let upstreamTxID = (UInt16(data[0]) << 8) | UInt16(data[1])
+        let source: (answered: WritableKeyPath<DNSTunnelCountersSnapshot, UInt64>, late: WritableKeyPath<DNSTunnelCountersSnapshot, UInt64>)
+        if isIPv6 {
+            source = (\.answersFromIPv6, \.lateAnswersFromIPv6)
+        } else if let fallback = config.fallbackIPv4Address, senderIP == fallback {
+            source = (\.answersFromFallbackIPv4, \.lateAnswersFromFallbackIPv4)
+        } else {
+            source = (\.answersFromPrimaryIPv4, \.lateAnswersFromPrimaryIPv4)
+        }
         guard let pending = pendingTransactions.removeValue(forKey: upstreamTxID) else {
-            // Already timed out or unrecognized ID
+            // Already timed out (or retried elsewhere), or an id we never sent.
+            counters?.increment(source.late)
             return
         }
+        counters?.increment(source.answered)
         
         pending.timeoutTask?.cancel()
         
@@ -346,9 +364,14 @@ public actor DNSUpstreamForwarder {
         guard let transport = tcpTransport else { return fail(pending) }
         do {
             let full = try await transport.exchange(query: pending.clientQuery, host: config.ipv4Address, port: config.port)
-            guard full.count >= 12 else { return fail(pending) }
+            guard full.count >= 12 else {
+                counters?.increment(\.upstreamTCPFailed)
+                return fail(pending)
+            }
+            counters?.increment(\.upstreamTCPSucceeded)
             deliver(full, for: pending)
         } catch {
+            counters?.increment(\.upstreamTCPFailed)
             fail(pending)
         }
     }
@@ -368,6 +391,7 @@ public actor DNSUpstreamForwarder {
         }
         if answer.count > DNSMessage.clientUDPLimit(of: pending.clientQuery) {
             answer = DNSMessage.truncated(answer)
+            counters?.increment(\.truncatedToClient)
         }
         writeClientPacket(pending, dnsPayload: answer)
     }
