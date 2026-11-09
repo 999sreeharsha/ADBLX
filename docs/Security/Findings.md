@@ -231,6 +231,8 @@ These can't be reached in a release while DNS Protection stays off (see the open
 
 **Decision:** blocked on the PD-01 trial decision. It may replace `TrialKeychainStore` entirely, so don't pick this up before then.
 
+**Confirmed again (2026-11-08 gap scan of `Features/Onboarding`, panel 3/3, LOW):** onboarding is the only way to start the trial, and it passes the device clock (`TrialOnboardingViewModel.swift:36`) straight to `activateTrial`, which stores it as `activatedAt` and `lastObservedDate` (`TrialManager.swift:43-46`). Nothing in onboarding checks it.
+
 **Don't use the fix proposed in the first audit:**
 - `AppTransaction.shared.signedDate` isn't the current time. It can be the install date, so clamping to it would hand a later legitimate user an expired trial. A fresh signature needs `AppTransaction.refresh()`, which may prompt for sign-in. Verify both against current Apple docs.
 - Re-anchoring when the clock is earlier than `activatedAt` lets anyone reset a used-up trial by moving the clock back.
@@ -257,6 +259,7 @@ These can't be reached in a release while DNS Protection stays off (see the open
 
 - **Scanned:** `Packages/ADBLXShared/Sources`; under `ADBLX/Filtering`, `DNS`, `WebExtension`, `Compilation`, `Validation`, `Storage`, `Deployment` (other `Filtering` folders only partly, in the first scan, which hit its usage limit); all extensions; `ADBLX/Features/Premium`, `Settings`, `BrokenSite`, `Sync`; and `backend/tools/Publisher`.
 - **Never in a scan's scope:** `Features/Protection`, `Features/Home`, `Features/Onboarding`, the rest of `backend/`, and `.github/`.
+- **Gap scans (2026-11-08, one area at a time; progress in `ScanProgress.md`):** `.github/` and `backend/` outside the Publisher: no findings. `Features/Protection`: no findings. `Features/Home` and `Features/Onboarding`: one LOW, which is SEC-16 again. No new findings.
 
 ## Closed or corrected
 
