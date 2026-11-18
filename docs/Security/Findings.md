@@ -261,6 +261,27 @@ These can't be reached in a release while DNS Protection stays off (see the open
 - **Never in a scan's scope:** `Features/Protection`, `Features/Home`, `Features/Onboarding`, the rest of `backend/`, and `.github/`.
 - **Gap scans (2026-11-08, one area at a time; progress in `ScanProgress.md`):** `.github/` and `backend/` outside the Publisher: no findings. `Features/Protection`: no findings. `Features/Home` and `Features/Onboarding`: one LOW, which is SEC-16 again. No new findings.
 
+## Rejected by the panel, but real behaviour (for review)
+
+The 2026-11-18 scan of `Filtering/Updates` (part 4a) raised these, and the panel rejected both
+3 to 0 as unreachable by an attacker. The code does what they describe, so they are kept here
+as bugs to decide on, not security findings. Nothing has been changed.
+
+- **A list moved to another group crashes every later update.** `FilterPipeline.swift:335-337`
+  updates a record only when it is in the group being installed. If a signed manifest moves an
+  ID to another group with a new version or checksum, the old record stays and lines 349-359
+  append a second one with the same ID. Drift repair doesn't remove it. The next run with a
+  changed manifest traps at `UpdatePlan.swift:35` (`Dictionary(uniqueKeysWithValues:)`). That
+  crashes the app on every launch that sees a new manifest, until it's reinstalled. It needs a
+  publisher mistake, or a deliberate regrouping, to trigger. Fix: match records by ID regardless
+  of group, and build the planner's lookup without trapping. Write the failing test first: move
+  `easylist` from Ads to Privacy with a new checksum, then run the planner.
+- **The DNS never-block download has no size cap.** `DNSNeverBlockList.swift:103` uses
+  `session.data(for:)`, not the capped variant (`HTTPSession.swift:38`) the filter lists use.
+  Only DNS builds reach it (`ADBLXApp.swift:127`, behind `BuildFeatures.dnsProtection`), so it is
+  Debug-only today. Add the cap before DNS ships, alongside the never-block items in
+  `docs/gotchas.md`.
+
 ## Closed or corrected
 
 - **Temp-file leak:** the review raised this from `docs/Architecture/TargetTopology.md:228`. That note looks out of date: `UpdateCoordinator.swift:93` now calls `cleanupWorkspace()`. Confirm with a test that runs `run()` twice and asserts the workspace is empty, then update the doc.
