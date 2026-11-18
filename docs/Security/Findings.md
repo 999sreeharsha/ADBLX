@@ -269,17 +269,18 @@ These can't be reached in a release while DNS Protection stays off (see the open
 
 The 2026-11-18 scan of `Filtering/Updates` (part 4a) raised these, and the panel rejected both
 3 to 0 as unreachable by an attacker. The code does what they describe, so they are kept here
-as bugs to decide on, not security findings. Nothing has been changed.
+as bugs to decide on, not security findings.
 
-- **A list moved to another group crashes every later update.** `FilterPipeline.swift:335-337`
-  updates a record only when it is in the group being installed. If a signed manifest moves an
-  ID to another group with a new version or checksum, the old record stays and lines 349-359
-  append a second one with the same ID. Drift repair doesn't remove it. The next run with a
-  changed manifest traps at `UpdatePlan.swift:35` (`Dictionary(uniqueKeysWithValues:)`). That
-  crashes the app on every launch that sees a new manifest, until it's reinstalled. It needs a
-  publisher mistake, or a deliberate regrouping, to trigger. Fix: match records by ID regardless
-  of group, and build the planner's lookup without trapping. Write the failing test first: move
-  `easylist` from Ads to Privacy with a new checksum, then run the planner.
+- **A list moved to another group crashed every later update. Fixed (2026-11-18,
+  `fix/group-move-crash`).** If a signed manifest moved an ID to another group with a new
+  version or checksum, `FilterPipeline` kept the old record (it only matched records in the group
+  being installed) and appended a second one with the same ID, and the old group kept compiling
+  the list. The next run with a changed manifest trapped in `UpdatePlanner`
+  (`Dictionary(uniqueKeysWithValues:)`) on every launch that saw a new manifest, until a
+  reinstall. Now the planner groups records by ID and reinstalls a list recorded more than once
+  or whose group changed; `UpdateCoordinator` removes a moved list from its old group before
+  installing it; and `FilterPipeline` matches records by ID whatever their group.
+  `GroupMoveTests` covers all three (they failed first, the planner one with the original trap).
 - **The DNS never-block download has no size cap.** `DNSNeverBlockList.swift:103` uses
   `session.data(for:)`, not the capped variant (`HTTPSession.swift:38`) the filter lists use.
   Only DNS builds reach it (`ADBLXApp.swift:127`, behind `BuildFeatures.dnsProtection`), so it is
