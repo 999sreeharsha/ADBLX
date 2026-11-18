@@ -332,11 +332,11 @@ actor FilterPipeline {
             upsertsByID[entry.id] = entry
         }
 
-        for index in existingFilters.indices {
-            let existing = existingFilters[index]
-            guard existing.group == composition.group else { continue }
-            let source = upsertsByID.removeValue(forKey: existing.id) ?? existing
-            existingFilters[index] = InstalledFilter(
+        // A record is matched by ID, whatever its group: a list moving into this group replaces
+        // its old record rather than gaining a second one with the same ID. Further records with
+        // that ID (a file an earlier build already duplicated) are dropped.
+        func refreshed(_ source: InstalledFilter) -> InstalledFilter {
+            InstalledFilter(
                 id: source.id,
                 group: source.group,
                 installedVersion: source.installedVersion,
@@ -346,16 +346,16 @@ actor FilterPipeline {
                 premium: source.premium
             )
         }
-        for entry in upsertsByID.values {
-            existingFilters.append(InstalledFilter(
-                id: entry.id,
-                group: entry.group,
-                installedVersion: entry.installedVersion,
-                checksumSHA256: entry.checksumSHA256,
-                lastUpdated: compiled.statistics.lastUpdated,
-                ruleCount: compiled.ruleCount,
-                premium: entry.premium
-            ))
+        var upsertedIDs = Set<String>()
+        existingFilters = existingFilters.compactMap { existing in
+            if let source = upsertsByID[existing.id] {
+                return upsertedIDs.insert(existing.id).inserted ? refreshed(source) : nil
+            }
+            return existing.group == composition.group ? refreshed(existing) : existing
+        }
+        for entry in upsertingFilterEntries where !upsertedIDs.contains(entry.id) {
+            upsertedIDs.insert(entry.id)
+            existingFilters.append(refreshed(upsertsByID[entry.id] ?? entry))
         }
         let installedFiltersData = try JSONEncoder().encode(existingFilters)
         try await store.writeMetadata(installedFiltersData, filename: "installed_filters.json")

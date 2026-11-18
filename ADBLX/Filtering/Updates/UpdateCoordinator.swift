@@ -147,6 +147,8 @@ actor UpdateCoordinator {
             return (filterID, group)
         }
 
+        let movedOut = Self.movedOut(of: installGroups, installed: installedFilters)
+
         guard !installGroups.isEmpty || !removals.isEmpty else {
             try await manifestStore.save(manifest, etag: etag)
             let result = await upToDateResult()
@@ -179,7 +181,7 @@ actor UpdateCoordinator {
         // ReloadCoordinator.reload(extensionIdentifiers:) producing results in a stable,
         // predictable sequence.
         var affectedExtensionIDs: [String] = []
-        for identifier in installGroups.map({ extensionIdentifiers[$0.group] }) + removals.map({ extensionIdentifiers[$0.group] }) {
+        for identifier in (movedOut.map(\.group) + installGroups.map(\.group) + removals.map(\.group)).map({ extensionIdentifiers[$0] }) {
             if !affectedExtensionIDs.contains(identifier) {
                 affectedExtensionIDs.append(identifier)
             }
@@ -188,6 +190,9 @@ actor UpdateCoordinator {
 
         onPhaseChange(.installing)
         do {
+            for move in movedOut {
+                _ = try await pipeline.remove(filterIDs: move.filterIDs, group: move.group, reloadStrategy: .deferred)
+            }
             // One group composed and installed at a time — keeps at most one group's
             // decoded sources resident in memory (Sprint 3A design doc's <200MB target).
             for (group, entries) in installGroups {
@@ -259,6 +264,27 @@ actor UpdateCoordinator {
         } catch {
             return []
         }
+    }
+
+    /// The lists an install moves into another group, by the group each is recorded in now. They
+    /// come out of the old group first, or it keeps compiling them alongside the new one.
+    private static func movedOut(
+        of installGroups: [(group: FilterGroup, entries: [FilterManifest.Entry])],
+        installed: [InstalledFilter]
+    ) -> [(group: FilterGroup, filterIDs: Set<String>)] {
+        var moved: [(group: FilterGroup, filterIDs: Set<String>)] = []
+        for (group, entries) in installGroups {
+            for entry in entries {
+                for record in installed where record.id == entry.id && record.group != group {
+                    if let index = moved.firstIndex(where: { $0.group == record.group }) {
+                        moved[index].filterIDs.insert(entry.id)
+                    } else {
+                        moved.append((record.group, [entry.id]))
+                    }
+                }
+            }
+        }
+        return moved
     }
 
     /// A group compiles to one rule set, so it must be recomposed from ALL of its sources, not
