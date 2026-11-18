@@ -260,6 +260,10 @@ These can't be reached in a release while DNS Protection stays off (see the open
 - **Scanned:** `Packages/ADBLXShared/Sources`; under `ADBLX/Filtering`, `DNS`, `WebExtension`, `Compilation`, `Validation`, `Storage`, `Deployment` (other `Filtering` folders only partly, in the first scan, which hit its usage limit); all extensions; `ADBLX/Features/Premium`, `Settings`, `BrokenSite`, `Sync`; and `backend/tools/Publisher`.
 - **Never in a scan's scope:** `Features/Protection`, `Features/Home`, `Features/Onboarding`, the rest of `backend/`, and `.github/`.
 - **Gap scans (2026-11-08, one area at a time; progress in `ScanProgress.md`):** `.github/` and `backend/` outside the Publisher: no findings. `Features/Protection`: no findings. `Features/Home` and `Features/Onboarding`: one LOW, which is SEC-16 again. No new findings.
+- **Filtering rescan (2026-11-18):** `Filtering/Updates`, `Pipeline`, `Storage` and `Deployment`:
+  no findings. Two candidates were rejected (see "Rejected by the panel" below).
+  `Filtering/Entitlement`, `Models` and `Utilities` are still only partly covered, and the
+  background-updates staging code waits for that branch to merge.
 
 ## Rejected by the panel, but real behaviour (for review)
 

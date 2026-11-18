@@ -29,7 +29,9 @@ gets the full set of category lenses instead of a single researcher.
 |---|---|---|---|---|---|
 | 4a | Updates | `ADBLX/Filtering/Updates` | Done 2026-11-18, verified (6/6 researchers returned) | `CLAUDE-SECURITY-20261118-125547` | None; two candidates rejected 3/0, kept as bug notes in `Findings.md` |
 | 4b | Pipeline and Storage | `ADBLX/Filtering/Pipeline`, `ADBLX/Filtering/Storage` | Done 2026-11-18, verified (6/6 researchers returned) | `CLAUDE-SECURITY-20261118-130757` | None |
-| 4c | Deployment | `ADBLX/Filtering/Deployment` | Pending | | |
+| 4c | Deployment | `ADBLX/Filtering/Deployment` | Done 2026-11-18, verified (2/2 researchers returned; small-scope shape, one all-category researcher) | `CLAUDE-SECURITY-20261118-131629` | None |
+
+Area 4 is done.
 
 Not covered here:
 - **Background-updates staging code:** it's on `feat/background-updates`, which isn't merged.
