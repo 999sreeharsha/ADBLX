@@ -43,6 +43,12 @@ targets:
           - $(SRCROOT)/ADBLX/Filtering/Updates/ManifestTrust+Debug.swift
           - $(SRCROOT)/ADBLX/Resources/Filters/bundled-manifest.json
         basedOnDependencyAnalysis: false
+    postBuildScripts:
+      # After the extensions are embedded, so it sees what ships. Archives only (ACTION=install).
+      - name: "Check Release Build"
+        script: |
+          "$SRCROOT/Scripts/check-archive-release.sh"
+        basedOnDependencyAnalysis: false
     dependencies:
       - target: ADBLXAdsBlocker
         embed: true

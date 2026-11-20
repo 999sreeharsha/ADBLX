@@ -486,6 +486,7 @@
 				AD6FA0F3423771E4849031F3 /* Resources */,
 				A41DA53F33D9B41B4EC02D5C /* Frameworks */,
 				CC3032F95F7B13DC9B18B415 /* Embed Foundation Extensions */,
+				D98F7A60CD690A7CE907F211 /* Check Release Build */,
 			);
 			buildRules = (
 			);
@@ -825,6 +826,25 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "\"$SRCROOT/Scripts/check-report-recipient.sh\"\n";
+		};
+		D98F7A60CD690A7CE907F211 /* Check Release Build */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Check Release Build";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"$SRCROOT/Scripts/check-archive-release.sh\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 

@@ -371,8 +371,9 @@ Found in: entitlement purchase-bug fix (`FakeStoreEntitlementSource`), bisected 
 - Open owner decision: whether to amend `Logging.md` for an on-device-only,
   user-visible, auto-expiring "Recently blocked" list.
 - Rule until closed: DNS Protection must not be enabled in any release or
-  TestFlight build. CI now enforces it on the built Release app
-  (`Scripts/check-release-no-dns.sh`); the tunnel has its Network Extension
+  TestFlight build. Every archive enforces it on the app being archived
+  (`Scripts/check-archive-release.sh`, a build phase), and CI on its Release
+  build (`Scripts/check-release-no-dns.sh`); the tunnel has its Network Extension
   entitlement again on the paid team, in Debug builds only.
   `DNS_PROTECTION_ENABLED` (`Config/Debug.xcconfig` only) enforces this: Release
   hides every DNS surface and doesn't embed the tunnel. See SEC-04.
