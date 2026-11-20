@@ -65,8 +65,10 @@ the keys it already generates:
 ## 3. Keeping the Release build honest
 
 - **Release:** `Scripts/check-background-modes.sh <path to .app>` reads the built app's
-  `Info.plist` and fails unless both modes and both identifiers are present. CI runs it on the
-  Release build it already makes for `Scripts/check-release-no-dns.sh` (`.github/workflows/ci.yml`).
+  `Info.plist` and fails unless both modes and both identifiers are present. Every archive runs it
+  on the app being archived (the "Check Release Build" phase, `Scripts/check-archive-release.sh`),
+  so an archive fails without CI. CI runs it on the Release build it already makes for
+  `Scripts/check-release-no-dns.sh` (`.github/workflows/ci.yml`).
   The script has its own test cases, as `check-release-no-dns.sh` does.
 - **Debug:** a unit test reads `Bundle.main.infoDictionary` in the test host and checks the same
   four entries against the identifiers `BackgroundUpdates` registers, so the plist and the code
