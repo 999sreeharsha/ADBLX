@@ -42,6 +42,35 @@ Performed by the Apple Developer account owner:
    (character-for-character — App Store Connect will treat any mismatch as
    an unrelated product).
 
+## Billing Grace Period
+
+Enabled in App Store Connect on 2026-11-20:
+
+| Setting | Value |
+|---|---|
+| Grace period length | 16 days |
+| Eligibility | Only Paid-to-Paid Renewals: a renewal after a paid period. A free trial or offer converting to paid gets no grace period. |
+| Environments | Sandbox and production |
+
+When a renewal fails, StoreKit keeps the subscription in `Transaction.currentEntitlements` for the
+grace period. Its `expirationDate` has already passed by then, and the grace period's end is in the
+renewal info. After that the subscription is in billing retry and grants nothing.
+
+How the app handles it (`StoreKitSubscriptionService.resolve`, `BillingGracePeriodTests`):
+- **In a grace period:** entitled. Access lasts until the grace period ends, read from the
+  subscription's signed renewal info. The web extension and the tunnel honour it until then, plus
+  the usual 7 days of slack (`EntitlementState.validUntil`).
+- **In billing retry after the grace period, or with none:** not entitled, even if StoreKit still
+  lists the transaction.
+
+Local StoreKit testing matches: `Config/Configuration.storekit` has Enable Billing Retry on Renewal
+(`_renewalBillingIssuesEnabled`) and Enable Billing Grace Period (`_billingGracePeriodEnabled`) on,
+set from Xcode's Editor menu. Change these from that menu, not by hand: Xcode's key names aren't
+the obvious ones.
+
+If the length or eligibility changes in App Store Connect, update this table. The code needs no
+change, because the grace end comes from StoreKit.
+
 ## Sandbox Verification
 
 Performed against a Sandbox tester account, tying back to the entitlement
@@ -55,6 +84,9 @@ code shipped in Sprint 8.0 (`EntitlementService`, `StoreKitSubscriptionService`)
 - [ ] `EntitlementService.isPremiumEntitled()` still returns `true` after a
       full app relaunch (confirms entitlement persists across launches, not
       just in-memory for the purchase session).
+- [ ] With the Sandbox tester's renewals set to fail, a subscription past its renewal date stays
+      Premium during the grace period, and YouTube ad skipping (the web extension) keeps working.
+- [ ] After the grace period ends, the app drops to Free at the next launch or foreground.
 
 ## Broken Site Reports
 
