@@ -68,11 +68,8 @@ Local StoreKit testing matches: `Config/Configuration.storekit` has Enable Billi
 (`_renewalBillingIssuesEnabled`) and Enable Billing Grace Period (`_billingGracePeriodEnabled`) on.
 These are the key names Xcode 27 writes from its Editor menu, and it reads them as on.
 
-**Keep the file in format 3.0.** CI runs on `macos-15`, so its Xcode is a 26.x. Xcode 27 rewrites the
-file to format 6.3 and saves it as soon as the file is opened in its editor, which Xcode 26 may not
-read. `xcodebuild` runs don't rewrite it. If opening it leaves a diff, discard it
-(`git checkout Config/Configuration.storekit`) and make any setting change by hand. This goes away
-once CI moves to the `xcode-27` runner.
+The file is in Xcode 27's format (6.3), the format Xcode 27 writes when the file is opened.
+CI runs Xcode 27.2 on the `xcode-27` runner (`.github/workflows/ci.yml`), so it reads the same format.
 
 If the length or eligibility changes in App Store Connect, update this table. The code needs no
 change, because the grace end comes from StoreKit.

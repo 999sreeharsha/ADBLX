@@ -215,7 +215,7 @@ Development uses the paid Apple Developer Program team, so the Network Extension
 
 ## Continuous Integration
 
-`.github/workflows/ci.yml` runs on push/PR: checkout → select latest-stable Xcode → `xcodegen generate` → drift check → build → run unit tests.
+`.github/workflows/ci.yml` runs on push/PR: checkout → select Xcode 27.2 on the `xcode-27` runner → `xcodegen generate` → drift check → build → run unit tests.
 
 ## What's deliberately not here yet
 

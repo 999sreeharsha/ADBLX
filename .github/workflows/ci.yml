@@ -13,7 +13,8 @@ concurrency:
 
 jobs:
   build-and-test:
-    runs-on: macos-15
+    # Xcode 27 is only on its own image (arm64): macos-26 and macos-latest stop at Xcode 26.
+    runs-on: xcode-27
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -38,7 +39,8 @@ jobs:
       - name: Select Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: latest-stable
+          # The image defaults to 27.1; pin the version the project is developed on.
+          xcode-version: '27.2'
 
       - name: Install XcodeGen
         run: brew install xcodegen
