@@ -9,9 +9,10 @@ public struct DNSTunnelCountersSnapshot: Codable, Equatable, Sendable {
     public var blockedQueries: UInt64 = 0
     public var forwardedQueries: UInt64 = 0
     public var responsesWritten: UInt64 = 0
+    /// Queries no upstream answered within the outer timeout (each one is a SERVFAIL).
     public var upstreamTimeouts: UInt64 = 0
     public var upstreamSendErrors: UInt64 = 0
-    /// Queries tried a second time on another upstream after a timeout or send failure.
+    /// Queries sent to another upstream as well: at the hedge delay, or at once after a failed send.
     public var upstreamRetries: UInt64 = 0
     public var servfailsSent: UInt64 = 0
     public var truncatedUpstreamAnswers: UInt64 = 0
@@ -32,6 +33,8 @@ public struct DNSTunnelCountersSnapshot: Codable, Equatable, Sendable {
     public var lateAnswersFromFallbackIPv4: UInt64 = 0
     /// A client query arriving again (same port and id) while its first copy still waits upstream.
     public var duplicateClientQueries: UInt64 = 0
+    /// Replies dropped because their source address or port is not a configured upstream's.
+    public var answersFromUnexpectedSender: UInt64 = 0
     /// Truncated upstream answers followed over TCP to the upstream.
     public var upstreamTCPSucceeded: UInt64 = 0
     public var upstreamTCPFailed: UInt64 = 0
@@ -48,11 +51,23 @@ public struct DNSTunnelCountersSnapshot: Codable, Equatable, Sendable {
     public var unparsableTCP: UInt64 = 0
     public var unparsableUDP: UInt64 = 0
     public var unparsableICMP: UInt64 = 0
+    // ICMP by kind: echo requests (pings), destination unreachable (a reply the OS could not
+    // deliver, such as one to a closed client port), and every other type.
+    public var unparsableICMPEchoRequest: UInt64 = 0
+    public var unparsableICMPUnreachable: UInt64 = 0
+    public var unparsableICMPOther: UInt64 = 0
     public var unparsableOtherProtocol: UInt64 = 0
     public var unparsableToDNSAddress: UInt64 = 0
     public var unparsableSmall: UInt64 = 0
     public var unparsableMedium: UInt64 = 0
     public var unparsableLarge: UInt64 = 0
+    // How long the first answer took, from the query arriving (hedge included). Each bound is inclusive.
+    public var firstAnswerUnder50ms: UInt64 = 0
+    public var firstAnswerUnder100ms: UInt64 = 0
+    public var firstAnswerUnder250ms: UInt64 = 0
+    public var firstAnswerUnder500ms: UInt64 = 0
+    public var firstAnswerUnder1s: UInt64 = 0
+    public var firstAnswerOver1s: UInt64 = 0
     // Network path updates, and what caused each socket reset.
     public var pathUpdates: UInt64 = 0
     public var resetsInterfaceChange: UInt64 = 0

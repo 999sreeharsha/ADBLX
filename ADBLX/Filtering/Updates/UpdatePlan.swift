@@ -23,7 +23,7 @@ struct UpdatePlan: Equatable {
 }
 
 /// Pure diff: no I/O, no async. Compares each manifest entry against the matching
-/// `InstalledFilter` (by `id`) on `(version, checksumSHA256)`, then buckets every entry
+/// `InstalledFilter` (by `id`) on `(group, version, checksumSHA256)`, then buckets every entry
 /// that needs installing by `FilterGroup` — grouping is by key, not manifest adjacency,
 /// so entries for the same group don't need to be consecutive in the manifest.
 enum UpdatePlanner {
@@ -32,7 +32,9 @@ enum UpdatePlanner {
         installed: [InstalledFilter],
         isPremiumEntitled: Bool
     ) -> UpdatePlan {
-        let installedByID = Dictionary(uniqueKeysWithValues: installed.map { ($0.id, $0) })
+        // Grouped, not unique: a list moved between groups by an earlier build could be recorded
+        // twice, and a trapping lookup would then crash every update.
+        let installedByID = Dictionary(grouping: installed, by: \.id)
         var manifestIDs = Set<String>()
         var actions: [UpdateAction] = []
         var installsByGroup: [FilterGroup: [FilterManifest.Entry]] = [:]
@@ -46,13 +48,16 @@ enum UpdatePlanner {
                 continue
             }
 
-            if let existing = installedByID[entry.id] {
-                if existing.installedVersion == entry.version && existing.checksumSHA256 == entry.checksumSHA256 {
+            if let records = installedByID[entry.id], records.count == 1, let existing = records.first {
+                if existing.group == entry.group
+                    && existing.installedVersion == entry.version
+                    && existing.checksumSHA256 == entry.checksumSHA256 {
                     actions.append(.keep(filterID: entry.id))
                     continue
                 }
-                // else: version/checksum changed — falls through to grouping below.
+                // else: group/version/checksum changed — falls through to grouping below.
             }
+            // A list recorded more than once is reinstalled, which leaves one record.
             // else: new, non-premium entry — falls through to grouping below.
 
             if installsByGroup[entry.group] == nil {
@@ -65,7 +70,8 @@ enum UpdatePlanner {
             actions.append(.install(group: group, entries: installsByGroup[group] ?? []))
         }
 
-        for filter in installed where !manifestIDs.contains(filter.id) {
+        var removedIDs = Set<String>()
+        for filter in installed where !manifestIDs.contains(filter.id) && removedIDs.insert(filter.id).inserted {
             actions.append(.remove(filterID: filter.id))
         }
 

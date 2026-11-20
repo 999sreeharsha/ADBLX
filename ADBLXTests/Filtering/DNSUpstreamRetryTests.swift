@@ -4,9 +4,10 @@ import os
 @testable import ADBLX
 import ADBLXShared
 
-/// A query whose first upstream fails or stays silent is tried once more on a second upstream
-/// before the client gets a SERVFAIL. Time is a `ManualDNSClock`; nothing waits on the wall clock.
-@Suite("DNS upstream retry")
+/// A query whose first upstream fails to send, or is silent past the hedge delay, is sent to the
+/// second upstream too; the client gets a SERVFAIL only when neither answers within the outer
+/// timeout. Time is a `ManualDNSClock`; nothing waits on the wall clock.
+@Suite("DNS upstream retry", .timeLimit(.minutes(1)))
 struct DNSUpstreamRetryTests {
     private static let fallbackIP = "149.112.112.112"
 
@@ -25,7 +26,7 @@ struct DNSUpstreamRetryTests {
         DNSUpstreamForwarder(
             config: UpstreamResolverConfig(
                 ipv4Address: "9.9.9.9", ipv6Address: v6, fallbackIPv4Address: fallback,
-                timeoutSeconds: 2, maxInFlightQueries: 8
+                timeoutSeconds: 2, hedgeDelaySeconds: 0.4, maxInFlightQueries: 8
             ),
             socketFactory: { host, _, isIPv6 in
                 if isIPv6 { return sockets.v6 }
@@ -44,7 +45,7 @@ struct DNSUpstreamRetryTests {
     private func answering(_ ip: String) -> ScriptedUpstreamSocket { ScriptedUpstreamSocket(senderIP: ip, reply: answer()) }
     private func failing() -> ScriptedUpstreamSocket { ScriptedUpstreamSocket(failure: SendFailure()) }
 
-    @Test("a silent first upstream is retried on the second, and the client gets that answer")
+    @Test("a silent first upstream is raced by the second at the hedge delay, and the client gets that answer")
     func timeoutRetries() async throws {
         let clock = ManualDNSClock(), sink = PacketSink(), counters = DNSTunnelCounters()
         let sockets = Sockets(primary: silent(), fallback: answering(Self.fallbackIP), v6: silent())
@@ -53,13 +54,13 @@ struct DNSUpstreamRetryTests {
         let (packet, query) = parsed(TestDNS.query("slow.example", txID: 0x5151))
         _ = await fwd.forward(query: query, originalPacket: packet)
         await clock.waitForSleepers(1)
-        clock.advance(by: 2)
+        clock.advance(by: 0.4)
         await sink.waitForCount(1)
 
         let dns = TestDNS.dnsPayload(ofUDPPacket: sink.packets[0])
         #expect(TestDNS.txID(dns) == 0x5151 && TestDNS.rcode(dns) == 0 && TestDNS.answerCount(dns) == 1)
         #expect(sockets.fallback.sent.withLock { $0.count } == 1)
-        #expect(counters.snapshot.upstreamTimeouts == 1)
+        #expect(counters.snapshot.upstreamTimeouts == 0)
         #expect(counters.snapshot.upstreamRetries == 1)
         #expect(counters.snapshot.servfailsSent == 0)
     }
@@ -80,7 +81,7 @@ struct DNSUpstreamRetryTests {
         #expect(counters.snapshot.servfailsSent == 0)
     }
 
-    @Test("both upstreams silent: one retry, then a single SERVFAIL")
+    @Test("both upstreams silent: one hedge, then a single SERVFAIL at the outer timeout")
     func bothSilent() async throws {
         let clock = ManualDNSClock(), sink = PacketSink(), counters = DNSTunnelCounters()
         let sockets = Sockets(primary: silent(), fallback: silent(Self.fallbackIP), v6: silent())
@@ -89,14 +90,14 @@ struct DNSUpstreamRetryTests {
         let (packet, query) = parsed(TestDNS.query("dead.example"))
         _ = await fwd.forward(query: query, originalPacket: packet)
         await clock.waitForSleepers(1)
-        clock.advance(by: 2)                 // first attempt times out, retry starts
+        clock.advance(by: 0.4)               // hedge: the second upstream is asked
         await clock.waitForSleepers(1)
         #expect(sink.count == 0)
-        clock.advance(by: 2)                 // retry times out
+        clock.advance(by: 1.6)               // 2 s since the query: give up
         await sink.waitForCount(1)
         #expect(TestDNS.rcode(TestDNS.dnsPayload(ofUDPPacket: sink.packets[0])) == 2)
         #expect(sink.count == 1)
-        #expect(counters.snapshot.upstreamTimeouts == 2)
+        #expect(counters.snapshot.upstreamTimeouts == 1)
         #expect(counters.snapshot.upstreamRetries == 1)
         #expect(counters.snapshot.servfailsSent == 1)
         #expect(await fwd.activeInFlightCount == 0)
@@ -117,21 +118,6 @@ struct DNSUpstreamRetryTests {
         #expect(counters.snapshot.upstreamRetries == 1)
     }
 
-    @Test("with an IPv6 upstream configured, the retry goes to it first (an IPv6-only network can't reach the IPv4 literal)")
-    func prefersOtherFamily() async throws {
-        let clock = ManualDNSClock(), sink = PacketSink()
-        let sockets = Sockets(primary: silent(), fallback: answering(Self.fallbackIP), v6: answering("2620:fe::fe"))
-        let fwd = make(sockets: sockets, clock: clock, v6: "2620:fe::fe")
-        try await fwd.start { p, _ in sink.append(p) }
-        let (packet, query) = parsed(TestDNS.query("v6.example"))
-        _ = await fwd.forward(query: query, originalPacket: packet)
-        await clock.waitForSleepers(1)
-        clock.advance(by: 2)
-        await sink.waitForCount(1)
-        #expect(sockets.v6.sent.withLock { $0.count } == 1)
-        #expect(sockets.fallback.sent.withLock { $0.isEmpty })
-    }
-
     @Test("with no second upstream configured there is no retry, just the SERVFAIL")
     func noFallback() async throws {
         let clock = ManualDNSClock(), sink = PacketSink(), counters = DNSTunnelCounters()
@@ -148,7 +134,7 @@ struct DNSUpstreamRetryTests {
         #expect(sockets.fallback.sent.withLock { $0.isEmpty })
     }
 
-    @Test("a late answer from the first upstream, after the retry began, is ignored")
+    @Test("an answer arriving after the outer timeout is ignored")
     func lateAnswerIgnored() async throws {
         let clock = ManualDNSClock(), sink = PacketSink()
         let sockets = Sockets(primary: silent(), fallback: silent(Self.fallbackIP), v6: silent())
@@ -158,12 +144,14 @@ struct DNSUpstreamRetryTests {
         let (packet, query) = parsed(dns)
         guard case .forwarded(let firstID) = await fwd.forward(query: query, originalPacket: packet) else { return }
         await clock.waitForSleepers(1)
-        clock.advance(by: 2)
+        clock.advance(by: 0.4)
         await clock.waitForSleepers(1)
+        clock.advance(by: 1.6)
+        await sink.waitForCount(1)            // the SERVFAIL
         var late = TestDNS.response(to: dns, answerBytes: 4)
         late[0] = UInt8(firstID >> 8); late[1] = UInt8(firstID & 0xFF)
         await fwd.handleUpstreamResponse(data: late, senderIP: "9.9.9.9", senderPort: 53, isIPv6: false)
-        #expect(sink.count == 0)
+        #expect(sink.count == 1)
     }
 
     @Test("an answer from the second upstream's address is accepted; one from a stranger is not")
@@ -176,7 +164,7 @@ struct DNSUpstreamRetryTests {
         let (packet, query) = parsed(dns)
         _ = await fwd.forward(query: query, originalPacket: packet)
         await clock.waitForSleepers(1)
-        clock.advance(by: 2)
+        clock.advance(by: 0.4)
         await clock.waitForSleepers(1)
         let retryID = UInt16(TestDNS.txID(try #require(sockets.fallback.sent.withLock { $0.last })))
         var reply = TestDNS.response(to: dns, answerBytes: 4)
@@ -187,7 +175,7 @@ struct DNSUpstreamRetryTests {
         await sink.waitForCount(1)
     }
 
-    @Test("exchange (TCP clients' path) retries on the second upstream too")
+    @Test("exchange (TCP clients' path) races the second upstream too")
     func exchangeRetries() async throws {
         let clock = ManualDNSClock()
         let sockets = Sockets(primary: silent(), fallback: answering(Self.fallbackIP), v6: silent())
@@ -195,7 +183,7 @@ struct DNSUpstreamRetryTests {
         try await fwd.start { _, _ in }
         async let result = fwd.exchange(dnsPayload: TestDNS.query("a.example", txID: 0x2222))
         await clock.waitForSleepers(1)
-        clock.advance(by: 2)
+        clock.advance(by: 0.4)
         let r = try #require(await result)
         #expect(TestDNS.txID(r) == 0x2222 && TestDNS.answerCount(r) == 1)
     }
@@ -210,7 +198,7 @@ struct DNSUpstreamRetryTests {
     }
 }
 
-@Suite("DNS network change handling")
+@Suite("DNS network change handling", .timeLimit(.minutes(1)))
 struct DNSNetworkPathTests {
     private func wifi(_ satisfied: Bool = true) -> NetworkPathSnapshot { NetworkPathSnapshot(isSatisfied: satisfied, interfaces: ["en0"]) }
     private func cellular() -> NetworkPathSnapshot { NetworkPathSnapshot(isSatisfied: true, interfaces: ["pdp_ip0"]) }

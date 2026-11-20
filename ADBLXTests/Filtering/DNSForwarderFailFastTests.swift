@@ -5,7 +5,7 @@ import os
 
 /// A client must always get an answer: a SERVFAIL when the upstream is silent or unreachable,
 /// the full answer when the upstream truncated its own. No test here waits on the wall clock.
-@Suite("DNS forwarder fails fast")
+@Suite("DNS forwarder fails fast", .timeLimit(.minutes(1)))
 struct DNSForwarderFailFastTests {
     private func parsed(_ dns: Data, srcPort: UInt16 = 54321) -> (packet: Data, query: ParsedDNSQuery) {
         let packet = TestDNS.udpPacket(dns: dns, srcPort: srcPort)
@@ -210,7 +210,7 @@ struct DNSForwarderFailFastTests {
     }
 }
 
-@Suite("DNS payload resolver")
+@Suite("DNS payload resolver", .timeLimit(.minutes(1)))
 struct DNSPayloadResolverTests {
     private func makeEngine(block: String) throws -> DNSLookupEngine {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)

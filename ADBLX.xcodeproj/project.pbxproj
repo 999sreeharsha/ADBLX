@@ -486,6 +486,7 @@
 				AD6FA0F3423771E4849031F3 /* Resources */,
 				A41DA53F33D9B41B4EC02D5C /* Frameworks */,
 				CC3032F95F7B13DC9B18B415 /* Embed Foundation Extensions */,
+				D98F7A60CD690A7CE907F211 /* Check Release Build */,
 			);
 			buildRules = (
 			);
@@ -826,6 +827,25 @@
 			shellPath = /bin/sh;
 			shellScript = "\"$SRCROOT/Scripts/check-report-recipient.sh\"\n";
 		};
+		D98F7A60CD690A7CE907F211 /* Check Release Build */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Check Release Build";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"$SRCROOT/Scripts/check-archive-release.sh\"\n";
+		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -943,7 +963,9 @@
 			baseConfigurationReference = CE383A84E1D527E02B0E4CA0 /* Release.xcconfig */;
 			buildSettings = {
 				CLANG_CXX_LIBRARY = "libc++";
+				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 93F78RF6FG;
+				MARKETING_VERSION = 1.0;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
@@ -956,7 +978,6 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Extensions/ADBLXAdsBlocker/ADBLXAdsBlocker.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
 				INFOPLIST_FILE = Extensions/ADBLXAdsBlocker/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -965,7 +986,6 @@
 					"@executable_path/../../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
-				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.ADBLX.ADBLX.AdsBlocker;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -985,7 +1005,6 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Extensions/ADBLXPacketTunnel/ADBLXPacketTunnel.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
 				INFOPLIST_FILE = Extensions/ADBLXPacketTunnel/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -994,7 +1013,6 @@
 					"@executable_path/../../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
-				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.ADBLX.ADBLX.PacketTunnel;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
@@ -1013,7 +1031,6 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Extensions/ADBLXSafariWebExtension/ADBLXSafariWebExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
 				INFOPLIST_FILE = Extensions/ADBLXSafariWebExtension/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1022,7 +1039,6 @@
 					"@executable_path/../../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
-				MARKETING_VERSION = 1.0;
 				OTHER_LDFLAGS = "-framework SafariServices";
 				PRODUCT_BUNDLE_IDENTIFIER = com.ADBLX.ADBLX.SafariWebExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1043,7 +1059,6 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Extensions/ADBLXAdsBlocker/ADBLXAdsBlocker.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
 				INFOPLIST_FILE = Extensions/ADBLXAdsBlocker/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1052,7 +1067,6 @@
 					"@executable_path/../../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
-				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.ADBLX.ADBLX.AdsBlocker;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -1075,7 +1089,6 @@
 				CODE_SIGN_ENTITLEMENTS = Config/ADBLX.Release.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
@@ -1098,7 +1111,6 @@
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
-				MARKETING_VERSION = 1.0;
 				OTHER_LDFLAGS = "-framework SafariServices";
 				PRODUCT_BUNDLE_IDENTIFIER = com.ADBLX.ADBLX;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1127,7 +1139,6 @@
 				CODE_SIGN_ENTITLEMENTS = ADBLX/ADBLX.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
@@ -1149,7 +1160,6 @@
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
-				MARKETING_VERSION = 1.0;
 				OTHER_LDFLAGS = "-framework SafariServices";
 				PRODUCT_BUNDLE_IDENTIFIER = com.ADBLX.ADBLX;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1175,7 +1185,6 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Extensions/ADBLXSafariWebExtension/ADBLXSafariWebExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
 				INFOPLIST_FILE = Extensions/ADBLXSafariWebExtension/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1184,7 +1193,6 @@
 					"@executable_path/../../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
-				MARKETING_VERSION = 1.0;
 				OTHER_LDFLAGS = "-framework SafariServices";
 				PRODUCT_BUNDLE_IDENTIFIER = com.ADBLX.ADBLX.SafariWebExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1205,7 +1213,6 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1214,7 +1221,6 @@
 					"@loader_path/Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
-				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.ADBLX.ADBLXTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
@@ -1238,7 +1244,6 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Extensions/ADBLXRegionalBlocker/ADBLXRegionalBlocker.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
 				INFOPLIST_FILE = Extensions/ADBLXRegionalBlocker/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1247,7 +1252,6 @@
 					"@executable_path/../../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
-				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.ADBLX.ADBLX.RegionalBlocker;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -1267,7 +1271,6 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Extensions/ADBLXPrivacyBlocker/ADBLXPrivacyBlocker.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
 				INFOPLIST_FILE = Extensions/ADBLXPrivacyBlocker/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1276,7 +1279,6 @@
 					"@executable_path/../../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
-				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.ADBLX.ADBLX.PrivacyBlocker;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -1296,7 +1298,6 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1305,7 +1306,6 @@
 					"@loader_path/Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
-				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.ADBLX.ADBLXTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
@@ -1329,7 +1329,6 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Extensions/ADBLXAnnoyancesBlocker/ADBLXAnnoyancesBlocker.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
 				INFOPLIST_FILE = Extensions/ADBLXAnnoyancesBlocker/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1338,7 +1337,6 @@
 					"@executable_path/../../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
-				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.ADBLX.ADBLX.AnnoyancesBlocker;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -1358,7 +1356,6 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Extensions/ADBLXRegionalBlocker/ADBLXRegionalBlocker.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
 				INFOPLIST_FILE = Extensions/ADBLXRegionalBlocker/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1367,7 +1364,6 @@
 					"@executable_path/../../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
-				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.ADBLX.ADBLX.RegionalBlocker;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -1387,7 +1383,6 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Extensions/ADBLXAnnoyancesBlocker/ADBLXAnnoyancesBlocker.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
 				INFOPLIST_FILE = Extensions/ADBLXAnnoyancesBlocker/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1396,7 +1391,6 @@
 					"@executable_path/../../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
-				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.ADBLX.ADBLX.AnnoyancesBlocker;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -1416,7 +1410,6 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1425,7 +1418,6 @@
 					"@loader_path/Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
-				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.ADBLX.ADBLXUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
@@ -1449,7 +1441,6 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1458,7 +1449,6 @@
 					"@loader_path/Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
-				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.ADBLX.ADBLXUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
@@ -1482,7 +1472,9 @@
 			baseConfigurationReference = 2B308625A55359393052EBDF /* Debug.xcconfig */;
 			buildSettings = {
 				CLANG_CXX_LIBRARY = "libc++";
+				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 93F78RF6FG;
+				MARKETING_VERSION = 1.0;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
 				SWIFT_VERSION = 5.0;
@@ -1494,7 +1486,6 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Extensions/ADBLXPrivacyBlocker/ADBLXPrivacyBlocker.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
 				INFOPLIST_FILE = Extensions/ADBLXPrivacyBlocker/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1503,7 +1494,6 @@
 					"@executable_path/../../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
-				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.ADBLX.ADBLX.PrivacyBlocker;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -1524,7 +1514,6 @@
 				CODE_SIGNING_ALLOWED = NO;
 				CODE_SIGN_ENTITLEMENTS = Extensions/ADBLXPacketTunnel/ADBLXPacketTunnel.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
 				EXCLUDED_SOURCE_FILE_NAMES = "*";
 				INFOPLIST_FILE = Extensions/ADBLXPacketTunnel/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
@@ -1534,7 +1523,6 @@
 					"@executable_path/../../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
-				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.ADBLX.ADBLX.PacketTunnel;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;

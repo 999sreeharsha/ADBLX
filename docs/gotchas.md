@@ -266,19 +266,23 @@ Things to remember when touching this:
   snapshots must run inside `FilterTransactionGate.shared`.
 - Content-blocker JSON is static, so Annoyances/Regional keep blocking until
   the next launch/foreground reconcile. The web extension and tunnel enforce
-  `validUntil` themselves (subscription expiry + 7 days; trial exact) — but
+  `validUntil` themselves (subscription expiry + 7 days; trial and billing grace end exact) — but
   the tunnel's check does not look at `state`, so a `.free` record is allowed
   (SEC-13 in `docs/Security/Findings.md`).
-- Open product input: Apple's Billing Grace Period (enable in App Store
-  Connect if lapse leniency is wanted) and Family Sharing are product
-  decisions, not code.
+- Billing Grace Period is on (16 days, paid-to-paid renewals, sandbox and
+  production; `docs/AppStoreSetup.md`). A subscription in its grace period is
+  entitled until the grace end from its verified renewal info, and the
+  extensions stop exactly there; billing retry after it is not
+  (`BillingGracePeriodTests`). `Configuration.storekit` is in Xcode 27's
+  format (6.3); CI runs Xcode 27.2, so it reads it. Family Sharing is still an open product
+  decision, not code.
 
 Found in: final whole-branch review of `docs/superpowers/plans/2026-07-27-sprint-8.0-foundation-completion.md`, 2026-07-28. Promoted to a release blocker in Sprint 8.05; closed by `docs/superpowers/plans/2026-10-29-plan-state-and-downgrade.md`, 2026-10-29.
 
 ## Trial is Keychain-only with no IAP record — App Store Guideline 3.1.1 review risk (accepted for now)
 
 The 15-day trial (`TrialManager` / `TrialKeychainStore`) has no StoreKit record
-behind it: `Configuration.storekit` has `introductoryOffer: null` on every
+behind it: `Configuration.storekit` has no introductory offer (`introductoryOffers: []`) on every
 plan, and `StoreKitSubscriptionService.refreshEntitlements()` merges the
 Keychain trial with `Transaction.currentEntitlements` by precedence. A
 Keychain-only trial may draw a Guideline 3.1.1 objection at review. This is an
@@ -367,8 +371,9 @@ Found in: entitlement purchase-bug fix (`FakeStoreEntitlementSource`), bisected 
 - Open owner decision: whether to amend `Logging.md` for an on-device-only,
   user-visible, auto-expiring "Recently blocked" list.
 - Rule until closed: DNS Protection must not be enabled in any release or
-  TestFlight build. CI now enforces it on the built Release app
-  (`Scripts/check-release-no-dns.sh`); the tunnel has its Network Extension
+  TestFlight build. Every archive enforces it on the app being archived
+  (`Scripts/check-archive-release.sh`, a build phase), and CI on its Release
+  build (`Scripts/check-release-no-dns.sh`); the tunnel has its Network Extension
   entitlement again on the paid team, in Debug builds only.
   `DNS_PROTECTION_ENABLED` (`Config/Debug.xcconfig` only) enforces this: Release
   hides every DNS surface and doesn't embed the tunnel. See SEC-04.
@@ -385,6 +390,9 @@ Found in: entitlement purchase-bug fix (`FakeStoreEntitlementSource`), bisected 
   and returns SERVFAIL instead of silence; DEBUG counters and a pass-through switch are on the
   Developer screen. **Still needs a device:** the pass-through test, a payment flow on Wi-Fi,
   Jio and Airtel, and the IPv6-only-network hypothesis. The upstream resolver choice waits on it.
+- **Status 2026-11-08 (not closed).** On 4G, IPv4 to 9.9.9.9 is lost while IPv6 answers. The
+  forwarder now learns per network which upstream answers, races the next one after 0.4 s, and
+  gives up 2 s after the query (spec §2.9). Waiting on a 4G re-run with the new counters.
 
 Found in: device testing on iPhone 14, 2026-10-30
 
@@ -542,6 +550,22 @@ look like a pass.
 
 Found in: corrupt-metadata recovery tests, 2026-11-05
 
+## Each session works on its own branch, and one session at a time merges into the shared branch
+
+`feat/plan-state-downgrade` is the branch every session merges into. On 2026-11-08 another
+session committed two DNS commits onto it while a merge was being tested, so the tested merge
+could no longer fast-forward and had to be redone and tested again. Had it gone in anyway, the
+branch would have held a merge nobody had tested.
+
+- Commit only to your own branch (a worktree per session), never directly to the shared branch.
+- One session at a time merges into the shared branch. Before merging, tell the other sessions
+  you are about to.
+- Note the shared branch's tip when you start the merge test. Before moving the branch, check
+  the tip is still that commit. If it moved, merge again on top of the new tip and rerun the
+  suites; don't merge the tested result over it.
+
+Found in: merging `fix/publisher-enclave-skip`, 2026-11-08
+
 ## Tests wait on a signal, not a fixed sleep
 
 A test that sleeps for a guessed time and then assumes a background task has run fails
@@ -569,6 +593,12 @@ holds (fine): `WebExtensionEntitlementCoordinatorTests`, `PremiumEntitlementReco
 `TrialExpiredDecisionViewModelTests`, `TrialExpiryRouterTests`, `ProtectionViewModelTests`,
 `PremiumPaywallTests`, `DNSUpstreamForwarderTests` and `DNSRealQuad9ResolutionTests` (both
 in the DNS session's area).
+
+`DNSRealQuad9ResolutionTests.testLiveQuad9UDPResolutionOnDevice` queries 9.9.9.9 for real, so it
+fails whenever this machine's network loses the UDP query (once on 2026-11-20). It is on demand
+only, skipped in the default run and CI: run it before a device test with
+`TEST_RUNNER_ADBLX_LIVE_NETWORK=1 xcodebuild test … -only-testing:ADBLXTests/DNSRealQuad9ResolutionTests`
+(the `LiveNetwork` gate in `ADBLXTests/TestIsolation.swift`).
 
 Found in: review of the `Transaction.updates` test fix, 2026-11-06; fixed 2026-11-07
 

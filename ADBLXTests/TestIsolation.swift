@@ -31,3 +31,14 @@ nonisolated enum DeviceHarness {
         ProcessInfo.processInfo.environment["ADBLX_DEVICE_HARNESS"] == "1"
     }
 }
+
+/// Opt-in gate for tests that send real traffic to the internet (a public DNS resolver). They
+/// depend on this machine's network, so they are skipped in normal runs, including CI. Enable with
+/// `TEST_RUNNER_ADBLX_LIVE_NETWORK=1 xcodebuild test …` (xcodebuild strips the prefix).
+nonisolated enum LiveNetwork {
+    static let skipMessage = "Live network test: queries a public resolver. Set TEST_RUNNER_ADBLX_LIVE_NETWORK=1 to run."
+
+    static var isEnabled: Bool {
+        ProcessInfo.processInfo.environment["ADBLX_LIVE_NETWORK"] == "1"
+    }
+}

@@ -4,7 +4,7 @@ import Foundation
 
 /// The parser keeps an IPv6 address as two big-endian numbers; the response builders must write
 /// it back as the same 16 bytes, in the same order, and checksum them that way.
-@Suite("IPv6 DNS responses")
+@Suite("IPv6 DNS responses", .timeLimit(.minutes(1)))
 struct DNSIPv6ResponseTests {
     private let clientAddress: [UInt8] = [0xFD, 0x00, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x00, 0x02]
     private let serverAddress: [UInt8] = [0x20, 0x01, 0x0D, 0xB8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x00, 0x53]

@@ -231,6 +231,8 @@ These can't be reached in a release while DNS Protection stays off (see the open
 
 **Decision:** blocked on the PD-01 trial decision. It may replace `TrialKeychainStore` entirely, so don't pick this up before then.
 
+**Confirmed again (2026-11-08 gap scan of `Features/Onboarding`, panel 3/3, LOW):** onboarding is the only way to start the trial, and it passes the device clock (`TrialOnboardingViewModel.swift:36`) straight to `activateTrial`, which stores it as `activatedAt` and `lastObservedDate` (`TrialManager.swift:43-46`). Nothing in onboarding checks it.
+
 **Don't use the fix proposed in the first audit:**
 - `AppTransaction.shared.signedDate` isn't the current time. It can be the install date, so clamping to it would hand a later legitimate user an expired trial. A fresh signature needs `AppTransaction.refresh()`, which may prompt for sign-in. Verify both against current Apple docs.
 - Re-anchoring when the clock is earlier than `activatedAt` lets anyone reset a used-up trial by moving the clock back.
@@ -257,6 +259,33 @@ These can't be reached in a release while DNS Protection stays off (see the open
 
 - **Scanned:** `Packages/ADBLXShared/Sources`; under `ADBLX/Filtering`, `DNS`, `WebExtension`, `Compilation`, `Validation`, `Storage`, `Deployment` (other `Filtering` folders only partly, in the first scan, which hit its usage limit); all extensions; `ADBLX/Features/Premium`, `Settings`, `BrokenSite`, `Sync`; and `backend/tools/Publisher`.
 - **Never in a scan's scope:** `Features/Protection`, `Features/Home`, `Features/Onboarding`, the rest of `backend/`, and `.github/`.
+- **Gap scans (2026-11-08, one area at a time; progress in `ScanProgress.md`):** `.github/` and `backend/` outside the Publisher: no findings. `Features/Protection`: no findings. `Features/Home` and `Features/Onboarding`: one LOW, which is SEC-16 again. No new findings.
+- **Filtering rescan (2026-11-18):** `Filtering/Updates`, `Pipeline`, `Storage` and `Deployment`:
+  no findings. Two candidates were rejected (see "Rejected by the panel" below).
+  `Filtering/Entitlement`, `Models` and `Utilities` are still only partly covered, and the
+  background-updates staging code waits for that branch to merge.
+
+## Rejected by the panel, but real behaviour (for review)
+
+The 2026-11-18 scan of `Filtering/Updates` (part 4a) raised these, and the panel rejected both
+3 to 0 as unreachable by an attacker. The code does what they describe, so they are kept here
+as bugs to decide on, not security findings.
+
+- **A list moved to another group crashed every later update. Fixed (2026-11-18,
+  `fix/group-move-crash`).** If a signed manifest moved an ID to another group with a new
+  version or checksum, `FilterPipeline` kept the old record (it only matched records in the group
+  being installed) and appended a second one with the same ID, and the old group kept compiling
+  the list. The next run with a changed manifest trapped in `UpdatePlanner`
+  (`Dictionary(uniqueKeysWithValues:)`) on every launch that saw a new manifest, until a
+  reinstall. Now the planner groups records by ID and reinstalls a list recorded more than once
+  or whose group changed; `UpdateCoordinator` removes a moved list from its old group before
+  installing it; and `FilterPipeline` matches records by ID whatever their group.
+  `GroupMoveTests` covers all three (they failed first, the planner one with the original trap).
+- **The DNS never-block download has no size cap.** `DNSNeverBlockList.swift:103` uses
+  `session.data(for:)`, not the capped variant (`HTTPSession.swift:38`) the filter lists use.
+  Only DNS builds reach it (`ADBLXApp.swift:127`, behind `BuildFeatures.dnsProtection`), so it is
+  Debug-only today. Add the cap before DNS ships, alongside the never-block items in
+  `docs/gotchas.md`.
 
 ## Closed or corrected
 

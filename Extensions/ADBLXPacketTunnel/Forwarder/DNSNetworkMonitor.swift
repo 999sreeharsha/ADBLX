@@ -14,6 +14,12 @@ public struct NetworkPathSnapshot: Equatable, Sendable {
     }
 
     var key: String { interfaces.sorted().joined(separator: ",") }
+
+    /// The physical interfaces (Wi-Fi, cellular, wired) only, so a VPN or calling tunnel coming
+    /// and going doesn't make the same network look like a new one.
+    var physicalKey: String {
+        interfaces.filter { !PathChangeFilter.isVirtual($0) }.sorted().joined(separator: ",")
+    }
 }
 
 /// Source of network path updates. A protocol so tests drive it by hand.
@@ -53,8 +59,11 @@ public struct PathChangeFilter {
         guard previous.isSatisfied else { return .reconnect }
         let changed = previous.interfaces.symmetricDifference(interfaces)
         guard !changed.isEmpty else { return .none }
-        let virtualOnly = changed.allSatisfy { name in Self.virtualPrefixes.contains { name.hasPrefix($0) } }
-        return .interfaceChange(virtualOnly: virtualOnly)
+        return .interfaceChange(virtualOnly: changed.allSatisfy(Self.isVirtual))
+    }
+
+    static func isVirtual(_ name: String) -> Bool {
+        virtualPrefixes.contains { name.hasPrefix($0) }
     }
 }
 
@@ -83,6 +92,7 @@ public final class DNSNetworkMonitor: @unchecked Sendable {
     private let setReasserting: @Sendable (Bool) -> Void
     private let counters: DNSTunnelCounters?
     private let filter = OSAllocatedUnfairLock(initialState: PathChangeFilter())
+    private let didSetNetwork = OSAllocatedUnfairLock(initialState: false)
     private let running = OSAllocatedUnfairLock<(stream: AsyncStream<NetworkPathSnapshot>.Continuation, task: Task<Void, Never>)?>(initialState: nil)
 
     public init(
@@ -116,6 +126,11 @@ public final class DNSNetworkMonitor: @unchecked Sendable {
 
     public func handle(_ snapshot: NetworkPathSnapshot) async {
         counters?.increment(\.pathUpdates)
+        if !didSetNetwork.withLock({ $0 }) {
+            // The first path is only a baseline, but it names the network queries start on.
+            didSetNetwork.withLock { $0 = true }
+            await forwarder.useNetwork(snapshot.physicalKey)
+        }
         let change = filter.withLock { $0.evaluate(snapshot) }
         switch change {
         case .none: return
@@ -124,7 +139,7 @@ public final class DNSNetworkMonitor: @unchecked Sendable {
             counters?.increment(virtualOnly ? \.resetsVirtualInterfacesOnly : \.resetsInterfaceChange)
         }
         setReasserting(true)
-        try? await forwarder.resetSockets()
+        try? await forwarder.resetSockets(networkKey: snapshot.physicalKey)
         setReasserting(false)
     }
 }

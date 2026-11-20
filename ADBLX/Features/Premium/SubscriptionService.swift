@@ -36,8 +36,10 @@ public struct SubscriptionStatus: Equatable, Sendable {
 public enum EntitlementState: Sendable, Equatable {
     case free
     case trial(expiresAt: Date)
-    case monthly(expiresAt: Date)
-    case annual(expiresAt: Date)
+    /// `billingGrace`: a renewal failed and access lasts until the grace period ends, which
+    /// `expiresAt` then holds. Readers outside the app stop exactly there, with no slack.
+    case monthly(expiresAt: Date, billingGrace: Bool = false)
+    case annual(expiresAt: Date, billingGrace: Bool = false)
     case lifetime
 }
 
@@ -57,8 +59,8 @@ public extension EntitlementState {
         switch self {
         case .free, .lifetime: return nil
         case .trial(let expiresAt): return expiresAt
-        case .monthly(let expiresAt), .annual(let expiresAt):
-            return expiresAt.addingTimeInterval(Self.subscriptionExtensionSlack)
+        case .monthly(let expiresAt, let billingGrace), .annual(let expiresAt, let billingGrace):
+            return billingGrace ? expiresAt : expiresAt.addingTimeInterval(Self.subscriptionExtensionSlack)
         }
     }
 

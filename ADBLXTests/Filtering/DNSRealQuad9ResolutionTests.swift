@@ -24,7 +24,13 @@ final class DNSRealQuad9ResolutionTests: XCTestCase {
     }
 
     /// Tests live DNS query forwarding directly to Quad9 (9.9.9.9:53) over the physical device network interface.
+    /// On demand only: it fails whenever this machine's network loses the UDP query, so it is not in the
+    /// default run or CI. Run it before a device test with
+    /// `TEST_RUNNER_ADBLX_LIVE_NETWORK=1 xcodebuild test … -only-testing:ADBLXTests/DNSRealQuad9ResolutionTests`.
+    /// The forwarder's logic is covered offline (DNSUpstreamPreferenceTests, DNSUpstreamRetryTests,
+    /// DNSTruncatedFamilyTests).
     func testLiveQuad9UDPResolutionOnDevice() async throws {
+        try XCTSkipUnless(LiveNetwork.isEnabled, LiveNetwork.skipMessage)
         let socket = try BSDUDPUpstreamSocket(host: "9.9.9.9", port: 53, isIPv6: false)
         defer { socket.close() }
 
