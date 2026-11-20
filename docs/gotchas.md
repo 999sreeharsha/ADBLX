@@ -550,19 +550,21 @@ look like a pass.
 
 Found in: corrupt-metadata recovery tests, 2026-11-05
 
-## Each session works on its own branch, and one session at a time merges into the shared branch
+## Work happens on `dev`; a branch is short-lived and merged into `dev` when done
 
-`feat/plan-state-downgrade` is the branch every session merges into. On 2026-11-08 another
-session committed two DNS commits onto it while a merge was being tested, so the tested merge
-could no longer fast-forward and had to be redone and tested again. Had it gone in anyway, the
-branch would have held a merge nobody had tested.
+Since 2026-11-20 everything is on `dev` and no worktrees are kept. `feat/plan-state-downgrade`
+was the shared branch until then; it is fully merged into `dev`.
 
-- Commit only to your own branch (a worktree per session), never directly to the shared branch.
-- One session at a time merges into the shared branch. Before merging, tell the other sessions
-  you are about to.
-- Note the shared branch's tip when you start the merge test. Before moving the branch, check
-  the tip is still that commit. If it moved, merge again on top of the new tip and rerun the
-  suites; don't merge the tested result over it.
+- Work on `dev`. A session may create a short-lived branch for one change, but merges it into
+  `dev` and deletes it (`git branch -d`) when done. Don't leave branches or worktrees behind.
+- One session at a time merges into `dev`. Before merging, tell the other sessions you are
+  about to.
+- Note `dev`'s tip when you start the merge test. Before moving `dev`, check the tip is still that
+  commit. If it moved, merge again on top of the new tip and rerun the suites; don't merge the
+  tested result over it. On 2026-11-08 a session committed onto the shared branch while a merge
+  was being tested, and the tested merge had to be redone.
+- CI runs on manual dispatch only, so pushing `dev` doesn't start a run. The release checks run
+  on every archive in Xcode (`Scripts/check-archive-release.sh`).
 
 Found in: merging `fix/publisher-enclave-skip`, 2026-11-08
 
