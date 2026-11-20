@@ -591,6 +591,12 @@ holds (fine): `WebExtensionEntitlementCoordinatorTests`, `PremiumEntitlementReco
 `PremiumPaywallTests`, `DNSUpstreamForwarderTests` and `DNSRealQuad9ResolutionTests` (both
 in the DNS session's area).
 
+`DNSRealQuad9ResolutionTests.testLiveQuad9UDPResolutionOnDevice` queries 9.9.9.9 for real, so it
+fails whenever this machine's network loses the UDP query (once on 2026-11-20). It is on demand
+only, skipped in the default run and CI: run it before a device test with
+`TEST_RUNNER_ADBLX_LIVE_NETWORK=1 xcodebuild test … -only-testing:ADBLXTests/DNSRealQuad9ResolutionTests`
+(the `LiveNetwork` gate in `ADBLXTests/TestIsolation.swift`).
+
 Found in: review of the `Transaction.updates` test fix, 2026-11-06; fixed 2026-11-07
 
 ## Security findings live in `docs/Security/Findings.md`
