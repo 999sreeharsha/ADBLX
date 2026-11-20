@@ -306,16 +306,14 @@ struct UpdateCoordinatorTests {
             return
         }
 
-        // restore() only deletes the snapshot after success. After this one it holds the
-        // swapped-out Compiled/ and the unrestored rest, so it is kept as Previous.spent/, for
-        // inspection, and never restored a second time.
+        // The half-finished rollback stays as Previous/, and the next launch finishes it: only
+        // the directories whose marker is still in the snapshot are swapped.
         let container = try await store.directoryURL(.compiled).deletingLastPathComponent()
-        #expect(FileManager.default.fileExists(atPath: container.appendingPathComponent("Previous.spent").path))
-        #expect(!FileManager.default.fileExists(atPath: container.appendingPathComponent("Previous").path))
-
-        try? FileManager.default.removeItem(at: compiledDir.appendingPathComponent("Ads.json"))
-        try? FileManager.default.removeItem(at: metadataDir.appendingPathComponent("installed_filters.json"))
-        try? FileManager.default.removeItem(at: try await store.directoryURL(.compiled).deletingLastPathComponent().appendingPathComponent("Previous.spent"))
+        #expect(FileManager.default.fileExists(atPath: container.appendingPathComponent("Previous").path))
+        let nextLaunch = FilterStore(overrideBaseURL: container)
+        #expect(try await nextLaunch.recoverInterruptedTransaction())
+        #expect(try await nextLaunch.read("Ads.json", in: .compiled) == Data("[\"prior-compiled\"]".utf8))
+        #expect(try await nextLaunch.read("installed_filters.json", in: .metadata) == Data("[]".utf8))
     }
 
     @Test("manifest spanning all four groups installs each group once and reloads each affected extension once")

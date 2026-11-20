@@ -63,6 +63,18 @@ targets:
       - target: ADBLXSafariWebExtension
         embed: true
       - package: ADBLXShared
+    # ADR-0014: no INFOPLIST_KEY_ setting exists for these, so XcodeGen writes them into a partial
+    # plist that Xcode merges with the generated keys. Same file for Debug and Release.
+    info:
+      path: Config/ADBLX-Info.plist
+      properties:
+        # XcodeGen otherwise writes literal 1.0 / 1 here, which would override the build settings.
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        UIBackgroundModes: [fetch, processing]
+        BGTaskSchedulerPermittedIdentifiers:
+          - com.ADBLX.ADBLX.filter-refresh
+          - com.ADBLX.ADBLX.filter-install
     settings:
       base:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon

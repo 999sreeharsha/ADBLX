@@ -296,13 +296,16 @@ checking:   ManifestStore.load() → ManifestClient.fetch(previousETag:cached:) 
             UpdatePlanner.plan(manifest, installed, isPremiumEntitled)     [pure diff, no I/O]
 downloading: for every .install group: FilterDownloadClient.download each entry (streamed to disk, 8 MB cap),
              then Checksum.verify(sha256) every file      [ALL groups verified before ANY write]
-snapshot:   FilterStore.snapshotForRollback()             [copies Compiled/ + Metadata/ + Filters/ → Previous/]
+snapshot:   FilterStore.snapshotForRollback()             [copies Compiled/ + Metadata/ + Filters/ → Previous.partial/, renamed to Previous/ once whole]
 installing: per group: FilterPipeline.install(GroupComposition, .deferred)
             per removal: FilterPipeline.remove(filterID:group:, .deferred)
-commit:     ManifestStore.save(manifest, etag) → discardRollbackSnapshot()
-            → ReloadCoordinator.reload(affected extensions)   [one reload each]
+commit:     ManifestStore.save(manifest, etag) → PendingReloads.mark(affected)
+            → FilterStore.commit(snapshot)               [rename Previous/ → Previous.done/: the commit point]
+            → ReloadCoordinator.reload(affected extensions) → PendingReloads.record   [one reload each]
 on any failure past download: FilterStore.restore(snapshot)   [→ .rolledBack]
-            if restore itself throws → .rollbackFailed (snapshot left on disk, no auto-retry)
+            if restore itself throws → .rollbackFailed (Previous/ left on disk; the next snapshot or launch finishes it)
+at launch:  LaunchRecovery, first, under the gate: a Previous/ means a transaction died before its commit →
+            restore it, then mark and reload all four blockers
 finally:    FilterDownloadClient.cleanupWorkspace()      [every exit path]
 ```
 

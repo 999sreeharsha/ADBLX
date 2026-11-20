@@ -7,7 +7,8 @@ Build, lint, and automation helper scripts for ADBLX.
 
 - `check-report-recipient.sh` and `check-manifest-trust.sh` (before compiling).
 - `check-archive-release.sh` (last phase, after the extensions are embedded): runs
-  `check-release-no-dns.sh` and `check-extension-versions.sh` on the app being archived, and checks
+  `check-release-no-dns.sh`, `check-extension-versions.sh` and `check-background-modes.sh` on the
+  app being archived, and checks
   the entitlements it will be signed with.
 
 Each `*.test.sh` beside a check exercises it; run them after changing a check.

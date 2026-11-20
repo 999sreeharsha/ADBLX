@@ -5,8 +5,13 @@ import Foundation
 ///   Filters/     — raw/normalized filter list source data
 ///   Compiled/    — partitioned, compiled JSON ready for each Content Blocker extension
 ///   Metadata/    — installed_filters.json, manifest.json, statistics.json
-///   Previous/    — rollback snapshot root (Compiled/, Metadata/ copies); only exists
-///                  transiently during an UpdateCoordinator batch (Sprint 2)
+///   Previous/    — rollback snapshot (copies of the three above). Exists only while a
+///                  transaction is open: `commit` renames it to `Previous.done/` as the
+///                  transaction's last step, so one found at launch belongs to a transaction
+///                  that died, and `recoverInterruptedTransaction` restores it.
+///
+/// See `docs/superpowers/plans/2026-11-07-background-updates.md`, "When a transaction counts as
+/// finished".
 ///
 /// No other type in the app should call `FileManager` against the App Group container
 /// directly. Route all reads/writes through this actor so there's one place that understands
@@ -26,17 +31,25 @@ actor FilterStore {
     private let fileManager: FileManager
     private let overrideBaseURL: URL?
     private let swapPaths: @Sendable (URL, URL) throws -> Void
+    private let flush: @Sendable (URL) throws -> Void
+    private let transactionHook: (@Sendable (TransactionStep) async -> Void)?
 
+    /// `flushDirectory` and `transactionHook` are for tests only: one fails a flush, the other
+    /// stops a transaction at a step, as a killed process would.
     init(
         appGroupIdentifier: String = AppGroup.identifier,
         fileManager: FileManager = .default,
         overrideBaseURL: URL? = nil,
-        swapPaths: @escaping @Sendable (URL, URL) throws -> Void = { try FilterStore.swapPathsAtomically($0, $1) }
+        swapPaths: @escaping @Sendable (URL, URL) throws -> Void = { try FilterStore.swapPathsAtomically($0, $1) },
+        flushDirectory: @escaping @Sendable (URL) throws -> Void = { try FilterStore.flushDirectory($0) },
+        transactionHook: (@Sendable (TransactionStep) async -> Void)? = nil
     ) {
         self.appGroupIdentifier = appGroupIdentifier
         self.fileManager = fileManager
         self.overrideBaseURL = overrideBaseURL
         self.swapPaths = swapPaths
+        self.flush = flushDirectory
+        self.transactionHook = transactionHook
     }
 
     /// Exchanges two paths in one call (`renamex_np` with `RENAME_SWAP`, APFS), so a crash leaves
@@ -147,99 +160,152 @@ actor FilterStore {
         try url(for: directory)
     }
 
-    /// Copies the current `Compiled/`, `Metadata/`, and `Filters/` directories into a `Previous/`
-    /// root, replacing any leftover snapshot from an earlier run. Call before any write
-    /// in an update batch begins; pair with `restore(_:)` on failure.
+    /// Copies the current `Compiled/`, `Metadata/`, and `Filters/` directories into a new
+    /// `Previous/`. Call under the transaction gate before any write in the transaction; end it
+    /// with `commit(_:)`, or `restore(_:)` on failure.
+    ///
+    /// The copy goes into `Previous.partial/` and is renamed to `Previous/` only once whole, so a
+    /// `Previous/` always holds a complete pre-transaction state. Each saved directory gets a
+    /// marker named after the snapshot's id, which tells a restore cut short which directories it
+    /// already swapped. A leftover `Previous/` from a rollback that stopped part-way is restored
+    /// first rather than discarded: deleting it would leave that mixed state for good.
     func snapshotForRollback() throws -> RollbackSnapshot {
-        try discardRollbackSnapshot()
-        let previousRoot = try previousRootURL()
-        try fileManager.createDirectory(at: previousRoot, withIntermediateDirectories: true)
-
-        let compiledSnapshot = previousRoot.appendingPathComponent("Compiled", isDirectory: true)
-        let metadataSnapshot = previousRoot.appendingPathComponent("Metadata", isDirectory: true)
-        let filtersSnapshot = previousRoot.appendingPathComponent("Filters", isDirectory: true)
-
+        try recoverInterruptedTransaction()
+        let container = try containerURL()
+        let partial = container.appendingPathComponent(SnapshotPaths.partial, isDirectory: true)
+        let id = UUID().uuidString
+        let names = SnapshotPaths.directories
         do {
-            try copyDirectoryContents(from: try url(for: .compiled), to: compiledSnapshot)
-            try copyDirectoryContents(from: try url(for: .metadata), to: metadataSnapshot)
-            try copyDirectoryContents(from: try url(for: .filters), to: filtersSnapshot)
+            if fileManager.fileExists(atPath: partial.path) { try fileManager.removeItem(at: partial) }
+            try fileManager.createDirectory(at: partial, withIntermediateDirectories: true)
+            for (name, directory) in zip(names, [Directory.compiled, .metadata, .filters]) {
+                let saved = partial.appendingPathComponent(name, isDirectory: true)
+                try copyDirectoryContents(from: try url(for: directory), to: saved)
+                try Data().write(to: saved.appendingPathComponent(SnapshotPaths.marker(id)))
+            }
+            try Data(id.utf8).write(to: partial.appendingPathComponent(SnapshotPaths.idFile))
+            try fileManager.moveItem(at: partial, to: try previousRootURL())
         } catch {
             // Most likely a full disk, which a partial copy would only make worse.
-            try? fileManager.removeItem(at: previousRoot)
+            try? fileManager.removeItem(at: partial)
             throw error
         }
+        // Before any live write, so a power loss can't keep the writes and lose the snapshot.
+        try? flush(container)
+        return RollbackSnapshot(id: id)
+    }
 
-        return RollbackSnapshot(
-            compiledSnapshotDir: compiledSnapshot,
-            metadataSnapshotDir: metadataSnapshot,
-            filtersSnapshotDir: filtersSnapshot
-        )
+    /// The transaction's commit point and last step: one rename of `Previous/` to
+    /// `Previous.done/`, flushed to disk before this returns, so before the caller reloads Safari.
+    /// A rename lost to a power cut would bring `Previous/` back, and the next launch would undo a
+    /// change Safari already has. If the rename or its flush fails the transaction did not
+    /// commit: the rename is put back and the caller restores, as for any other failure.
+    /// Deleting `Previous.done/` afterwards is clean-up; launch deletes one left behind and never
+    /// restores it.
+    func commit(_ snapshot: RollbackSnapshot) async throws {
+        await transactionHook?(.beforeCommit)
+        guard try snapshotID() == snapshot.id else { throw FilterStoreError.snapshotSpent }
+        let previous = try previousRootURL()
+        let done = try doneRootURL()
+        if fileManager.fileExists(atPath: done.path) { try fileManager.removeItem(at: done) }
+        try fileManager.moveItem(at: previous, to: done)
+        do {
+            try flush(try containerURL())
+        } catch {
+            try? fileManager.moveItem(at: done, to: previous)
+            throw error
+        }
+        await transactionHook?(.afterCommit)
+        try? fileManager.removeItem(at: done)
     }
 
     /// Replaces the entire current contents of `Compiled/`, `Metadata/`, and `Filters/` with the
     /// snapshot's contents (files present only in the current state and absent from the
-    /// snapshot are removed), then discards the `Previous/` root.
+    /// snapshot are removed), then retires `Previous/`.
     /// Each directory is swapped in by one atomic rename, so a crash leaves it either as it was or
-    /// fully restored, never half-copied, and a full disk can't stop it. A crash between two swaps
-    /// can still leave the directories from different points; reconcile handles that.
+    /// fully restored, never half-copied, and a full disk can't stop it.
     ///
-    /// A restore that stops after a swap spends the snapshot: the swapped directories' newer
-    /// contents are now in `Previous/`, and restoring it again would put them back. `Previous/` is
-    /// renamed to `Previous.spent/` (a rename needs no space), and a later restore of it throws
-    /// `snapshotSpent`. One that fails on the first swap has changed nothing and stays usable.
+    /// A restore that stops between swaps can be run again, in this run or at the next launch: a
+    /// directory whose marker has moved to the live side was already swapped and is skipped. The
+    /// marker is inside the directory, so the swap itself records which side it's on, with no
+    /// separate write that could disagree with it. Each swap is flushed before the next.
+    /// Retiring `Previous/` is the point the restore is finished; the markers left in the live
+    /// directories are deleted after it, and a stray one carries an id no snapshot uses again.
     func restore(_ snapshot: RollbackSnapshot) throws {
-        let saved = [snapshot.compiledSnapshotDir, snapshot.metadataSnapshotDir, snapshot.filtersSnapshotDir]
-        guard saved.allSatisfy({ fileManager.fileExists(atPath: $0.path) }) else {
-            throw FilterStoreError.snapshotSpent
-        }
-        let live = [try url(for: .compiled), try url(for: .metadata), try url(for: .filters)]
-        let container = try containerURL()
-        let previousRoot = try previousRootURL()
+        guard try snapshotID() == snapshot.id else { throw FilterStoreError.snapshotSpent }
+        try restorePrevious(id: snapshot.id)
+    }
 
-        for (index, pair) in zip(saved, live).enumerated() {
-            do {
-                try swapIntoPlace(pair.0, at: pair.1)
-            } catch {
-                if index > 0 { spend(previousRoot) }
-                try? Self.flushDirectory(container)
-                throw error
+    /// Run at launch, under the gate, before anything else touches the filter directories. No
+    /// transaction can be open then (the gate is per process and the app is the only writer), so
+    /// a `Previous/` belongs to one that died before committing, and is restored. Returns whether
+    /// it restored one; the caller then has Safari reload every blocker, since the dead
+    /// transaction may already have reloaded some with the rules just undone.
+    @discardableResult
+    func recoverInterruptedTransaction() throws -> Bool {
+        let container = try containerURL()
+        for name in [SnapshotPaths.partial, SnapshotPaths.done, SnapshotPaths.legacySpent] {
+            let leftover = container.appendingPathComponent(name, isDirectory: true)
+            if fileManager.fileExists(atPath: leftover.path) { try fileManager.removeItem(at: leftover) }
+        }
+        let previous = try previousRootURL()
+        guard fileManager.fileExists(atPath: previous.path) else { return false }
+        guard let id = try snapshotID() else {
+            // Written before snapshots carried an id: no telling whether its copy finished.
+            try fileManager.removeItem(at: previous)
+            return false
+        }
+        try restorePrevious(id: id)
+        return true
+    }
+
+    private func restorePrevious(id: String) throws {
+        let previous = try previousRootURL()
+        let container = try containerURL()
+        let marker = SnapshotPaths.marker(id)
+        let live = [try url(for: .compiled), try url(for: .metadata), try url(for: .filters)]
+        for (name, liveDirectory) in zip(SnapshotPaths.directories, live) {
+            let saved = previous.appendingPathComponent(name, isDirectory: true)
+            if fileManager.fileExists(atPath: saved.appendingPathComponent(marker).path) {
+                do {
+                    try swapPaths(saved, liveDirectory)
+                } catch {
+                    try? flush(container)
+                    throw error
+                }
+                try? flush(container)
+            } else if !fileManager.fileExists(atPath: liveDirectory.appendingPathComponent(marker).path) {
+                throw FilterStoreError.snapshotSpent
             }
         }
-        // The swaps have happened either way; failing here would report a rollback that worked
-        // as one that didn't.
-        try? Self.flushDirectory(container)
-        try? fileManager.removeItem(at: previousRoot)
-    }
-
-    /// Discards any leftover snapshot in the `Previous/` directory. Called after a batch
-    /// update commits successfully to ensure no transient snapshot data leaks on disk.
-    func discardRollbackSnapshot() throws {
-        for root in [try previousRootURL(), try spentRootURL()] where fileManager.fileExists(atPath: root.path) {
-            try fileManager.removeItem(at: root)
+        // The swaps have happened; failing from here on would report a rollback that worked as
+        // one that didn't.
+        try? retire(previous)
+        try? fileManager.removeItem(at: try doneRootURL())
+        for liveDirectory in live {
+            try? fileManager.removeItem(at: liveDirectory.appendingPathComponent(marker))
         }
     }
 
-    private func spend(_ previousRoot: URL) {
-        guard let spent = try? spentRootURL() else { return }
-        try? fileManager.removeItem(at: spent)
-        if (try? fileManager.moveItem(at: previousRoot, to: spent)) == nil {
-            // Deleting also makes a second restore refuse it; it is only slower and can stop part-way.
-            try? fileManager.removeItem(at: previousRoot)
-        }
+    /// Renames a finished snapshot out of the way in one step and flushes the rename.
+    private func retire(_ previous: URL) throws {
+        let done = try doneRootURL()
+        if fileManager.fileExists(atPath: done.path) { try fileManager.removeItem(at: done) }
+        try fileManager.moveItem(at: previous, to: done)
+        try? flush(try containerURL())
     }
 
-    /// The live directory's old contents end up at `saved`, inside `Previous/`, which `restore`
-    /// then deletes.
-    private func swapIntoPlace(_ saved: URL, at live: URL) throws {
-        try swapPaths(saved, live)
+    private func snapshotID() throws -> String? {
+        let file = try previousRootURL().appendingPathComponent(SnapshotPaths.idFile)
+        return (try? Data(contentsOf: file)).map { String(decoding: $0, as: UTF8.self) }
     }
 
     private func previousRootURL() throws -> URL {
-        try containerURL().appendingPathComponent("Previous", isDirectory: true)
+        try containerURL().appendingPathComponent(SnapshotPaths.previous, isDirectory: true)
     }
 
-    private func spentRootURL() throws -> URL {
-        try containerURL().appendingPathComponent("Previous.spent", isDirectory: true)
+    private func doneRootURL() throws -> URL {
+        try containerURL().appendingPathComponent(SnapshotPaths.done, isDirectory: true)
     }
 
     private func copyDirectoryContents(from source: URL, to destination: URL) throws {
@@ -248,7 +314,7 @@ actor FilterStore {
         }
         try fileManager.createDirectory(at: destination, withIntermediateDirectories: true)
         guard fileManager.fileExists(atPath: source.path) else { return }
-        for name in try fileManager.contentsOfDirectory(atPath: source.path) {
+        for name in try fileManager.contentsOfDirectory(atPath: source.path) where !SnapshotPaths.isMarker(name) {
             try fileManager.copyItem(
                 at: source.appendingPathComponent(name),
                 to: destination.appendingPathComponent(name)
@@ -257,15 +323,32 @@ actor FilterStore {
     }
 }
 
-/// Opaque to callers outside this file — a copy of `Compiled/`, `Metadata/`, and `Filters/` taken by
-/// `snapshotForRollback()`, consumed by `restore(_:)`.
+/// Opaque to callers outside this file: the transaction's snapshot, taken by
+/// `snapshotForRollback()` and ended by `commit(_:)` or `restore(_:)`.
 struct RollbackSnapshot {
-    fileprivate let compiledSnapshotDir: URL
-    fileprivate let metadataSnapshotDir: URL
-    fileprivate let filtersSnapshotDir: URL
+    fileprivate let id: String
+}
+
+/// Steps a test can stop a transaction at (`FilterStore`'s `transactionHook`).
+nonisolated enum TransactionStep: Sendable {
+    case beforeCommit
+    case afterCommit
+}
+
+private nonisolated enum SnapshotPaths {
+    static let previous = "Previous"
+    static let partial = "Previous.partial"
+    static let done = "Previous.done"
+    /// Left by a restore that stopped part-way, before restores could resume.
+    static let legacySpent = "Previous.spent"
+    static let idFile = "snapshot-id"
+    static let directories = ["Compiled", "Metadata", "Filters"]
+    static func marker(_ id: String) -> String { ".snapshot-\(id)" }
+    static func isMarker(_ name: String) -> Bool { name.hasPrefix(".snapshot-") }
 }
 
 nonisolated enum FilterStoreError: Error {
     case appGroupContainerUnavailable
+    /// The snapshot was already committed or restored, or another replaced it.
     case snapshotSpent
 }

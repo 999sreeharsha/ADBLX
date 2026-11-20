@@ -485,13 +485,15 @@ Found in: cookiebot.com banner investigation, iPhone 14, 2026-11-03
 `concurrentWriteNeverProducesTornRead`). `FilterStore.restore` used to delete each
 directory and copy files back; it now swaps each one in with a rename, so a directory is
 never half-restored, then flushes the container (`F_FULLFSYNC`) so the renames survive a
-power loss. A crash between two swaps can still leave `Compiled/` and `Metadata/` from
-different points.
+power loss.
 
-A restore that stops after a swap spends the snapshot: `Previous/` then holds the newer
-contents of the directories already swapped. It is renamed to `Previous.spent/`, and
-`restore` throws `snapshotSpent` for it rather than putting the newer state back. Only a
-restore that fails on its first swap, having changed nothing, can be tried again.
+**Superseded (2026-11-08): a restore that stops part-way now resumes.** Each saved directory
+carries a `.snapshot-<id>` marker, so a second `restore` (or the next launch) swaps only the
+directories whose marker is still in `Previous/`. `Previous.spent/` is no longer written; one
+left by an older build is deleted at launch. A transaction commits by renaming `Previous/` to
+`Previous.done/`, and launch restores any `Previous/` it finds (`LaunchRecovery`), then
+reloads every blocker. See "When a transaction counts as finished" in
+`docs/superpowers/plans/2026-11-07-background-updates.md`.
 
 - `PremiumEntitlementReconciler` treats the file as lost when it reads but won't decode,
   or when it's missing while compiled rules exist (the pipeline always writes it after

@@ -1,12 +1,14 @@
 #!/bin/sh
 # Runs the Release checks on the app being archived, so an archive fails without CI:
 #   - no DNS Protection (check-release-no-dns.sh), and
-#   - every extension at the app's version (check-extension-versions.sh).
+#   - every extension at the app's version (check-extension-versions.sh), and
+#   - the background modes and task identifiers, and no DEBUG timing spike (check-background-modes.sh,
+#     ADR-0014).
 # Runs as the app target's last build phase but acts only on archives (ACTION=install), like the
 # recipient and key checks. It runs after the extensions are embedded and before Xcode signs the
 # app, so the signature can't be read yet: the entitlements Xcode is about to sign with
 # (CODE_SIGN_ENTITLEMENTS) are checked for the Network Extension entitlement instead.
-# CI runs the same two scripts on its own Release build (.github/workflows/ci.yml).
+# CI runs the same three scripts on its own Release build (.github/workflows/ci.yml).
 [ "${ACTION:-}" = "install" ] || exit 0
 
 dir=$(dirname "$0")
@@ -15,6 +17,7 @@ fail=0
 
 "$dir/check-release-no-dns.sh" "$app" || fail=1
 "$dir/check-extension-versions.sh" "$app" || fail=1
+"$dir/check-background-modes.sh" "$app" || fail=1
 
 case "${CODE_SIGN_ENTITLEMENTS:-}" in
     "") entitlements="" ;;

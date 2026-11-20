@@ -19,3 +19,4 @@ Immutable decision records for ADBLX. Each ADR is dated and not edited after acc
 | [0011 — Web Extension rule data: generation lifecycle and publication](0011-web-extension-rule-data-generation-lifecycle-and-publication.md) | Proposed |
 | [0012 — Native↔JS bridge: pull-only transport, entitlement propagation, refresh points](0012-native-js-bridge-transport-entitlement-refresh-points.md) | Proposed |
 | [0013 — Layer 3 capability boundary and explicit non-goals](0013-layer-3-capability-boundary-and-explicit-non-goals.md) | Proposed |
+| [0014 — App target Info.plist: background task keys](0014-app-info-plist-background-keys.md) | Proposed |
