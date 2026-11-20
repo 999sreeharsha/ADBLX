@@ -119,6 +119,7 @@ extension StoreEntitlement {
     }
     func with(verification: Verification? = nil, revoked: Date? = nil) -> StoreEntitlement {
         StoreEntitlement(transactionID: transactionID, productID: productID, expirationDate: expirationDate,
-                         revocationDate: revoked ?? revocationDate, verification: verification ?? self.verification)
+                         revocationDate: revoked ?? revocationDate, verification: verification ?? self.verification,
+                         gracePeriodExpirationDate: gracePeriodExpirationDate, inBillingRetry: inBillingRetry)
     }
 }

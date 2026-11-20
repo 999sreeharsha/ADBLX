@@ -16,6 +16,13 @@ nonisolated struct StoreEntitlement: Equatable, Sendable {
     let expirationDate: Date?
     let revocationDate: Date?
     let verification: Verification
+    /// When a subscription whose renewal failed stops granting access, from its signed renewal
+    /// info. Set only during a billing grace period; the transaction's own `expirationDate` has
+    /// already passed by then.
+    var gracePeriodExpirationDate: Date?
+    /// StoreKit reports the subscription in billing retry: renewal failed and Apple is still
+    /// trying to charge. Access continues only while a grace period lasts.
+    var inBillingRetry = false
 }
 
 nonisolated enum StorePurchaseOutcome: Sendable {
@@ -46,7 +53,7 @@ nonisolated final class StoreKitEntitlementSource: StoreEntitlementSource, @unch
     func currentEntitlements() async -> [StoreEntitlement] {
         var result: [StoreEntitlement] = []
         for await verification in Transaction.currentEntitlements {
-            result.append(Self.map(verification))
+            result.append(await Self.entitlement(from: verification))
         }
         return result
     }
@@ -56,7 +63,7 @@ nonisolated final class StoreKitEntitlementSource: StoreEntitlementSource, @unch
             let task = Task.detached { [self] in
                 for await verification in Transaction.updates {
                     remember(verification)
-                    continuation.yield(Self.map(verification))
+                    continuation.yield(await Self.entitlement(from: verification))
                 }
                 continuation.finish()
             }
@@ -69,7 +76,7 @@ nonisolated final class StoreKitEntitlementSource: StoreEntitlementSource, @unch
         switch try await product.purchase() {
         case .success(let verification):
             remember(verification)
-            return .success(Self.map(verification))
+            return .success(await Self.entitlement(from: verification))
         case .userCancelled:
             return .cancelled
         case .pending:
@@ -95,6 +102,21 @@ nonisolated final class StoreKitEntitlementSource: StoreEntitlementSource, @unch
         lock.lock()
         pending[transaction.id] = transaction
         lock.unlock()
+    }
+
+    /// Adds a subscription's renewal state: billing retry, and the grace period's end from its
+    /// renewal info, read only when that info verifies.
+    private static func entitlement(from verification: VerificationResult<Transaction>) async -> StoreEntitlement {
+        var entitlement = map(verification)
+        let transaction = verification.unsafePayloadValue
+        guard transaction.productType == .autoRenewable, let status = await transaction.subscriptionStatus else {
+            return entitlement
+        }
+        entitlement.inBillingRetry = status.state == .inBillingRetryPeriod
+        if case .verified(let renewalInfo) = status.renewalInfo {
+            entitlement.gracePeriodExpirationDate = renewalInfo.gracePeriodExpirationDate
+        }
+        return entitlement
     }
 
     private static func map(_ verification: VerificationResult<Transaction>) -> StoreEntitlement {

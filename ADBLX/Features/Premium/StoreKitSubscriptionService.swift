@@ -154,7 +154,11 @@ public actor StoreKitSubscriptionService: SubscriptionService, EntitlementServic
     /// Pure resolution rules. Paid always outranks the trial by `precedence`; an expired trial
     /// and the "continue free" choice contribute nothing here (they are `.free`). An unverified
     /// entitlement is counted for diagnostics but never granted.
-    static func resolve(entitlements: [StoreEntitlement], trialCandidate: EntitlementState) -> EntitlementSnapshot {
+    static func resolve(
+        entitlements: [StoreEntitlement],
+        trialCandidate: EntitlementState,
+        at date: Date = Date()
+    ) -> EntitlementSnapshot {
         var snapshot = EntitlementSnapshot(hasResolved: true)
         var best: EntitlementState = .free
         var bestProductID: String?
@@ -165,6 +169,11 @@ public actor StoreKitSubscriptionService: SubscriptionService, EntitlementServic
                 snapshot.verifiedCount += 1
             case .unverified(let name):
                 snapshot.unverifiedErrors.append(name)
+                continue
+            }
+            // Billing retry grants access only while a grace period lasts (16 days, paid-to-paid
+            // renewals; docs/AppStoreSetup.md). StoreKit normally drops such a subscription itself.
+            if entitlement.inBillingRetry, (entitlement.gracePeriodExpirationDate ?? .distantPast) <= date {
                 continue
             }
             let candidate = state(for: entitlement)
@@ -185,14 +194,17 @@ public actor StoreKitSubscriptionService: SubscriptionService, EntitlementServic
         return snapshot
     }
 
+    /// A subscription in its grace period has a lapsed `expirationDate`; access, and with it
+    /// `validUntil` for the web extension and tunnel, lasts until the grace period ends.
     private static func state(for entitlement: StoreEntitlement) -> EntitlementState {
+        let accessEnds = [entitlement.expirationDate, entitlement.gracePeriodExpirationDate].compactMap { $0 }.max()
         switch entitlement.productID {
         case lifetimeProductID:
             return .lifetime
         case annualProductID:
-            return .annual(expiresAt: entitlement.expirationDate ?? .distantFuture)
+            return .annual(expiresAt: accessEnds ?? .distantFuture)
         case monthlyProductID:
-            return .monthly(expiresAt: entitlement.expirationDate ?? .distantFuture)
+            return .monthly(expiresAt: accessEnds ?? .distantFuture)
         default:
             return .free
         }
