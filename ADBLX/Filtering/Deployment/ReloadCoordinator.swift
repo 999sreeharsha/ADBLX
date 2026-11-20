@@ -100,7 +100,8 @@ actor ReloadCoordinator {
 /// Guarantees a `CheckedContinuation` is resumed exactly once when two independent callback
 /// sources (the real SFContentBlockerManager callback and the timeout Task) race to resume it.
 /// A double-resume crashes at runtime, so this lock-guarded flag is load-bearing, not decor.
-private final class ResumeOnce: @unchecked Sendable {
+/// Shared with `SystemContentBlockerStateProvider`, which races its state query the same way.
+nonisolated final class ResumeOnce: @unchecked Sendable {
     private let lock = NSLock()
     private var hasResumed = false
 

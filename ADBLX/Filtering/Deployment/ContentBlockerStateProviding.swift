@@ -34,18 +34,50 @@ nonisolated protocol ContentBlockerStateProviding: Sendable {
 
 /// Production implementation querying `SFContentBlockerManager.getStateOfContentBlocker`.
 final class SystemContentBlockerStateProvider: ContentBlockerStateProviding, @unchecked Sendable {
-    nonisolated init() {}
+    /// Calls back with whether the blocker is enabled, or an error. The real one wraps
+    /// `SFContentBlockerManager`; tests pass one that never calls back.
+    typealias StateOperation = @Sendable (
+        _ extensionIdentifier: String, _ completion: @escaping @Sendable (_ isEnabled: Bool?, _ error: Error?) -> Void
+    ) -> Void
 
+    private let timeoutSeconds: Int
+    private let stateOperation: StateOperation
+
+    nonisolated init(
+        timeoutSeconds: Int = 5,
+        stateOperation: @escaping StateOperation = { identifier, completion in
+            SFContentBlockerManager.getStateOfContentBlocker(withIdentifier: identifier) { state, error in
+                completion(state?.isEnabled, error)
+            }
+        }
+    ) {
+        self.timeoutSeconds = timeoutSeconds
+        self.stateOperation = stateOperation
+    }
+
+    /// Never waits past `timeoutSeconds`: `getStateOfContentBlocker` can drop its completion
+    /// without calling it, and a timeout counts as state unknown (`.unavailable`). Same race as
+    /// `ReloadCoordinator`: an unstructured timeout Task, and `ResumeOnce` so only one side resumes.
     nonisolated func state(of extensionIdentifier: String) async -> ContentBlockerSettingsState {
-        await withCheckedContinuation { continuation in
-            SFContentBlockerManager.getStateOfContentBlocker(withIdentifier: extensionIdentifier) { state, error in
+        let timeoutSeconds = self.timeoutSeconds
+        return await withCheckedContinuation { (continuation: CheckedContinuation<ContentBlockerSettingsState, Never>) in
+            let resumeGuard = ResumeOnce()
+
+            stateOperation(extensionIdentifier) { isEnabled, error in
+                guard resumeGuard.markAndCheckFirst() else { return }
                 if let error {
                     continuation.resume(returning: .unavailable(error.localizedDescription))
-                } else if let state {
-                    continuation.resume(returning: state.isEnabled ? .enabled : .disabled)
+                } else if let isEnabled {
+                    continuation.resume(returning: isEnabled ? .enabled : .disabled)
                 } else {
                     continuation.resume(returning: .unavailable("No state returned"))
                 }
+            }
+
+            Task {
+                try? await Task.sleep(for: .seconds(timeoutSeconds))
+                guard resumeGuard.markAndCheckFirst() else { return }
+                continuation.resume(returning: .unavailable("Timed out after \(timeoutSeconds) s"))
             }
         }
     }
