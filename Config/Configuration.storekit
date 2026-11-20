@@ -1,14 +1,4 @@
 {
-  "appPolicies" : {
-    "eula" : "",
-    "policies" : [
-      {
-        "locale" : "en_US",
-        "policyText" : "",
-        "policyURL" : ""
-      }
-    ]
-  },
   "identifier" : "6E3C1B9A-0000-4000-8000-000000000001",
   "nonRenewingSubscriptions" : [
 
@@ -42,12 +32,8 @@
     "_storefront" : "USA",
     "_storeKitErrors" : [
 
-    ],
-    "_timeRate" : 0
+    ]
   },
-  "subscriptionBundleGroups" : [
-
-  ],
   "subscriptionGroups" : [
     {
       "id" : "6E3C1B9A-0000-4000-8000-000000000003",
@@ -60,15 +46,6 @@
           "adHocOffers" : [
 
           ],
-          "billingPlans" : [
-            {
-              "billingPlanType" : "BILLED_UPFRONT",
-              "commitmentDisplayPrice" : "1.99",
-              "displayPrice" : "1.99",
-              "internalID" : "AA8F37F8",
-              "isEnabled" : true
-            }
-          ],
           "codeOffers" : [
 
           ],
@@ -76,9 +53,7 @@
           "familyShareable" : false,
           "groupNumber" : 2,
           "internalID" : "6E3C1B9A-0000-4000-8000-000000000005",
-          "introductoryOffers" : [
-
-          ],
+          "introductoryOffer" : null,
           "localizations" : [
             {
               "description" : "Monthly Premium subscription",
@@ -90,23 +65,11 @@
           "recurringSubscriptionPeriod" : "P1M",
           "referenceName" : "Premium Monthly",
           "subscriptionGroupID" : "6E3C1B9A-0000-4000-8000-000000000003",
-          "type" : "RecurringSubscription",
-          "winbackOffers" : [
-
-          ]
+          "type" : "RecurringSubscription"
         },
         {
           "adHocOffers" : [
 
-          ],
-          "billingPlans" : [
-            {
-              "billingPlanType" : "BILLED_UPFRONT",
-              "commitmentDisplayPrice" : "14.99",
-              "displayPrice" : "14.99",
-              "internalID" : "CACDA0BB",
-              "isEnabled" : true
-            }
           ],
           "codeOffers" : [
 
@@ -115,9 +78,7 @@
           "familyShareable" : false,
           "groupNumber" : 1,
           "internalID" : "6E3C1B9A-0000-4000-8000-000000000004",
-          "introductoryOffers" : [
-
-          ],
+          "introductoryOffer" : null,
           "localizations" : [
             {
               "description" : "Annual Premium subscription",
@@ -129,19 +90,13 @@
           "recurringSubscriptionPeriod" : "P1Y",
           "referenceName" : "Premium Annual",
           "subscriptionGroupID" : "6E3C1B9A-0000-4000-8000-000000000003",
-          "type" : "RecurringSubscription",
-          "winbackOffers" : [
-
-          ]
+          "type" : "RecurringSubscription"
         }
       ]
     }
   ],
-  "subscriptionSuiteGroups" : [
-
-  ],
   "version" : {
-    "major" : 6,
-    "minor" : 3
+    "major" : 3,
+    "minor" : 0
   }
 }

@@ -58,15 +58,21 @@ renewal info. After that the subscription is in billing retry and grants nothing
 
 How the app handles it (`StoreKitSubscriptionService.resolve`, `BillingGracePeriodTests`):
 - **In a grace period:** entitled. Access lasts until the grace period ends, read from the
-  subscription's signed renewal info. The web extension and the tunnel honour it until then, plus
-  the usual 7 days of slack (`EntitlementState.validUntil`).
+  subscription's signed renewal info. The web extension and the tunnel stop exactly at the grace
+  end, without the usual 7 days of slack (`EntitlementState.validUntil`), so 16 days stays 16.
+- **Renewal info that doesn't verify:** no grace. Access stays what the transaction itself gives.
 - **In billing retry after the grace period, or with none:** not entitled, even if StoreKit still
   lists the transaction.
 
 Local StoreKit testing matches: `Config/Configuration.storekit` has Enable Billing Retry on Renewal
-(`_renewalBillingIssuesEnabled`) and Enable Billing Grace Period (`_billingGracePeriodEnabled`) on,
-set from Xcode's Editor menu. Change these from that menu, not by hand: Xcode's key names aren't
-the obvious ones.
+(`_renewalBillingIssuesEnabled`) and Enable Billing Grace Period (`_billingGracePeriodEnabled`) on.
+These are the key names Xcode 27 writes from its Editor menu, and it reads them as on.
+
+**Keep the file in format 3.0.** CI runs on `macos-15`, so its Xcode is a 26.x. Xcode 27 rewrites the
+file to format 6.3 and saves it as soon as the file is opened in its editor, which Xcode 26 may not
+read. `xcodebuild` runs don't rewrite it. If opening it leaves a diff, discard it
+(`git checkout Config/Configuration.storekit`) and make any setting change by hand. This goes away
+once CI moves to the `xcode-27` runner.
 
 If the length or eligibility changes in App Store Connect, update this table. The code needs no
 change, because the grace end comes from StoreKit.

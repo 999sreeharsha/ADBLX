@@ -266,13 +266,16 @@ Things to remember when touching this:
   snapshots must run inside `FilterTransactionGate.shared`.
 - Content-blocker JSON is static, so Annoyances/Regional keep blocking until
   the next launch/foreground reconcile. The web extension and tunnel enforce
-  `validUntil` themselves (subscription expiry + 7 days; trial exact) — but
+  `validUntil` themselves (subscription expiry + 7 days; trial and billing grace end exact) — but
   the tunnel's check does not look at `state`, so a `.free` record is allowed
   (SEC-13 in `docs/Security/Findings.md`).
 - Billing Grace Period is on (16 days, paid-to-paid renewals, sandbox and
   production; `docs/AppStoreSetup.md`). A subscription in its grace period is
-  entitled until the grace end from its renewal info; billing retry after it is
-  not (`BillingGracePeriodTests`). Family Sharing is still an open product
+  entitled until the grace end from its verified renewal info, and the
+  extensions stop exactly there; billing retry after it is not
+  (`BillingGracePeriodTests`). Keep `Configuration.storekit` in format 3.0:
+  Xcode 27 rewrites it to 6.3 on open, which CI's Xcode 26 may not read
+  (`docs/AppStoreSetup.md`). Family Sharing is still an open product
   decision, not code.
 
 Found in: final whole-branch review of `docs/superpowers/plans/2026-07-27-sprint-8.0-foundation-completion.md`, 2026-07-28. Promoted to a release blocker in Sprint 8.05; closed by `docs/superpowers/plans/2026-10-29-plan-state-and-downgrade.md`, 2026-10-29.
@@ -280,7 +283,7 @@ Found in: final whole-branch review of `docs/superpowers/plans/2026-07-27-sprint
 ## Trial is Keychain-only with no IAP record — App Store Guideline 3.1.1 review risk (accepted for now)
 
 The 15-day trial (`TrialManager` / `TrialKeychainStore`) has no StoreKit record
-behind it: `Configuration.storekit` has no introductory offer (`introductoryOffers: []`) on every
+behind it: `Configuration.storekit` has `introductoryOffer: null` on every
 plan, and `StoreKitSubscriptionService.refreshEntitlements()` merges the
 Keychain trial with `Transaction.currentEntitlements` by precedence. A
 Keychain-only trial may draw a Guideline 3.1.1 objection at review. This is an
