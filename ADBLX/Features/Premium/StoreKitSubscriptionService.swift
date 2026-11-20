@@ -195,16 +195,17 @@ public actor StoreKitSubscriptionService: SubscriptionService, EntitlementServic
     }
 
     /// A subscription in its grace period has a lapsed `expirationDate`; access, and with it
-    /// `validUntil` for the web extension and tunnel, lasts until the grace period ends.
+    /// `validUntil` for the web extension and tunnel, lasts until the grace period ends, exactly.
     private static func state(for entitlement: StoreEntitlement) -> EntitlementState {
-        let accessEnds = [entitlement.expirationDate, entitlement.gracePeriodExpirationDate].compactMap { $0 }.max()
+        let expiry = entitlement.expirationDate ?? .distantFuture
+        let graceEnd = entitlement.gracePeriodExpirationDate.flatMap { $0 > expiry ? $0 : nil }
         switch entitlement.productID {
         case lifetimeProductID:
             return .lifetime
         case annualProductID:
-            return .annual(expiresAt: accessEnds ?? .distantFuture)
+            return .annual(expiresAt: graceEnd ?? expiry, billingGrace: graceEnd != nil)
         case monthlyProductID:
-            return .monthly(expiresAt: accessEnds ?? .distantFuture)
+            return .monthly(expiresAt: graceEnd ?? expiry, billingGrace: graceEnd != nil)
         default:
             return .free
         }

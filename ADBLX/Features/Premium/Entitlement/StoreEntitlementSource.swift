@@ -23,6 +23,15 @@ nonisolated struct StoreEntitlement: Equatable, Sendable {
     /// StoreKit reports the subscription in billing retry: renewal failed and Apple is still
     /// trying to charge. Access continues only while a grace period lasts.
     var inBillingRetry = false
+
+    /// Adds a subscription's renewal state. The grace period's end counts only when the signed
+    /// renewal info verified; otherwise access stays what the transaction itself gives.
+    func withRenewal(inBillingRetry: Bool, gracePeriodExpirationDate: Date?, renewalVerified: Bool) -> StoreEntitlement {
+        var result = self
+        result.inBillingRetry = inBillingRetry
+        result.gracePeriodExpirationDate = renewalVerified ? gracePeriodExpirationDate : nil
+        return result
+    }
 }
 
 nonisolated enum StorePurchaseOutcome: Sendable {
@@ -107,16 +116,18 @@ nonisolated final class StoreKitEntitlementSource: StoreEntitlementSource, @unch
     /// Adds a subscription's renewal state: billing retry, and the grace period's end from its
     /// renewal info, read only when that info verifies.
     private static func entitlement(from verification: VerificationResult<Transaction>) async -> StoreEntitlement {
-        var entitlement = map(verification)
+        let entitlement = map(verification)
         let transaction = verification.unsafePayloadValue
         guard transaction.productType == .autoRenewable, let status = await transaction.subscriptionStatus else {
             return entitlement
         }
-        entitlement.inBillingRetry = status.state == .inBillingRetryPeriod
-        if case .verified(let renewalInfo) = status.renewalInfo {
-            entitlement.gracePeriodExpirationDate = renewalInfo.gracePeriodExpirationDate
-        }
-        return entitlement
+        let renewalInfo = status.renewalInfo.unsafePayloadValue
+        let renewalVerified = if case .verified = status.renewalInfo { true } else { false }
+        return entitlement.withRenewal(
+            inBillingRetry: status.state == .inBillingRetryPeriod,
+            gracePeriodExpirationDate: renewalInfo.gracePeriodExpirationDate,
+            renewalVerified: renewalVerified
+        )
     }
 
     private static func map(_ verification: VerificationResult<Transaction>) -> StoreEntitlement {

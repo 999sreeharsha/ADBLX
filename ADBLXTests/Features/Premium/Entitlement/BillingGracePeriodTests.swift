@@ -34,9 +34,41 @@ struct BillingGracePeriodTests {
         #expect(resolved.state.hasPremiumAccess)
         #expect(resolved.paidProductID == productID)
         // The web extension and the tunnel stop at validUntil. Counted from the lapsed expiry, it
-        // would cut a user in grace off after 7 of the 16 days.
+        // would cut a user in grace off after 7 of the 16 days; with the usual 7 days of slack
+        // added to the grace end, a 16-day grace would last 23 days there. It is the grace end.
         let validUntil = try #require(resolved.state.validUntil)
-        #expect(validUntil >= graceEnd)
+        #expect(validUntil == graceEnd)
+    }
+
+    @Test("unverified renewal info grants no grace: access stays what StoreKit's transaction gives")
+    func unverifiedRenewalInfoGrantsNoGrace() throws {
+        let expiry = now.addingTimeInterval(-2 * day)
+        let listed = StoreEntitlement(
+            transactionID: 9, productID: StoreKitSubscriptionService.annualProductID,
+            expirationDate: expiry, revocationDate: nil, verification: .verified
+        )
+        let mapped = listed.withRenewal(
+            inBillingRetry: false, gracePeriodExpirationDate: now.addingTimeInterval(14 * day), renewalVerified: false
+        )
+        #expect(mapped.gracePeriodExpirationDate == nil)
+
+        let resolved = StoreKitSubscriptionService.resolve(entitlements: [mapped], trialCandidate: .free, at: now)
+        #expect(resolved.state == .annual(expiresAt: expiry))
+        let validUntil = try #require(resolved.state.validUntil)
+        #expect(validUntil == expiry.addingTimeInterval(EntitlementState.subscriptionExtensionSlack))
+    }
+
+    @Test("an active subscription with unverified renewal info is unaffected")
+    func activeSubscriptionWithUnverifiedRenewalInfo() {
+        let expiry = now.addingTimeInterval(30 * day)
+        let active = StoreEntitlement(
+            transactionID: 10, productID: StoreKitSubscriptionService.monthlyProductID,
+            expirationDate: expiry, revocationDate: nil, verification: .verified
+        )
+        let mapped = active.withRenewal(inBillingRetry: false, gracePeriodExpirationDate: nil, renewalVerified: false)
+
+        let resolved = StoreKitSubscriptionService.resolve(entitlements: [mapped], trialCandidate: .free, at: now)
+        #expect(resolved.state == .monthly(expiresAt: expiry))
     }
 
     @Test("a subscription in billing retry after its grace period ended is not entitled")
