@@ -137,11 +137,12 @@ Design: `docs/Security/ManifestTrust.md`.
   test key pinned, or with a bundled manifest over 30 days old.
 - Duplicate IDs are now rejected before planning, so the `Dictionary(uniqueKeysWithValues:)`
   traps below can no longer be reached from a downloaded manifest.
+- **Signed manifest live (2026-11-21):** K1 and K2 are pinned, and the first manifest signed
+  with K1 (`manifestVersion` `2026-11-21T17:20:57Z`, SHA-256 `8017d15e…`) is deployed with its
+  signature. The bundled manifest was refreshed from it, and
+  `LiveOTAUpdateIntegrationTests` now checks the live site with the production keys.
 
 **Still open:**
-- K1 and K2 are generated and pinned (2026-11-21), but no signed manifest is live yet, so
-  production builds reject every manifest and stay on the bundled lists. Publishing the first
-  signed manifest is on the release checklist (`docs/AppStoreSetup.md`).
 - The list size cap is built (8 MB, streamed to disk, 2026-11-07; `ManifestTrust.md` Size).
   The Allocations trace on a device (last bullet below) is still to do.
 

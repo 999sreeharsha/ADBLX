@@ -167,13 +167,10 @@ struct LiveOTAUpdateIntegrationTests {
         _ = try await pipeline.installBundledSnapshotIfNeeded()
     }
 
-    // Reaches the real site and checks it with the production keys, so it can only pass once
-    // K1 and K2 are pinned and a signed manifest is deployed. Excluded until then rather than
-    // left to fail and be rerun as a flake.
-    @Test(
-        "Live CDN Remote Manifest Fetch and 304 Not Modified Caching",
-        .disabled("Needs a signed manifest on the site and both keys pinned (release checklist, docs/AppStoreSetup.md).")
-    )
+    // Reaches the real site and checks it with the production keys (pinned 2026-11-21; first
+    // signed manifest deployed the same day). A failure here with no code change means the
+    // deployed manifest or its signature is broken, or this machine is offline.
+    @Test("Live CDN Remote Manifest Fetch and 304 Not Modified Caching")
     func liveCDNRemoteManifestFetchAnd304NotModifiedCaching() async throws {
         let liveManifestURL = URL(string: "https://999sreeharsha.github.io/ADBLX/manifest.json")!
         let manifestClient = ManifestClient(

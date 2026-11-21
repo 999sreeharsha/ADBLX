@@ -14,11 +14,14 @@ struct AppCompositionRootTests {
     }
 
     // No network: a stub serves a manifest signed with the test key at the production URL.
-    // Whether the live site works is the disabled live suite's job and the release checklist's.
-    private func coordinator(trustedKeys: [P256.Signing.PublicKey]? = nil) -> UpdateCoordinator {
+    // Whether the live site works is LiveOTAUpdateIntegrationTests' job.
+    // The production verifier's floor is the bundled manifest's version, which moves with every
+    // refresh, so the stub serves exactly that version (accepted: the floor is inclusive).
+    private func coordinator(trustedKeys: [P256.Signing.PublicKey]? = nil) throws -> UpdateCoordinator {
         let store = FilterStore.temporary()
         let endpoint = AppManifestEndpointProvider().manifestURL
-        let manifest = FilterManifest(manifestVersion: SignedManifests.version, entries: [])
+        let version = try #require(BundledManifest.load()).manifestVersion
+        let manifest = FilterManifest(manifestVersion: version, entries: [])
         let session = SigningSession(MockHTTPSession(responses: [
             endpoint: .success((try! JSONEncoder().encode(manifest), HTTPURLResponse(
                 url: endpoint, statusCode: 200, httpVersion: nil, headerFields: nil

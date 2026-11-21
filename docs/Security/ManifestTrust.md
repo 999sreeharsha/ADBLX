@@ -1,8 +1,8 @@
 # Manifest Trust
 
 How the app decides that a `manifest.json` came from us and is safe to act on. This is the
-design for SEC-09 (`docs/Security/Findings.md`). The Publisher side of signing is built; the
-app side is not yet.
+design for SEC-09 (`docs/Security/Findings.md`). Both sides are built, K1 and K2 are pinned,
+and the site serves a signed manifest (2026-11-21).
 
 ## Why
 
@@ -306,7 +306,8 @@ manifest replaces it.
    are unchanged, including a fresh install served an old, validly signed manifest. **Done**
    (plan `docs/superpowers/plans/2026-11-06-ios-manifest-verification.md`). Still open: the
    list download cap and streaming to disk (SEC-09 size cap; see Size).
-5. Sign and deploy the first signed manifest **before** the first TestFlight upload. Nothing has
+5. Sign and deploy the first signed manifest **before** the first TestFlight upload. **Done**
+   (2026-11-21, `manifestVersion` `2026-11-21T17:20:57Z`). Nothing has
    shipped, so there is no unsigned transition: every build requires a signature from the
    first release on. An app that requires a signature, reading a site that has none, can never
    update, so "signed manifest live on the site" is on the release checklist
