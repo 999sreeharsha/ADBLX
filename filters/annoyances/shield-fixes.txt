@@ -1,0 +1,5 @@
+! Title: SHIELD proprietary fixes (Annoyances)
+! Maintained by ADBLX. Internal list: not an upstream mirror, never overwritten by a sync.
+! Add one rule per verified gap, with a comment naming the site it was found on.
+! Cookiebot consent dialog (found on cookiebot.com, 2026-11-03; classic dialog in the page DOM, no shadow root)
+###CybotCookiebotDialog

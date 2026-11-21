@@ -1,5 +1,5 @@
 {
-  "manifestVersion": "2026-08-18",
+  "manifestVersion": "2026-11-21T17:20:57Z",
   "entries": [
     {
       "id": "easylist",
@@ -31,6 +31,17 @@
       "version": "2026-08-18",
       "checksumSHA256": "5618053c2e6027fabdd178a2c7dd1b2f3eb0eced314f5391cececffc31248e1e",
       "ruleCount": 48962,
+      "enabledByDefault": false,
+      "premium": true
+    },
+    {
+      "id": "shield-fixes",
+      "name": "SHIELD Fixes",
+      "group": "annoyances",
+      "sourceURL": "https://999sreeharsha.github.io/ADBLX/filters/annoyances/shield-fixes.txt",
+      "version": "2026-11-05",
+      "checksumSHA256": "86aeb0981e791bf225c2842b6ac7235e4aa3a0049ff8ac34746e4dc59819b447",
+      "ruleCount": 1,
       "enabledByDefault": false,
       "premium": true
     }
