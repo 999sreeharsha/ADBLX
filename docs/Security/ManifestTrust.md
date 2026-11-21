@@ -298,8 +298,8 @@ manifest replaces it.
    timestamp, and the ID-pattern check in `Validator`. **Done.**
 3. Generate K1 (`keygen --secure-enclave`) and K2 (a key file, written to offline storage)
    together, and record both public keys in `ManifestTrust.productionPublicKeys`. The
-   algorithm is settled: P-256. **On the critical path:** the archive check fails every
-   Release archive, for any feature, until both are pinned and a signed manifest is live.
+   algorithm is settled: P-256. **Done** (pinned 2026-11-21). The archive check fails a
+   Release archive without both keys or with a bundled manifest over 30 days old.
 4. App: signature fetch and verification, the rollback rule (cached version and built-in
    minimum), ID, duplicate, group and `sourceURL` rules, the manifest cap, soft failure and
    redirects, each with a test that the whole manifest is rejected and the installed rules

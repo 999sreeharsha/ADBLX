@@ -8,7 +8,7 @@ import UIKit
 // download and the processing task's compile take on a phone, inside a real background task.
 // DEBUG only. It downloads into the download client's scratch folder and compiles into a scratch
 // store, so nothing installed changes; the manifest is decoded without verification for the same
-// reason (and because no keys are pinned yet). Task 6 replaces these handlers with the real ones.
+// reason (and because no keys were pinned when it was written). Task 6 replaces these handlers with the real ones.
 
 /// The conditions a run was measured under. Each one changes how much CPU and network time iOS
 /// gives background work.

@@ -310,7 +310,7 @@ finally:    FilterDownloadClient.cleanupWorkspace()      [every exit path]
 ```
 
 - **ETag / `If-None-Match` / 304** caching in `ManifestClient`. `HTTPSession` protocol seam → `MockHTTPSession` for tests (only the disabled live suite hits a real endpoint). Test manifests are signed with a test key through `SignedManifests` (`ADBLXTests/Filtering/Updates/`).
-- **Manifest signatures (SEC-09):** `ManifestVerifier` with the keys and allowed base in `ManifestTrust`, and the built-in minimum from `BundledManifest`. See `docs/Security/ManifestTrust.md`. Until K1 and K2 are pinned, every manifest is rejected and the app stays on its bundled lists.
+- **Manifest signatures (SEC-09):** `ManifestVerifier` with the keys and allowed base in `ManifestTrust`, and the built-in minimum from `BundledManifest`. See `docs/Security/ManifestTrust.md`. K1 and K2 are pinned; until a signed manifest is live, every manifest is rejected and the app stays on its bundled lists.
 - **`RedirectGuard`** is the delegate of the app's one `URLSession`: no redirect off the original host or off HTTPS.
 - `UpdatePlanner` emits `.install(group:entries:)` / `.keep` / `.remove(filterID:)` / `.skipPremium(entry)`.
 - **`UpdateThrottle`** (an `actor`, `update_throttle.json`, 6h interval) is the scheduling policy, deliberately kept outside the transactional actor; `AutomaticUpdate.runIfDue` applies it at launch. It records on success and on a rejected manifest; any other failure stays retryable next launch.

@@ -18,11 +18,12 @@ struct ManifestTrustTests {
     }
 
     // A visible reminder. Scripts/check-manifest-trust.sh is what stops an archive without them.
-    @Test(
-        "Both production keys, K1 and K2, are pinned",
-        .disabled("Enable once the owner pins K1 and K2 (release checklist, docs/AppStoreSetup.md).")
-    )
+    @Test("Both production keys, K1 and K2, are pinned")
     func bothProductionKeysArePinned() {
         #expect(Set(ManifestTrust.productionPublicKeys).count == 2)
+        #expect(ManifestTrust.productionPublicKeys == [
+            "qxqESy6v3djL4Nh8RYL+Y0sb8Htav7t0kLd1e+C6pN0DldrCptoEi5VjZA6HhXujqP/KVNsFSFwJ6VeADEOUFw==",
+            "2PiVSmbkdA10tLgpXdNJx6IQw+0qlSKFm2rOLRFxbSQXZY3QA/oSkTMKgbW9raXuy3PzFF4wwSYKmowpUdSn8A==",
+        ])
     }
 }

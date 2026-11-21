@@ -701,7 +701,8 @@ Found in: iOS manifest verification, Task 3, 2026-11-07
 `ManifestClient` returns a manifest only once `ManifestVerifier` accepts it
 (`docs/Security/ManifestTrust.md`). Three things follow:
 
-- **Until K1 and K2 are pinned, updates never install anything.** Every manifest is rejected
+- **Until a manifest signed with K1 or K2 is live, updates never install anything.** Both keys
+  are pinned (2026-11-21), but the site's manifest is unsigned, so every manifest is rejected
   on its signature and the app stays on its bundled lists. The sheet shows the ordinary
   "Unable to check for updates" text and nothing else says why. The DEBUG Developer screen's
   "Manifest rejections" row and the `manifest rejected reason=<case>` log line do.

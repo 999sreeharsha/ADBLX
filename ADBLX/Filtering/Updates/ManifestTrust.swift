@@ -4,10 +4,11 @@ import Foundation
 /// What the app trusts a filter manifest from. See docs/Security/ManifestTrust.md.
 nonisolated enum ManifestTrust {
     /// K1 (Secure Enclave) and K2 (offline file), base64 raw P-256, as `publisher keygen` prints
-    /// them. Empty until the owner generates the keys; until then every manifest is rejected and
-    /// the app stays on its bundled lists. Keep one quoted key per line:
+    /// them. Pinned 2026-11-21. Keep one quoted key per line:
     /// `Scripts/check-manifest-trust.sh` reads this list and fails an archive without both.
     static let productionPublicKeys: [String] = [
+        "qxqESy6v3djL4Nh8RYL+Y0sb8Htav7t0kLd1e+C6pN0DldrCptoEi5VjZA6HhXujqP/KVNsFSFwJ6VeADEOUFw==", // K1
+        "2PiVSmbkdA10tLgpXdNJx6IQw+0qlSKFm2rOLRFxbSQXZY3QA/oSkTMKgbW9raXuy3PzFF4wwSYKmowpUdSn8A==", // K2
     ]
 
     /// Moving the site means adding the new base in a release *before* the move.
