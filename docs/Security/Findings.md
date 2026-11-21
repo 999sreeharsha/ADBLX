@@ -263,8 +263,11 @@ These can't be reached in a release while DNS Protection stays off (see the open
 - **Gap scans (2026-11-08, one area at a time; progress in `ScanProgress.md`):** `.github/` and `backend/` outside the Publisher: no findings. `Features/Protection`: no findings. `Features/Home` and `Features/Onboarding`: one LOW, which is SEC-16 again. No new findings.
 - **Filtering rescan (2026-11-18):** `Filtering/Updates`, `Pipeline`, `Storage` and `Deployment`:
   no findings. Two candidates were rejected (see "Rejected by the panel" below).
-  `Filtering/Entitlement`, `Models` and `Utilities` are still only partly covered, and the
-  background-updates staging code waits for that branch to merge.
+  `Filtering/Entitlement`, `Models` and `Utilities` are still only partly covered.
+- **Background-updates staging (2026-11-22, Area 5):** the 11 production files
+  `feat/background-updates` added or changed, on `dev` at `f247093`
+  (`CLAUDE-SECURITY-20261121-211539`, verified, 6/6 researchers returned): no findings. Two LOW
+  candidates were rejected 3 to 0 (see "Rejected by the panel" below).
 
 ## Rejected by the panel, but real behaviour (for review)
 
@@ -287,6 +290,25 @@ as bugs to decide on, not security findings.
   Only DNS builds reach it (`ADBLXApp.swift:127`, behind `BuildFeatures.dnsProtection`), so it is
   Debug-only today. Add the cap before DNS ships, alongside the never-block items in
   `docs/gotchas.md`.
+
+The 2026-11-22 scan of the background-updates staging code (Area 5) raised two LOW candidates,
+both rejected 3 to 0. One is worth deciding on:
+
+- **A list that a later manifest marks premium stays installed for a non-entitled user.
+  Open, for review.** The downgrade in `PremiumEntitlementReconciler` removes only records whose
+  stored flag is `premium == true` (`PremiumEntitlementReconciler.swift:193`). It re-resolves
+  the flag only when it is `nil` (`:234`), so a list installed while it was free keeps
+  `premium == false`. When a later signed manifest marks the same ID premium, `UpdatePlanner`
+  sends it to `.skipPremium` (`UpdatePlan.swift:46-48`). The ID stays in the manifest, so it is
+  never removed either (`UpdatePlan.swift:74`). A free, trial-expired or lapsed user keeps the
+  old copy of that list until a reinstall. Only a manifest signed with K1 or K2 can trigger it,
+  so it is a product question for whenever a list moves from free to premium, not an attack.
+  A candidate fix is to refresh `premium` from the cached manifest on every reconcile, not only
+  for `nil`, with a test written failing first. No list has moved tier so far.
+- **(Not kept) The DEBUG timing spike puts an unverified manifest ID into a temp-file name**
+  (`BackgroundTiming.swift`). It is compiled only into Debug builds, a developer has to start
+  it, and the name always ends in a fresh UUID, so nothing can be overwritten. Task 6 of the
+  background-updates plan replaces these handlers.
 
 ## Closed or corrected
 
