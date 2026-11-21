@@ -169,8 +169,12 @@ struct LiveOTAUpdateIntegrationTests {
 
     // Reaches the real site and checks it with the production keys (pinned 2026-11-21; first
     // signed manifest deployed the same day). A failure here with no code change means the
-    // deployed manifest or its signature is broken, or this machine is offline.
-    @Test("Live CDN Remote Manifest Fetch and 304 Not Modified Caching")
+    // deployed manifest or its signature is broken, or this machine is offline. On demand only
+    // (LiveNetwork), and on the release checklist before every archive.
+    @Test(
+        "Live CDN Remote Manifest Fetch and 304 Not Modified Caching",
+        .enabled(if: LiveNetwork.isEnabled, Comment(rawValue: LiveNetwork.skipMessage))
+    )
     func liveCDNRemoteManifestFetchAnd304NotModifiedCaching() async throws {
         let liveManifestURL = URL(string: "https://999sreeharsha.github.io/ADBLX/manifest.json")!
         let manifestClient = ManifestClient(

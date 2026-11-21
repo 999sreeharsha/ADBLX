@@ -110,6 +110,15 @@ Every archive also fails, without CI, if the app has DNS Protection in it, an ex
 differs from the app's, a background mode or task identifier is missing, or the DEBUG timing spike
 is in the binary (the "Check Release Build" phase, `Scripts/check-archive-release.sh`).
 
+Before every archive (TestFlight or App Store):
+
+- [ ] **Run the live-network tests.** They are skipped in the default run and CI because they depend on
+  this Mac's network: the live filter site (signature with the pinned keys, 304 caching, a list
+  checksum) and a real Quad9 query.
+  `TEST_RUNNER_ADBLX_LIVE_NETWORK=1 xcodebuild test -project ADBLX.xcodeproj -scheme ADBLX -destination "platform=iOS Simulator,id=<UDID>" -only-testing:ADBLXTests/LiveOTAUpdateIntegrationTests -only-testing:ADBLXTests/DNSRealQuad9ResolutionTests`.
+  A live-site failure with no code change means the deployed manifest or signature is broken; fix
+  the site before archiving.
+
 Before each App Store submission:
 
 - [ ] **Report recipient** set to the product-domain alias (see Broken Site Reports). An archive fails until it is.

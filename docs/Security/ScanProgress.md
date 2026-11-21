@@ -33,7 +33,7 @@ gets the full set of category lenses instead of a single researcher.
 
 Area 4 is done.
 
-## Area 5: background-updates staging code (next; waiting on the owner's go-ahead)
+## Area 5: background-updates staging code (approved and started 2026-11-22, on `dev`)
 
 `feat/background-updates` merged into `dev` on 2026-11-20 (`53c59b6`). Its staging code was
 never in a scan's scope. Don't start until the owner says go. Run it on `dev` (or a short-lived
@@ -41,7 +41,7 @@ branch from it), with the same effort and panel as above.
 
 | # | Part | Scope | Status | Report | Findings |
 |---|---|---|---|---|---|
-| 5 | Background updates | What `feat/background-updates` added or changed in production code: `ADBLX/Filtering/Updates/BackgroundTaskIdentifiers.swift`, `ADBLX/Filtering/Updates/UpdateCoordinator.swift`, `ADBLX/Filtering/Storage/FilterStore.swift`, `ADBLX/Filtering/Storage/LaunchRecovery.swift`, `ADBLX/Filtering/Pipeline/FilterPipeline.swift`, `ADBLX/Filtering/Deployment/PendingReloads.swift`, `ADBLX/Filtering/Entitlement/PremiumEntitlementReconciler.swift`, `ADBLX/LaunchSequence.swift`, `ADBLX/ADBLXApp.swift`, `ADBLX/Features/Settings/Developer/BackgroundTiming.swift` and `DeveloperDiagnosticsView.swift` (DEBUG only) | Waiting on go-ahead | | |
+| 5 | Background updates | What `feat/background-updates` added or changed in production code: `ADBLX/Filtering/Updates/BackgroundTaskIdentifiers.swift`, `ADBLX/Filtering/Updates/UpdateCoordinator.swift`, `ADBLX/Filtering/Storage/FilterStore.swift`, `ADBLX/Filtering/Storage/LaunchRecovery.swift`, `ADBLX/Filtering/Pipeline/FilterPipeline.swift`, `ADBLX/Filtering/Deployment/PendingReloads.swift`, `ADBLX/Filtering/Entitlement/PremiumEntitlementReconciler.swift`, `ADBLX/LaunchSequence.swift`, `ADBLX/ADBLXApp.swift`, `ADBLX/Features/Settings/Developer/BackgroundTiming.swift` and `DeveloperDiagnosticsView.swift` (DEBUG only) | Started 2026-11-22 | | |
 
 Not covered here:
 - **`Filtering/Entitlement`, `Models` and `Utilities`:** also only partly covered by the first

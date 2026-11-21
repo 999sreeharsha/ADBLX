@@ -600,7 +600,9 @@ in the DNS session's area).
 fails whenever this machine's network loses the UDP query (once on 2026-11-20). It is on demand
 only, skipped in the default run and CI: run it before a device test with
 `TEST_RUNNER_ADBLX_LIVE_NETWORK=1 xcodebuild test … -only-testing:ADBLXTests/DNSRealQuad9ResolutionTests`
-(the `LiveNetwork` gate in `ADBLXTests/TestIsolation.swift`).
+(the `LiveNetwork` gate in `ADBLXTests/TestIsolation.swift`). The live filter-site test in
+`LiveOTAUpdateIntegrationTests` is behind the same gate (2026-11-22). Both are on the release
+checklist before every archive (`docs/AppStoreSetup.md`), since nothing else runs them.
 
 Found in: review of the `Transaction.updates` test fix, 2026-11-06; fixed 2026-11-07
 
