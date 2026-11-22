@@ -16,6 +16,8 @@ enum FilterCategoryID: String, CaseIterable, Equatable, Codable, Sendable {
 
 /// Master protection state across all participating content blockers.
 enum SafariProtectionState: Equatable, Sendable {
+    /// A participating blocker's Settings check hasn't returned yet.
+    case checking
     case active
     case partiallyActive
     case disabledInSettings
@@ -25,6 +27,8 @@ enum SafariProtectionState: Equatable, Sendable {
 
 /// Derived operational status for an individual category.
 enum ProtectionCategoryStatus: Equatable, Sendable {
+    /// The blocker's Settings check hasn't returned yet.
+    case checking
     case active
     case disabledByUser
     case disabledInSettings
@@ -40,7 +44,8 @@ struct ProtectionCategory: Equatable, Identifiable, Sendable {
         get { isEnabled }
         set { isEnabled = newValue }
     }
-    var extensionSettingsState: ContentBlockerSettingsState
+    /// The blocker's state in iOS Settings, or nil while its check is in progress.
+    var extensionSettingsState: ContentBlockerSettingsState?
     let ruleCount: Int
     let participatesInProtectionStatus: Bool
 
@@ -50,7 +55,7 @@ struct ProtectionCategory: Equatable, Identifiable, Sendable {
         description: String,
         isEnabled: Bool,
         ruleCount: Int,
-        extensionSettingsState: ContentBlockerSettingsState = .enabled,
+        extensionSettingsState: ContentBlockerSettingsState? = .enabled,
         participatesInProtectionStatus: Bool = true
     ) {
         self.id = id
@@ -62,10 +67,13 @@ struct ProtectionCategory: Equatable, Identifiable, Sendable {
         self.participatesInProtectionStatus = participatesInProtectionStatus
     }
 
+    /// While the blocker's check is in progress this is the user's choice, so the toggle doesn't
+    /// flick off and back on.
     var isEffectivelyActive: Bool {
         guard participatesInProtectionStatus else {
             return isEnabled
         }
+        guard let extensionSettingsState else { return isEnabled }
         return isEnabled && extensionSettingsState == .enabled
     }
 
@@ -77,12 +85,14 @@ struct ProtectionCategory: Equatable, Identifiable, Sendable {
             return .disabledByUser
         }
         switch extensionSettingsState {
-        case .enabled:
+        case .enabled?:
             return .active
-        case .disabled:
+        case .disabled?:
             return .disabledInSettings
-        case .unavailable:
+        case .unavailable?:
             return .unavailable
+        case nil:
+            return .checking
         }
     }
 }
@@ -148,68 +158,21 @@ struct ProtectionStatus: Equatable, Sendable {
 /// What Safari Protection and Advanced Filter Lists need from the backend.
 /// A later sprint's real implementation translates FilterPipeline/FilterManifest
 /// state into these screen-shaped types.
-nonisolated protocol ProtectionService: Sendable {
-    func fetchStatus() async -> ProtectionStatus
-    func setCategory(_ id: FilterCategoryID, enabled: Bool) async
-    func setFilterList(_ id: String, enabled: Bool) async
+/// One blocker's Settings state, as its check returns.
+nonisolated struct CategorySettingsState: Equatable, Sendable {
+    let category: FilterCategoryID
+    let state: ContentBlockerSettingsState
 }
 
-actor MockProtectionService: ProtectionService {
-    private var status = ProtectionStatus(
-        masterState: .active,
-        categories: [
-            ProtectionCategory(
-                id: .ads, name: "Ads", description: "Blocks display and video ads",
-                isEnabled: true, ruleCount: 62_000,
-                extensionSettingsState: .enabled, participatesInProtectionStatus: true
-            ),
-            ProtectionCategory(
-                id: .privacy, name: "Privacy", description: "Blocks trackers and analytics scripts",
-                isEnabled: true, ruleCount: 48_500,
-                extensionSettingsState: .enabled, participatesInProtectionStatus: true
-            ),
-            ProtectionCategory(
-                id: .annoyances, name: "Annoyances", description: "Hides cookie banners and popups",
-                isEnabled: false, ruleCount: 21_000,
-                extensionSettingsState: .enabled, participatesInProtectionStatus: true
-            ),
-            ProtectionCategory(
-                id: .regional, name: "Regional", description: "Extra rules for regional ad networks",
-                isEnabled: false, ruleCount: 10_542,
-                extensionSettingsState: .enabled, participatesInProtectionStatus: true
-            )
-        ],
-        filterLists: [
-            FilterListEntry(
-                id: "easylist", name: "EasyList", category: .ads, version: "2026-07-15",
-                isEnabled: true, isPremium: false
-            ),
-            FilterListEntry(
-                id: "easyprivacy", name: "EasyPrivacy", category: .privacy, version: "2026-07-15",
-                isEnabled: true, isPremium: false
-            ),
-            FilterListEntry(
-                id: "fanboy-annoyances", name: "Fanboy's Annoyances", category: .annoyances, version: "2026-07-10",
-                isEnabled: false, isPremium: true
-            ),
-            FilterListEntry(
-                id: "regional-in", name: "Regional: India", category: .regional, version: "2026-07-01",
-                isEnabled: false, isPremium: true
-            )
-        ]
-    )
-
-    func fetchStatus() async -> ProtectionStatus { status }
-
-    func setCategory(_ id: FilterCategoryID, enabled: Bool) async {
-        guard let index = status.categories.firstIndex(where: { $0.id == id }) else { return }
-        status.categories[index].isEnabled = enabled
-    }
-
-    func setFilterList(_ id: String, enabled: Bool) async {
-        guard let index = status.filterLists.firstIndex(where: { $0.id == id }) else { return }
-        status.filterLists[index].isEnabled = enabled
-    }
+nonisolated protocol ProtectionService: Sendable {
+    /// Categories, preferences and installed lists, without waiting for any blocker's Settings
+    /// check: each participating category's `extensionSettingsState` is nil (checking).
+    func fetchStatusBeforeChecks() async -> ProtectionStatus
+    /// Each participating blocker's Settings state, in the order the checks return. Finishes
+    /// after the last one.
+    func extensionSettingsStates() -> AsyncStream<CategorySettingsState>
+    func setCategory(_ id: FilterCategoryID, enabled: Bool) async
+    func setFilterList(_ id: String, enabled: Bool) async
 }
 
 /// Real ProtectionService, backing both Safari Protection and Advanced Filter Lists
@@ -262,7 +225,33 @@ actor RealProtectionService: ProtectionService {
         self.descriptors = descriptors
     }
 
-    func fetchStatus() async -> ProtectionStatus {
+    /// Every participating blocker is checked at once; the gate puts the calls in line, and each
+    /// state is reported as soon as its own check returns.
+    nonisolated func extensionSettingsStates() -> AsyncStream<CategorySettingsState> {
+        let stateProvider = self.stateProvider
+        let checks = descriptors
+        return AsyncStream { continuation in
+            let task = Task {
+                await withTaskGroup(of: CategorySettingsState.self) { group in
+                    for descriptor in checks {
+                        group.addTask {
+                            CategorySettingsState(
+                                category: descriptor.category,
+                                state: await stateProvider.state(of: descriptor.extensionIdentifier)
+                            )
+                        }
+                    }
+                    for await update in group {
+                        continuation.yield(update)
+                    }
+                }
+                continuation.finish()
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
+
+    func fetchStatusBeforeChecks() async -> ProtectionStatus {
         let preferences = await preferencesStore.load()
         let filters = (try? await loadInstalledFilters()) ?? []
         let filtersByGroup = Dictionary(grouping: filters, by: \.group)
@@ -275,12 +264,9 @@ actor RealProtectionService: ProtectionService {
             let uniqueRuleCount = groupFilters.first?.ruleCount ?? 0
             let descriptor = descriptorMap[categoryID]
 
-            let settingsState: ContentBlockerSettingsState
-            if let descriptor {
-                settingsState = await stateProvider.state(of: descriptor.extensionIdentifier)
-            } else {
-                settingsState = .enabled
-            }
+            // Checked separately (`extensionSettingsStates()`); nil shows as checking until then.
+            let settingsState: ContentBlockerSettingsState?
+            if case .some = descriptor { settingsState = nil } else { settingsState = .enabled }
 
             let category = ProtectionCategory(
                 id: categoryID,
@@ -319,7 +305,10 @@ actor RealProtectionService: ProtectionService {
             return .disabledByUser
         }
 
-        let states = activeParticipants.map(\.extensionSettingsState)
+        guard activeParticipants.allSatisfy({ $0.extensionSettingsState != nil }) else {
+            return .checking
+        }
+        let states = activeParticipants.compactMap(\.extensionSettingsState)
         if states.contains(where: { if case .unavailable = $0 { return true } else { return false } }) {
             return .unavailable
         }

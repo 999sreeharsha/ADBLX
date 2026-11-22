@@ -80,6 +80,8 @@ struct SafariProtectionView: View {
 
     private var masterBadgeLabel: LocalizedStringKey {
         switch viewModel.status?.masterState {
+        case .checking:
+            return "protection.safari.badge.checking"
         case .active:
             return "protection.safari.badge.active"
         case .partiallyActive:
@@ -103,7 +105,7 @@ struct SafariProtectionView: View {
             return Color.orange
         case .disabledByUser:
             return DesignColors.onSurfaceVariant
-        case .unavailable, .none:
+        case .checking, .unavailable, .none:
             return DesignColors.outline
         }
     }
@@ -165,6 +167,14 @@ struct SafariProtectionView: View {
                     .foregroundStyle(category.isEffectivelyActive ? DesignColors.onSurface : DesignColors.onSurfaceVariant)
 
                 switch category.status {
+                case .checking:
+                    HStack(spacing: 4) {
+                        ProgressView()
+                            .controlSize(.mini)
+                        Text("protection.category.status.checking")
+                            .font(DesignTypography.labelCaps)
+                    }
+                    .foregroundStyle(DesignColors.onSurfaceVariant)
                 case .disabledInSettings:
                     HStack(spacing: 4) {
                         Image(systemName: "exclamationmark.triangle.fill")

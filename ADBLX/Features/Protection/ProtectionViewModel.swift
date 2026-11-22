@@ -13,7 +13,6 @@ final class ProtectionViewModel {
     private let service: ProtectionService
 
     var status: ProtectionStatus?
-    var isLoading = false
 
     var pendingSettingsCategory: ProtectionCategory?
     var showSettingsPrompt = false
@@ -34,19 +33,31 @@ final class ProtectionViewModel {
             return await existing.value
         }
 
-        if status == nil {
-            isLoading = true
-        }
-
-        let task = Task { [service] in
-            await service.fetchStatus()
-        }
+        let task = Task { await self.loadStatus() }
         inFlightRefreshTask = task
         let newStatus = await task.value
         inFlightRefreshTask = nil
-        self.status = newStatus
-        self.isLoading = false
         return newStatus
+    }
+
+    /// Shows the categories at once and fills in each blocker's Settings state as its own check
+    /// returns: checks wait their turn in `ContentBlockerCallGate`, so they can take a while.
+    /// On a refresh, a blocker keeps its last known state until its new check returns.
+    private func loadStatus() async -> ProtectionStatus {
+        let checks = service.extensionSettingsStates()
+        var current = await service.fetchStatusBeforeChecks()
+        if let previous = status {
+            for category in current.categories where category.extensionSettingsState == nil {
+                let known = previous.categories.first { $0.id == category.id }?.extensionSettingsState
+                current = current.settingExtensionState(known, for: category.id)
+            }
+        }
+        status = current
+        for await update in checks {
+            // Applied to whatever is shown now, so a toggle made meanwhile is kept.
+            status = status?.settingExtensionState(update.state, for: update.category)
+        }
+        return status ?? current
     }
 
     func toggleCategory(_ id: FilterCategoryID) async {
@@ -73,7 +84,8 @@ final class ProtectionViewModel {
         )
 
         let updatedCategory = currentStatus.categories[index]
-        let isBlockedInSettings = updatedCategory.extensionSettingsState != .enabled
+        // Unknown while its check is in progress: no prompt until the check says it's off.
+        let isBlockedInSettings = updatedCategory.extensionSettingsState.map { $0 != .enabled } ?? false
         if willBeActive && updatedCategory.participatesInProtectionStatus && isBlockedInSettings {
             self.pendingSettingsCategory = updatedCategory
             self.showSettingsPrompt = true

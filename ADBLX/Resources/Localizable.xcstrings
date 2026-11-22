@@ -1777,6 +1777,16 @@
         }
       }
     },
+    "protection.category.status.checking" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Checking…"
+          }
+        }
+      }
+    },
     "protection.category.status.disabledInSettings" : {
       "localizations" : {
         "en" : {
@@ -1915,6 +1925,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ACTIVE PROTECTION"
+          }
+        }
+      }
+    },
+    "protection.safari.badge.checking" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CHECKING…"
           }
         }
       }

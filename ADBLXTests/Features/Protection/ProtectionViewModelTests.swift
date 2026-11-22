@@ -122,7 +122,8 @@ private actor StubProtectionService {
         self.statusToReturn = statusToReturn
     }
 
-    func fetchStatus() async -> ProtectionStatus { statusToReturn }
+    func fetchStatusBeforeChecks() async -> ProtectionStatus { statusToReturn }
+    nonisolated func extensionSettingsStates() -> AsyncStream<CategorySettingsState> { AsyncStream { $0.finish() } }
 
     func setCategory(_ id: FilterCategoryID, enabled: Bool) async {
         lastSetCall = (id, enabled)
@@ -141,7 +142,9 @@ private actor SlowStubProtectionService {
         self.statusToReturn = statusToReturn
     }
 
-    func fetchStatus() async -> ProtectionStatus {
+    nonisolated func extensionSettingsStates() -> AsyncStream<CategorySettingsState> { AsyncStream { $0.finish() } }
+
+    func fetchStatusBeforeChecks() async -> ProtectionStatus {
         fetchCount += 1
         try? await Task.sleep(for: .milliseconds(50))
         return statusToReturn
@@ -192,7 +195,8 @@ struct ProtectionViewModelFilterListTests {
 
 private struct StubFilterListService {
     let statusToReturn: ProtectionStatus
-    func fetchStatus() async -> ProtectionStatus { statusToReturn }
+    func fetchStatusBeforeChecks() async -> ProtectionStatus { statusToReturn }
+    nonisolated func extensionSettingsStates() -> AsyncStream<CategorySettingsState> { AsyncStream { $0.finish() } }
     func setCategory(_ id: FilterCategoryID, enabled: Bool) async {}
     func setFilterList(_ id: String, enabled: Bool) async {}
 }
