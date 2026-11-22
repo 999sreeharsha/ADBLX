@@ -16,6 +16,8 @@ final class HomePlanCardViewModel {
     @ObservationIgnored private let subscriptionService: SubscriptionService
     @ObservationIgnored private let dnsAvailable: Bool
     @ObservationIgnored private let now: @Sendable () -> Date
+    /// Bumped by every refresh and dismissal, so details that arrive after a newer one are dropped.
+    @ObservationIgnored private var generation = 0
 
     init(
         dismissalStore: PlanCardDismissalStoring = UserDefaultsPlanCardDismissalStore(),
@@ -33,7 +35,11 @@ final class HomePlanCardViewModel {
         self.now = now
     }
 
+    /// The card shows at once. Its breakdown (which waits for blocker checks in
+    /// `ContentBlockerCallGate`) and prices (from the store) fill in when they arrive.
     func refresh(plan: PlanState, isResolved: Bool) async {
+        generation += 1
+        let current = generation
         var dismissals = dismissalStore.load()
         let result = dismissals.presentation(for: plan, isResolved: isResolved, now: now())
         // Evaluating may have used up a re-expansion, so keep what changed.
@@ -44,16 +50,27 @@ final class HomePlanCardViewModel {
             breakdown = nil
             return
         }
+        // A different card drops the old breakdown; the same card keeps it until the new one arrives.
+        if presentation != result { breakdown = nil }
+        presentation = result
+
         async let safariEnabled = isSafariProtectionEnabled()
         async let status = subscriptionService.fetchStatus()
-        let (enabled, fetched) = await (safariEnabled, status)
-        breakdown = ProtectionBreakdown.make(plan: plan, safariProtectionEnabled: enabled, dnsAvailable: dnsAvailable)
-        prices = PlanPrices(plans: fetched.plans)
-        presentation = result
+        let enabled = await safariEnabled
+        if current == generation {
+            breakdown = ProtectionBreakdown.make(
+                plan: plan, safariProtectionEnabled: enabled, dnsAvailable: dnsAvailable
+            )
+        }
+        let fetched = await status
+        if current == generation {
+            prices = PlanPrices(plans: fetched.plans)
+        }
     }
 
     /// "Later" on the trial card, or the dismiss control on the protection card.
     func dismiss(plan: PlanState) {
+        generation += 1
         var dismissals = dismissalStore.load()
         switch plan {
         case .trial: dismissals.trialEnding.dismiss(at: now())
