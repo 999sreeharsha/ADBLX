@@ -557,6 +557,14 @@ while (more launch work then, so more overlap) and not on the next one.
   lock isn't enough: the race is process-wide.
 - Callers queue now. If the manager drops a completion, everyone behind it waits up to that call's
   timeout (5 s for a state check, 10 s for a reload).
+- So a screen must never wait for a blocker check before it shows its content. The Protection tab
+  shows its categories at once, marks each blocker `.checking` ("Checking…") and fills it in as
+  its own check returns (`ProtectionService.extensionSettingsStates()`). A refresh keeps the last
+  known state until the new check returns, and a category turned on while checking gets the
+  enable-in-Settings prompt once its check says it's off. The Home plan card shows at once; its
+  breakdown and prices fill in after, and late ones from an older refresh are dropped. Follow the
+  same pattern on any new screen that shows blocker state (`ProtectionCheckingStateTests`,
+  `HomePlanCardLoadingTests`).
 
 Found in: device crash log `ADBLX-2026-11-22-115708.ips`, 2026-11-22
 
