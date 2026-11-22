@@ -1,6 +1,9 @@
 name: ADBLX
 options:
   autogenerateSchemes: false
+  # CI installs exactly this version (.github/workflows/ci.yml); another one can generate a
+  # different project and fail CI's drift check. Raise both together.
+  minimumXcodeGenVersion: 2.48.0
 configFiles:
   Debug: Config/Debug.xcconfig
   Release: Config/Release.xcconfig

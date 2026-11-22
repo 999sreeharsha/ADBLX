@@ -45,7 +45,20 @@ jobs:
           xcode-version: '27.2'
 
       - name: Install XcodeGen
-        run: brew install xcodegen
+        # Exactly the version project.yml requires (options.minimumXcodeGenVersion), not
+        # Homebrew's latest: another version can generate a different project and fail the
+        # drift check below. The checksum is the one GitHub publishes for the release asset.
+        env:
+          XCODEGEN_VERSION: "2.48.0"
+          XCODEGEN_SHA256: "620c9f0dc10849f94728ab5df52d225ebab8187439dd6fee1925e59e80dff892"
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/xcodegen.zip" \
+            "https://github.com/yonaskolb/XcodeGen/releases/download/${XCODEGEN_VERSION}/xcodegen.zip"
+          echo "${XCODEGEN_SHA256}  $RUNNER_TEMP/xcodegen.zip" | shasum -a 256 -c -
+          unzip -q "$RUNNER_TEMP/xcodegen.zip" -d "$RUNNER_TEMP"
+          "$RUNNER_TEMP/xcodegen/bin/xcodegen" --version
+          "$RUNNER_TEMP/xcodegen/bin/xcodegen" --version | grep -qx "Version: ${XCODEGEN_VERSION}"
+          echo "$RUNNER_TEMP/xcodegen/bin" >> "$GITHUB_PATH"
 
       - name: Generate Xcode project
         run: xcodegen generate

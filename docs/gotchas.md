@@ -600,10 +600,21 @@ So never commit Xcode's version. To get rid of it, **quit Xcode first, then disc
 version back. If you changed `project.yml`, run `xcodegen generate` and commit that output
 instead.
 
-XcodeGen versions differ too. CI runs `brew install xcodegen`, which installs the latest
-release (2.48.0 on 2026-11-22). The committed project came from 2.45.4, and 2.48.0 generates
-something different: entitlements membership exceptions, `LastUpgradeCheck = 1600`, target
-order, and `buildArchitectures` in the scheme. Generate with the version CI will install.
+**XcodeGen is pinned to 2.48.0** (2026-11-22). Versions generate different projects: 2.48.0's
+output differed from the 2.45.4 one committed before (entitlements membership exceptions,
+`LastUpgradeCheck = 1600`, target order, `buildArchitectures` in the scheme; commit `e0608d8`).
+CI used to `brew install xcodegen`, which installs whatever is latest. Now:
+
+- CI downloads exactly 2.48.0 from the GitHub release, checks the zip's SHA-256 and that
+  `xcodegen --version` says 2.48.0, and prints the version.
+- `project.yml` sets `options.minimumXcodeGenVersion: 2.48.0`, so an older XcodeGen refuses to
+  generate ("Spec validation error: XcodeGen version is …, but minimum required version
+  specified as 2.48.0"). It's only a minimum: a newer XcodeGen still runs and may generate
+  something CI's 2.48.0 doesn't. Run `xcodegen --version` before you commit a project.
+- Homebrew has no versioned formula. Once it moves past 2.48.0, use the release zip as CI does.
+- To upgrade: install the new version, run `xcodegen generate`, commit the output on its own,
+  then raise `minimumXcodeGenVersion` and the version and checksum in `.github/workflows/ci.yml`
+  together.
 
 Found in: Xcode-modified `project.pbxproj` after a session, 2026-11-22
 

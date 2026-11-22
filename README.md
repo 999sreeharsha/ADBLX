@@ -14,9 +14,14 @@ This project uses [XcodeGen](https://github.com/yonaskolb/XcodeGen) to generate 
 
 ```bash
 brew install xcodegen
+xcodegen --version   # must be 2.48.0, the version CI uses
 xcodegen generate
 open ADBLX.xcodeproj
 ```
+
+XcodeGen is pinned to 2.48.0: other versions generate a different project and fail CI's drift
+check. If Homebrew installs a newer one, use the 2.48.0 release zip from GitHub instead. Quit
+Xcode before discarding a `project.pbxproj` that Xcode rewrote (`docs/gotchas.md`).
 
 Never hand-edit `ADBLX.xcodeproj` directly — edit `project.yml` and regenerate instead.
 

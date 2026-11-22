@@ -103,7 +103,7 @@ ADBLX (working title "SHIELD") is an **iOS / iPadOS / macOS / visionOS ad and tr
   ```bash
   brew install xcodegen && xcodegen generate && open ADBLX.xcodeproj
   ```
-- **No XcodeGen version is pinned** in `project.yml` — only prose in `TargetTopology.md` says "2.45.4+". CI's `brew install xcodegen` is unpinned. The 2026-09-09 draft of this doc claimed the committed `project.pbxproj` came from an older XcodeGen and failed the drift gate; **that did not reproduce on 2026-10-27**: regenerating with XcodeGen 2.45.4 from a clean checkout of `dev` left the whole repository unchanged. Reproducibility across other XcodeGen versions is untested, so pinning is still worthwhile — see §10.
+- **XcodeGen is pinned to 2.48.0** (2026-11-22): `project.yml` sets `options.minimumXcodeGenVersion: 2.48.0`, and CI downloads exactly 2.48.0 from the GitHub release (checksum verified) instead of `brew install xcodegen`. The committed project is 2.48.0's output; 2.45.4 generated a different one. See `docs/gotchas.md`.
 - **Build settings:** `Config/Base.xcconfig` (warning/analyzer hardening — treats many warnings as errors), `Config/Debug.xcconfig`, `Config/Release.xcconfig`. `configFiles:` in `project.yml` wires only Debug/Release; `Base.xcconfig` is pulled in via `#include` at the top of each. `SWIFT_VERSION` and deployment targets are per-target in `project.yml`, not in the xcconfigs.
 - **`DEVELOPMENT_TEAM`** = `93F78RF6FG`, set once in `project.yml` `settings.base`, inherited by every target. `CODE_SIGN_STYLE: Automatic` everywhere. No provisioning profiles checked in. (The DNS tunnel needs a **paid Apple Developer Program** membership to provision `packet-tunnel-provider`; the Sprint 11 hardware runs confirm this is now in place — the "Personal Team" language in older docs is stale.)
 - **Lint/format:** `.swiftlint.yml` runs as a **non-failing pre-build phase**, and only over `ADBLX/` — `Extensions/` and both test targets are excluded. Custom rule `no_hardcoded_ui_string` bans hardcoded strings in `Text`/`Label`/`Button` (forces `Localizable.xcstrings` keys). `.swift-format` config exists but nothing invokes it.
@@ -168,7 +168,7 @@ group.com.ADBLX.shared/
 
 ### 3.4 CI/CD
 
-- **`.github/workflows/ci.yml`** — manual dispatch only (no push/PR triggers since 2026-11-20). `xcode-27` runner. Steps: checkout → Xcode 27.2 → `brew install xcodegen` → `xcodegen generate` → **drift gate** (`git diff --exit-code`, whole repository, so generated entitlements and plists are covered too) → **AppGroup.swift byte-identity gate** (the 4 CB extensions' copies must be `cmp`-identical to `ADBLX/AppGroup.swift`) → discover an iOS simulator UDID → build the `ADBLX` scheme → `xcodebuild ... -only-testing:ADBLXTests test`.
+- **`.github/workflows/ci.yml`** — manual dispatch only (no push/PR triggers since 2026-11-20). `xcode-27` runner. Steps: checkout → Xcode 27.2 → XcodeGen 2.48.0 from the GitHub release (SHA-256 and version checked, version printed) → `xcodegen generate` → **drift gate** (`git diff --exit-code`, whole repository, so generated entitlements and plists are covered too) → **AppGroup.swift byte-identity gate** (the 4 CB extensions' copies must be `cmp`-identical to `ADBLX/AppGroup.swift`) → discover an iOS simulator UDID → build the `ADBLX` scheme → `xcodebuild ... -only-testing:ADBLXTests test`.
 - **Not in CI:** no caching, no artifacts, no release automation; `ADBLXUITests` excluded; **no macOS/visionOS build**; **no `ADBLXShared` standalone test**; **no `backend/tools/Publisher` build or test**; **no run of the Safari Web Extension's JS test suites** (there is no `package.json` — the `node:test` suites run only locally).
 - **`.github/workflows/deploy-pages.yml`** — on push to the `gh-pages` branch. Publishes the branch contents verbatim to GitHub Pages. It builds nothing — `publish-pages.sh` (run locally) is what populates `gh-pages`.
 - **Test count:** ~335 test declarations in `ADBLXTests` + suites in `ADBLXShared` + 44 in `Publisher` + 3 JS suites. Recent whole-suite runs: "215/215" (Sprint 11), all green.
@@ -522,7 +522,7 @@ Consolidated from `docs/Audit/*`, `docs/gotchas.md`, `docs/Validation/*`, and th
 - 🔴 Fix the sourceURL-shape disagreement (code vs committed manifest vs 2 docs vs a test assertion).
 - 🔴 Regenerate `manifest.json` — 63-char checksums must be 64.
 - 🔴 Fix host-name drift in `Publisher.md` + the 8.05 report (`harshaunofficial` → `999sreeharsha`).
-- ⚠️ Pin XcodeGen (add `options.xcodeGenVersion` or a CI pin) and regenerate `project.pbxproj` with 2.45.4+ so the drift gate is stable.
+- ✅ XcodeGen pinned to 2.48.0 (`options.minimumXcodeGenVersion` plus an exact CI install) and `project.pbxproj` regenerated with it (2026-11-22).
 - ⚠️ Commit the pending `project.yml` working-tree changes (iCloud KVS entitlement, Safari-WebExt Tests exclude + `SFSafariWebExtensionManifestPath`).
 - ⚠️ Add CI coverage for `ADBLXShared`, `backend/tools/Publisher`, and the JS suites; add a macOS/visionOS build.
 - ⚠️ FR-14: reports go by mail, and the recipient address is still to be decided (`BrokenSiteReport.recipient`).
