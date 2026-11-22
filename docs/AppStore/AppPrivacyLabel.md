@@ -51,7 +51,7 @@ it. If you'd rather be conservative, also declare **Browsing History**, linked, 
 | Allowlist | Stored on the device only. iCloud sync is off in Release builds, which are signed without the iCloud entitlement. |
 | Notifications | Local only, scheduled on the device. |
 | Diagnostics | No crash or analytics SDK. MetricKit payloads are only counted on the device. Crash reports and analytics that users share through Apple's own opt-in are Apple's data, not ours; confirm this on Apple's page when you fill in the form. |
-| IP address on filter downloads | The list host ({{FILTER_HOST}}) sees requests in its server logs, but we don't receive them, don't use them, and send nothing about the user. **Check this one** against Apple's page: if you decide the host counts as a partner collecting data, the type would be Identifiers or Diagnostics, not linked, not tracking. |
+| IP address on filter downloads | GitHub Pages, which hosts the lists, sees each request's IP address in its server logs, but we don't receive them, don't use them, and send nothing about the user. **Check this one** against Apple's page: if you decide the host counts as a partner collecting data, the type would be Identifiers or Diagnostics, not linked, not tracking. |
 
 ## Redo the label when
 

@@ -756,8 +756,10 @@ push-triggered" until 2026-11-06, when manual manifest signing made daily unguar
 `BGAppRefreshTask` or `BGTaskScheduler` exists in the app. What does exist is the
 foreground update in `ADBLXApp.swift` (`coordinator.run()` on app open, throttled by
 `UpdateThrottle` to 6 hours). The Home plan card therefore says "Filter updates when
-you open the app", which matches the code. "Background Updates" is also listed as a
-Premium feature on the paywall, so a free user cannot get background updates today.
+you open the app", which matches the code. Since 2026-11-22 the paywall no longer lists
+"Background Updates", and Release declares no background modes (`BACKGROUND_UPDATES_ENABLED`,
+Debug only, ADR-0014 section 5). The comparison table's "Auto Updates" row still says Premium
+only; that's an open owner decision.
 
 Before App Store submission, either build it (a `BGAppRefreshTask` that calls
 `UpdateCoordinator.run()`, free weekly and Premium more often, with the entitlement check

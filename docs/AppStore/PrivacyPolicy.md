@@ -8,8 +8,6 @@ Placeholders to fill before publishing:
   {{PRIVACY_URL}}       where this page will live, e.g. https://{{BRAND_DOMAIN}}/privacy
   {{CONTACT_EMAIL}}     a privacy contact on the product's domain
   {{REPORT_EMAIL}}      the broken-site report alias (BrokenSiteReport.recipient)
-  {{FILTER_HOST}}       the host serving filter lists (today GitHub Pages, 999sreeharsha.github.io)
-  {{FILTER_HOST_PRIVACY_URL}} that host's privacy statement
   {{REPORT_RETENTION}}  how long broken-site report emails are kept, e.g. "12 months"
   {{EFFECTIVE_DATE}}
 
@@ -20,6 +18,8 @@ Open points for the owner (remove this block before publishing):
   2. Retention of report emails ({{REPORT_RETENTION}}) is a decision, not a fact from the code.
   3. Check the "Your rights" wording with someone who knows the law where you're based; it is
      deliberately general.
+  4. If filter lists move off GitHub Pages (to the brand domain, say), rewrite "Filter list
+     updates" for the new host.
 -->
 
 # {{BRAND_NAME}} Privacy Policy
@@ -52,10 +52,12 @@ asks the {{BRAND_NAME}} app, on your device, whether Premium is active and which
 
 ## Filter list updates
 
-To keep its block lists current, the app downloads them over HTTPS from {{FILTER_HOST}}.
-These downloads contain nothing about you or your browsing. Like any web server, the host can
-see the request itself, including your IP address, and may keep it in its server logs. See
-its privacy statement: {{FILTER_HOST_PRIVACY_URL}}. We don't receive those logs.
+To keep its block lists current, the app downloads them over HTTPS from GitHub Pages, a web
+hosting service run by GitHub. These downloads contain nothing about you or your browsing, but
+GitHub sees the IP address each request comes from, as any web server does, and may keep it in
+its logs. GitHub's privacy statement explains how it handles that:
+https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement. We don't
+receive those logs.
 
 ## Purchases and the free trial
 
