@@ -12,6 +12,10 @@ packages:
     path: Packages/ADBLXShared
 settings:
   base:
+    # The product's public name, shown in each extension's display name ("$(BRAND_NAME) Ads").
+    # ADBLX until the brand is decided; ExtensionDisplayNameTests checks every extension uses it.
+    # The web extension's manifest.json can't read build settings: change its "name" too.
+    BRAND_NAME: ADBLX
     CURRENT_PROJECT_VERSION: "1"
     DEVELOPMENT_TEAM: 93F78RF6FG
     MARKETING_VERSION: "1.0"
@@ -209,6 +213,7 @@ targets:
     info:
       path: Extensions/ADBLXAdsBlocker/Info.plist
       properties:
+        CFBundleDisplayName: $(BRAND_NAME) Ads
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSExtension:
@@ -244,6 +249,7 @@ targets:
     info:
       path: Extensions/ADBLXPrivacyBlocker/Info.plist
       properties:
+        CFBundleDisplayName: $(BRAND_NAME) Privacy
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSExtension:
@@ -279,6 +285,7 @@ targets:
     info:
       path: Extensions/ADBLXAnnoyancesBlocker/Info.plist
       properties:
+        CFBundleDisplayName: $(BRAND_NAME) Annoyances
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSExtension:
@@ -314,6 +321,7 @@ targets:
     info:
       path: Extensions/ADBLXRegionalBlocker/Info.plist
       properties:
+        CFBundleDisplayName: $(BRAND_NAME) Regional
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSExtension:
@@ -349,6 +357,7 @@ targets:
     info:
       path: Extensions/ADBLXPacketTunnel/Info.plist
       properties:
+        CFBundleDisplayName: $(BRAND_NAME) DNS Protection
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSExtension:
@@ -394,6 +403,7 @@ targets:
     info:
       path: Extensions/ADBLXSafariWebExtension/Info.plist
       properties:
+        CFBundleDisplayName: $(BRAND_NAME) YouTube
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSExtension:

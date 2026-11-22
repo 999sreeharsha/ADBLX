@@ -978,6 +978,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = CE383A84E1D527E02B0E4CA0 /* Release.xcconfig */;
 			buildSettings = {
+				BRAND_NAME = ADBLX;
 				CLANG_CXX_LIBRARY = "libc++";
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 93F78RF6FG;
@@ -1487,6 +1488,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 2B308625A55359393052EBDF /* Debug.xcconfig */;
 			buildSettings = {
+				BRAND_NAME = ADBLX;
 				CLANG_CXX_LIBRARY = "libc++";
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 93F78RF6FG;
