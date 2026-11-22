@@ -84,6 +84,76 @@ final class DNSUpstreamForwarderTests: XCTestCase {
     }
     
     // MARK: - Tests
+
+    // MARK: SEC-14: upstream transaction IDs
+
+    /// An ID source that hands out a scripted sequence, so reuse avoidance is deterministic.
+    private final class ScriptedIDs: @unchecked Sendable {
+        private let lock = OSAllocatedUnfairLock(initialState: [UInt16]())
+        init(_ ids: [UInt16]) { lock.withLock { $0 = ids } }
+        func next() -> UInt16 { lock.withLock { $0.isEmpty ? 1 : $0.removeFirst() } }
+    }
+
+    private func forwardedID(_ forwarder: DNSUpstreamForwarder, _ name: String, srcPort: UInt16) async -> UInt16? {
+        let (pkt, q) = makeIPv4DNSQuery(domain: name, txID: 0x1111, srcPort: srcPort)
+        if case .forwarded(let id) = await forwarder.forward(query: q, originalPacket: pkt) { return id }
+        return nil
+    }
+
+    func testUpstreamTransactionIDsAreNotSequential() async throws {
+        let forwarder = DNSUpstreamForwarder(
+            config: UpstreamResolverConfig(ipv4Address: "9.9.9.9", ipv6Address: nil, timeoutSeconds: 5, maxInFlightQueries: 64),
+            socketFactory: { _, _, _ in MockUpstreamSocket() }
+        )
+        try await forwarder.start { _, _ in }
+        var ids: [UInt16] = []
+        for i in 0..<32 {
+            let id = await forwardedID(forwarder, "seq\(i).com", srcPort: UInt16(40000 + i))
+            ids.append(try XCTUnwrap(id))
+        }
+        XCTAssertEqual(Set(ids).count, ids.count, "every pending query needs its own ID")
+        // Counting up from any start would make each ID one more than the last. With random IDs,
+        // 31 such steps in a row has a chance of about 2^-496.
+        let steps = zip(ids, ids.dropFirst()).filter { $1 == $0 &+ 1 }.count
+        XCTAssertLessThan(steps, 31, "IDs count up, so an off-path attacker can guess the next one")
+    }
+
+    func testAnIDStillPendingIsNeverReused() async throws {
+        let ids = ScriptedIDs([7, 7, 7, 9])
+        let forwarder = DNSUpstreamForwarder(
+            config: UpstreamResolverConfig(ipv4Address: "9.9.9.9", ipv6Address: nil, timeoutSeconds: 5, maxInFlightQueries: 64),
+            socketFactory: { _, _, _ in MockUpstreamSocket() },
+            transactionIDs: { ids.next() }
+        )
+        try await forwarder.start { _, _ in }
+        let first = await forwardedID(forwarder, "first.com", srcPort: 40001)
+        let second = await forwardedID(forwarder, "second.com", srcPort: 40002)
+        XCTAssertEqual(first, 7)
+        XCTAssertEqual(second, 9, "7 is still pending, so the next query must not get it")
+    }
+
+    func testAnswersWithNoSenderAddressOrPortAreDropped() async throws {
+        let mockSocket = MockUpstreamSocket()
+        let forwarder = DNSUpstreamForwarder(
+            config: UpstreamResolverConfig(ipv4Address: "9.9.9.9", ipv6Address: nil, port: 53),
+            socketFactory: { _, _, _ in mockSocket }
+        )
+        let written = OSAllocatedUnfairLock(initialState: 0)
+        try await forwarder.start { _, _ in written.withLock { $0 += 1 } }
+        let forwarded = await forwardedID(forwarder, "secure.com", srcPort: 40003)
+        let id = try XCTUnwrap(forwarded)
+        var answer = Data([UInt8(id >> 8), UInt8(id & 0xFF), 0x81, 0x80, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00])
+        answer.append(contentsOf: [0x06, 0x73, 0x65, 0x63, 0x75, 0x72, 0x65, 0x03, 0x63, 0x6F, 0x6D, 0x00, 0x00, 0x01, 0x00, 0x01])
+
+        await forwarder.handleUpstreamResponse(data: answer, senderIP: "", senderPort: 53, isIPv6: false)
+        await forwarder.handleUpstreamResponse(data: answer, senderIP: "9.9.9.9", senderPort: 0, isIPv6: false)
+        XCTAssertEqual(written.withLock { $0 }, 0, "an answer with no sender address or port must be dropped")
+        let pending = await forwarder.activeInFlightCount
+        XCTAssertEqual(pending, 1)
+
+        await forwarder.handleUpstreamResponse(data: answer, senderIP: "9.9.9.9", senderPort: 53, isIPv6: false)
+        XCTAssertEqual(written.withLock { $0 }, 1)
+    }
     
     func testConcurrentQueriesAndCorrelation() async throws {
         let mockSocket = MockUpstreamSocket()
@@ -166,7 +236,7 @@ final class DNSUpstreamForwarderTests: XCTestCase {
         let (pkt, q) = makeIPv4DNSQuery(domain: "timeout.com", txID: 0x9999)
         let result = await forwarder.forward(query: q, originalPacket: pkt)
         
-        XCTAssertEqual(result, DNSForwarderResult.forwarded(upstreamTxID: 1))
+        guard case .forwarded = result else { return XCTFail("expected .forwarded, got \(result)") }
         let inFlightBefore = await forwarder.activeInFlightCount
         XCTAssertEqual(inFlightBefore, 1)
         
@@ -197,8 +267,10 @@ final class DNSUpstreamForwarderTests: XCTestCase {
         let r2 = await forwarder.forward(query: q2, originalPacket: pkt2)
         let r3 = await forwarder.forward(query: q3, originalPacket: pkt3)
         
-        XCTAssertEqual(r1, DNSForwarderResult.forwarded(upstreamTxID: 1))
-        XCTAssertEqual(r2, DNSForwarderResult.forwarded(upstreamTxID: 2))
+        guard case .forwarded(let id1) = r1, case .forwarded(let id2) = r2 else {
+            return XCTFail("expected two .forwarded results, got \(r1), \(r2)")
+        }
+        XCTAssertNotEqual(id1, id2)
         XCTAssertEqual(r3, DNSForwarderResult.capacityExceeded, "Exceeding max in-flight queries must return capacityExceeded")
         
         // Verify immediate SERVFAIL packet was emitted for the 3rd query

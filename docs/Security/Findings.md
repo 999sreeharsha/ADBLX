@@ -30,7 +30,7 @@ Scan reports are in the gitignored `CLAUDE-SECURITY-*` folders at the repo root.
 | **With the DNS track** | | | | |
 | SEC-12 | No DNS over TCP; responses over 4096 bytes truncated | MEDIUM | Manual | Open |
 | SEC-13 | Tunnel start check allows `.free` | LOW | Panel | Fixed |
-| SEC-14 | Upstream DNS responses are easy to spoof | LOW | Panel | Open |
+| SEC-14 | Upstream DNS responses are easy to spoof | LOW | Panel | Fixed (the "Now" part; DoH still open) |
 | SEC-15 | Tunnel thread-safety gaps | LOW | Manual | Open |
 | **Decide and record** | | | | |
 | SEC-16 | Clock set forward extends the trial | LOW | Panel | Blocked on the PD-01 trial decision |
@@ -236,6 +236,19 @@ These can't be reached in a release while DNS Protection stays off (see the open
 - **Now:** random transaction IDs, and reject an empty sender IP or port 0.
 - **Next:** put effort into DoH rather than a socket pool, because an on-path attacker can spoof plaintext UDP anyway. DoH also makes an encryption claim true and avoids UDP truncation.
 - If question matching is added, compare names case-insensitively, or valid answers get dropped and lookups hang.
+
+**Fixed, the "Now" part (2026-11-22):**
+- Upstream transaction IDs are random (`UInt16.random`, the system's secure generator), drawn
+  again while the ID is still pending, so a pending query's ID is never handed to another.
+  The ID source is injectable for tests.
+- An answer with an empty sender address or port 0 is dropped and counted as from an unexpected
+  sender. A real UDP reply always carries both, so no real answer is lost.
+- The upstream racing, timeouts, socket layout and matching (source IP, port and ID) are
+  unchanged: the 4G re-run measures those.
+- Tests in `DNSUpstreamForwarderTests`: IDs aren't sequential, a pending ID isn't reused (with a
+  scripted ID source), and an answer with no sender address or port is dropped. All three failed
+  before the fix. Two older tests that asserted IDs 1 and 2 now assert distinct IDs.
+- **Still open:** DoH (the "Next" part), since an on-path attacker can still spoof plaintext UDP.
 
 ### SEC-15: Tunnel thread-safety gaps
 

@@ -9,7 +9,9 @@ public actor DNSUpstreamForwarder {
     private var fallbackSocket: (any DNSUpstreamSocketProtocol)?
     
     private var pendingTransactions: [UInt16: PendingQuery] = [:]
-    private var nextTxID: UInt16 = 1
+    /// Where upstream transaction IDs come from: random by default (SEC-14), so an off-path
+    /// attacker can't guess the next one. Injectable for tests.
+    private let transactionIDs: @Sendable () -> UInt16
     private var packetWriter: (@Sendable (Data, IPVersion) -> Void)?
     
     private let socketFactory: @Sendable (String, UInt16, Bool) throws -> any DNSUpstreamSocketProtocol
@@ -29,13 +31,15 @@ public actor DNSUpstreamForwarder {
         },
         clock: DNSClock = SystemDNSClock(),
         tcpTransport: DNSUpstreamTCPTransport? = NWDNSUpstreamTCPTransport(),
-        counters: DNSTunnelCounters? = nil
+        counters: DNSTunnelCounters? = nil,
+        transactionIDs: @escaping @Sendable () -> UInt16 = { UInt16.random(in: .min ... .max) }
     ) {
         self.config = config
         self.socketFactory = socketFactory
         self.clock = clock
         self.tcpTransport = tcpTransport
         self.counters = counters
+        self.transactionIDs = transactionIDs
     }
     
     public var activeInFlightCount: Int {
@@ -319,11 +323,13 @@ public actor DNSUpstreamForwarder {
         let allowedHosts: [String] = isIPv6
             ? [config.ipv6Address].compactMap { $0 }
             : [config.ipv4Address] + [config.fallbackIPv4Address].compactMap { $0 }
-        if !senderIP.isEmpty, !allowedHosts.isEmpty, !allowedHosts.contains(senderIP) {
+        // A real UDP reply always carries its sender's address and port; one without them is
+        // not from an upstream (SEC-14).
+        if senderIP.isEmpty || (!allowedHosts.isEmpty && !allowedHosts.contains(senderIP)) {
             counters?.increment(\.answersFromUnexpectedSender)
             return
         }
-        if senderPort != 0 && senderPort != config.port {
+        if senderPort != config.port {
             counters?.increment(\.answersFromUnexpectedSender)
             return
         }
@@ -470,16 +476,20 @@ public actor DNSUpstreamForwarder {
         fail(pending)
     }
     
+    /// A random ID that no pending query holds. `maxInFlightQueries` keeps the table far below
+    /// 65,536 entries, so a free one turns up within a few draws; the scan after them only makes
+    /// termination certain (with an ID source that keeps repeating, as in tests).
     private func allocateNextUpstreamTxID() -> UInt16 {
-        for _ in 0..<65535 {
-            let candidate = nextTxID
-            nextTxID &+= 1
-            if nextTxID == 0 { nextTxID = 1 }
-            if pendingTransactions[candidate] == nil {
-                return candidate
-            }
+        for _ in 0..<64 {
+            let candidate = transactionIDs()
+            if pendingTransactions[candidate] == nil { return candidate }
         }
-        return nextTxID
+        let start = transactionIDs()
+        for offset in 0...UInt16.max {
+            let candidate = start &+ offset
+            if pendingTransactions[candidate] == nil { return candidate }
+        }
+        return start
     }
     
     // MARK: - Packet Synthesis
