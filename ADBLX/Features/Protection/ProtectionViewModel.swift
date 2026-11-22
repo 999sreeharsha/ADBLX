@@ -18,6 +18,9 @@ final class ProtectionViewModel {
     var showSettingsPrompt = false
 
     private var inFlightRefreshTask: Task<ProtectionStatus, Never>?
+    /// Categories turned on while their blocker's check was in progress. When the check returns,
+    /// it decides whether the enable-in-Settings prompt shows.
+    @ObservationIgnored private var turnedOnWhileChecking: Set<FilterCategoryID> = []
 
     init(service: ProtectionService) {
         self.service = service
@@ -56,6 +59,11 @@ final class ProtectionViewModel {
         for await update in checks {
             // Applied to whatever is shown now, so a toggle made meanwhile is kept.
             status = status?.settingExtensionState(update.state, for: update.category)
+            if turnedOnWhileChecking.remove(update.category) != nil, update.state != .enabled,
+               let category = status?.categories.first(where: { $0.id == update.category }), category.isEnabled {
+                pendingSettingsCategory = category
+                showSettingsPrompt = true
+            }
         }
         return status ?? current
     }
@@ -84,8 +92,14 @@ final class ProtectionViewModel {
         )
 
         let updatedCategory = currentStatus.categories[index]
-        // Unknown while its check is in progress: no prompt until the check says it's off.
+        // Unknown while its check is in progress: the prompt waits for the check (`loadStatus`).
         let isBlockedInSettings = updatedCategory.extensionSettingsState.map { $0 != .enabled } ?? false
+        let checkPending = updatedCategory.participatesInProtectionStatus && updatedCategory.extensionSettingsState == nil
+        if willBeActive && checkPending {
+            turnedOnWhileChecking.insert(id)
+        } else {
+            turnedOnWhileChecking.remove(id)
+        }
         if willBeActive && updatedCategory.participatesInProtectionStatus && isBlockedInSettings {
             self.pendingSettingsCategory = updatedCategory
             self.showSettingsPrompt = true

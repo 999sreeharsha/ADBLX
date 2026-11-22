@@ -115,6 +115,48 @@ struct ProtectionCheckingStateTests {
         _ = await refresh.value
     }
 
+    @Test("a category turned on while its blocker is checking prompts once the check says it's off in Settings")
+    func turnedOnWhileCheckingThenOffInSettingsPrompts() async {
+        let service = DrivenProtectionService(initiallyEnabled: false)
+        let viewModel = ProtectionViewModel(service: service)
+
+        let refresh = Task { await viewModel.refreshProtectionStatus(reason: .initialLoad) }
+        await waitUntil { viewModel.status != nil }
+
+        await viewModel.toggleCategory(.ads)
+        #expect(category(.ads, in: viewModel)?.isEnabled == true)
+        #expect(viewModel.showSettingsPrompt == false)
+
+        service.answer(.ads, .disabled)
+        await waitUntil { category(.ads, in: viewModel)?.status == .disabledInSettings }
+        #expect(viewModel.showSettingsPrompt == true)
+        #expect(viewModel.pendingSettingsCategory?.id == .ads)
+
+        service.finishChecks()
+        _ = await refresh.value
+    }
+
+    @Test("no prompt when the check for a category turned on while checking says it's on, or it was turned off again")
+    func turnedOnWhileCheckingWithoutPrompt() async {
+        let service = DrivenProtectionService(initiallyEnabled: false)
+        let viewModel = ProtectionViewModel(service: service)
+
+        let refresh = Task { await viewModel.refreshProtectionStatus(reason: .initialLoad) }
+        await waitUntil { viewModel.status != nil }
+
+        await viewModel.toggleCategory(.ads)
+        await viewModel.toggleCategory(.privacy)
+        await viewModel.toggleCategory(.privacy)
+        service.answer(.ads, .enabled)
+        service.answer(.privacy, .disabled)
+        service.finishChecks()
+        _ = await refresh.value
+
+        #expect(category(.ads, in: viewModel)?.status == .active)
+        #expect(category(.privacy, in: viewModel)?.status == .disabledByUser)
+        #expect(viewModel.showSettingsPrompt == false)
+    }
+
     @Test("a category whose blocker is still checking")
     func checkingCategoryModel() {
         let checking = ProtectionCategory(id: .ads, name: "Ads", description: "", isEnabled: true, ruleCount: 0, extensionSettingsState: nil)
@@ -133,6 +175,12 @@ nonisolated final class DrivenProtectionService: @unchecked Sendable {
     private let lock = NSLock()
     private var continuations: [AsyncStream<CategorySettingsState>.Continuation] = []
     private var setCalls: [(FilterCategoryID, Bool)] = []
+    private let initiallyEnabled: Bool
+
+    /// `initiallyEnabled` is the user's choice for every category before any toggle.
+    init(initiallyEnabled: Bool = true) {
+        self.initiallyEnabled = initiallyEnabled
+    }
 
     var checkRuns: Int { lock.withLock { continuations.count } }
     var lastSetCategory: (FilterCategoryID, Bool)? { lock.withLock { setCalls.last } }
@@ -150,7 +198,9 @@ nonisolated final class DrivenProtectionService: @unchecked Sendable {
 extension DrivenProtectionService: ProtectionService {
     func fetchStatusBeforeChecks() async -> ProtectionStatus {
         let categories = FilterCategoryID.allCases.map {
-            ProtectionCategory(id: $0, name: $0.rawValue, description: "", isEnabled: true, ruleCount: 0, extensionSettingsState: nil)
+            ProtectionCategory(
+                id: $0, name: $0.rawValue, description: "", isEnabled: initiallyEnabled, ruleCount: 0, extensionSettingsState: nil
+            )
         }
         return ProtectionStatus(masterState: RealProtectionService.computeMasterState(from: categories), categories: categories)
     }
