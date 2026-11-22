@@ -25,10 +25,11 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
         let startSignpost = signposter.beginInterval("TunnelStart")
         logger.notice("Starting production Layer 2 DNS Protection tunnel")
 
-        // Backstop for entitlement loss while the app wasn't running: refuse to start once
-        // the published validUntil has passed (single read + date comparison).
-        if TunnelEntitlementGuard.check() == .deniedExpired {
-            logger.notice("Tunnel start refused: premium entitlement window has passed")
+        // Backstop for entitlement loss while the app wasn't running: refuse to start when the
+        // published plan is free or its validUntil has passed (single read + date comparison).
+        let verdict = TunnelEntitlementGuard.check()
+        if verdict != .allowed {
+            logger.notice("Tunnel start refused: \(verdict == .deniedNotEntitled ? "plan is free" : "premium entitlement window has passed", privacy: .public)")
             signposter.endInterval("TunnelStart", startSignpost)
             completionHandler(NSError(
                 domain: "com.ADBLX.ADBLX.PacketTunnel",

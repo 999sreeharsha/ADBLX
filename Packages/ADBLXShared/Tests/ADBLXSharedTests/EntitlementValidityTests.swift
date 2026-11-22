@@ -25,6 +25,23 @@ final class EntitlementValidityTests: XCTestCase {
         XCTAssertTrue(rec.isExpired(at: Date(timeIntervalSince1970: 1001)))
     }
 
+    // SEC-13: one entitlement decision, shared by the bridge and the tunnel.
+    func testIsEntitledDecidesOnStateAndValidUntil() {
+        let at = Date(timeIntervalSince1970: 500)
+        XCTAssertTrue(WebExtensionPersistedEntitlement(state: .premiumActive, updatedAt: 0, validUntil: 1000).isEntitled(at: at))
+        XCTAssertTrue(WebExtensionPersistedEntitlement(state: .premiumActive, updatedAt: 0).isEntitled(at: at))
+        XCTAssertFalse(WebExtensionPersistedEntitlement(state: .premiumActive, updatedAt: 0, validUntil: 500).isEntitled(at: at))
+        XCTAssertFalse(WebExtensionPersistedEntitlement(state: .free, updatedAt: 0).isEntitled(at: at))
+        XCTAssertFalse(WebExtensionPersistedEntitlement(state: .free, updatedAt: 0, validUntil: 1000).isEntitled(at: at))
+    }
+
+    func testCheckVersionReportsFreeForAFreeRecordWithAFutureValidUntil() throws {
+        let base = try makeBase(.init(state: .free, updatedAt: 0, validUntil: 1000))
+        let proc = SafariWebExtensionBridgeProcessor(now: { Date(timeIntervalSince1970: 500) })
+        let res = proc.processMessage(message: ["type": "checkVersion"], baseAppGroupURL: base)
+        XCTAssertEqual(res["entitlementState"] as? String, "free")
+    }
+
     func testCheckVersionReportsPremiumBeforeValidUntilAndSurfacesIt() throws {
         let base = try makeBase(.init(state: .premiumActive, updatedAt: 0, validUntil: 1000))
         let proc = SafariWebExtensionBridgeProcessor(now: { Date(timeIntervalSince1970: 500) })

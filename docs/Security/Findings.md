@@ -29,7 +29,7 @@ Scan reports are in the gitignored `CLAUDE-SECURITY-*` folders at the repo root.
 | SEC-11 | Web-extension rule payload needs an audit | To confirm | Review | Read end to end: no network path, no scriptlets; selector escape closed |
 | **With the DNS track** | | | | |
 | SEC-12 | No DNS over TCP; responses over 4096 bytes truncated | MEDIUM | Manual | Open |
-| SEC-13 | Tunnel start check allows `.free` | LOW | Panel | Open |
+| SEC-13 | Tunnel start check allows `.free` | LOW | Panel | Fixed |
 | SEC-14 | Upstream DNS responses are easy to spoof | LOW | Panel | Open |
 | SEC-15 | Tunnel thread-safety gaps | LOW | Manual | Open |
 | **Decide and record** | | | | |
@@ -208,6 +208,25 @@ These can't be reached in a release while DNS Protection stays off (see the open
 - Keep allowing a missing or unreadable file, for the first-start race.
 - Call `removeFromPreferences()` on entitlement loss. Re-subscribers will see the VPN permission prompt again, which is an acceptable cost.
 - Re-check in `wake()` and on each generation reload rather than on a timer, whose wakeups would count against NFR-02.
+
+**Fixed (2026-11-22):**
+- `WebExtensionPersistedEntitlement.isEntitled(at:)` is the one decision: premium and not past
+  `validUntil`. `TunnelEntitlementGuard` and the web-extension bridge both call it. The tunnel
+  refuses a `.free` record (new verdict `.deniedNotEntitled`) and an expired one, and allows
+  premium with no `validUntil` (lifetime) and a missing or unreadable file.
+- `RealDNSProtectionService.handleEntitlementLoss` removes a saved VPN configuration with
+  `removeFromPreferences()` and forgets the cached manager. If removal fails it falls back to
+  disabling it, as before. With nothing saved and settings already off, it does nothing.
+- Tests: `TunnelEntitlementGuardTests` (a free record is refused, with or without a future
+  `validUntil`) and `EntitlementValidityTests.testIsEntitledDecidesOnStateAndValidUntil` failed
+  before the fix; `EntitlementTeardownTests.entitlementLossRemovesSavedConfiguration` timed out
+  before it (nothing was removed). The bridge test for a free record with a future `validUntil`
+  already passed; it guards the shared decision.
+- **Not done:** the re-check in `wake()` and on each generation reload. A running tunnel is
+  still stopped by the app, not by itself; left for after the 4G re-run so the tunnel's runtime
+  behaviour doesn't change while it is measured. Removing the configuration also can't be
+  checked on the simulator (it has no VPN preferences); confirm on the iPhone that a lapsed
+  user's ADBLX entry disappears from Settings > VPN.
 
 ### SEC-14: Upstream DNS responses are easy to spoof
 

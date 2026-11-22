@@ -55,6 +55,7 @@ public final class RealDNSProtectionService: DNSProtectionServiceProtocol, @unch
     private var notificationObserver: AnyObject?
     private var entitlementTask: Task<Void, Never>?
     private let loadManager: @Sendable () async throws -> NETunnelProviderManager
+    private let removeManager: @Sendable (NETunnelProviderManager) async throws -> Void
     private let managerLoadCallerCount = OSAllocatedUnfairLock(initialState: 0)
     
     public convenience init(
@@ -74,12 +75,16 @@ public final class RealDNSProtectionService: DNSProtectionServiceProtocol, @unch
         neverBlockStore: DNSNeverBlockStore,
         loadManager: @escaping @Sendable () async throws -> NETunnelProviderManager = {
             try await RealDNSProtectionService.loadSystemManager()
+        },
+        removeManager: @escaping @Sendable (NETunnelProviderManager) async throws -> Void = {
+            try await $0.removeFromPreferences()
         }
     ) {
         self.settingsStore = settingsStore
         self.entitlementService = entitlementService
         self.neverBlockStore = neverBlockStore
         self.loadManager = loadManager
+        self.removeManager = removeManager
         setupStatusObserver()
         setupEntitlementObserver()
     }
@@ -106,12 +111,18 @@ public final class RealDNSProtectionService: DNSProtectionServiceProtocol, @unch
         }
     }
 
+    /// Removes the saved VPN configuration (SEC-13): a configuration that is only disabled can
+    /// still be connected from Settings > VPN. A re-subscriber sees the VPN permission prompt
+    /// again when they turn DNS Protection back on.
     private func handleEntitlementLoss() async {
         let settings = settingsStore.loadSettings()
         let manager = await getOrLoadManager()
+        // `loadSystemManager` returns a new, unsaved manager when none is saved; only a saved
+        // configuration has a protocol configuration.
+        let savedManager = manager?.protocolConfiguration == nil ? nil : manager
 
-        // Idempotency: if already disconnected/disabled and settings already disabled, do nothing
-        if let manager, manager.connection.status == .disconnected && !manager.isEnabled && !settings.isEnabled {
+        // Idempotency: nothing saved and settings already off, so nothing to tear down.
+        if manager != nil && savedManager == nil && !settings.isEnabled {
             return
         }
 
@@ -121,13 +132,23 @@ public final class RealDNSProtectionService: DNSProtectionServiceProtocol, @unch
 
         logger.info("Entitlement lost (.free) — executing idempotent DNS teardown")
 
-        if let manager {
-            if manager.connection.status != .disconnected && manager.connection.status != .invalid {
-                manager.connection.stopVPNTunnel()
+        if let savedManager {
+            if savedManager.connection.status != .disconnected && savedManager.connection.status != .invalid {
+                savedManager.connection.stopVPNTunnel()
             }
-            if manager.isEnabled {
-                manager.isEnabled = false
-                try? await saveManager(manager)
+            do {
+                try await removeManager(savedManager)
+                // Forget it, so the next start builds a new configuration instead of saving this one.
+                stateLock.withLock { state in
+                    if state.tunnelManager === savedManager { state.tunnelManager = nil }
+                }
+            } catch {
+                // Fall back to disabling it, which at least stops on-demand reconnects.
+                logger.error("VPN configuration removal failed: \(error.localizedDescription)")
+                if savedManager.isEnabled {
+                    savedManager.isEnabled = false
+                    try? await saveManager(savedManager)
+                }
             }
         }
         if settings.isEnabled {

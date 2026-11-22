@@ -45,6 +45,13 @@ public struct WebExtensionPersistedEntitlement: Codable, Equatable, Sendable {
         guard let validUntil else { return false }
         return date.timeIntervalSince1970 >= validUntil
     }
+
+    /// The one entitlement decision for readers that can't ask StoreKit (the web extension's
+    /// bridge and the packet tunnel): premium, and not past `validUntil`. A `.free` record is
+    /// never entitled, whatever its `validUntil` says.
+    public func isEntitled(at date: Date) -> Bool {
+        state == .premiumActive && !isExpired(at: date)
+    }
 }
 
 /// Bridge message request types.

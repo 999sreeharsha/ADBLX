@@ -29,6 +29,17 @@ final class TunnelEntitlementGuardTests: XCTestCase {
         XCTAssertEqual(TunnelEntitlementGuard.check(baseAppGroupURL: base, now: Date(timeIntervalSince1970: 9e9)), .allowed)
     }
 
+    // SEC-13: the guard decides on the plan state, not only on validUntil.
+    func testFreeRecordIsDenied() throws {
+        let base = try makeBase(.init(state: .free, updatedAt: 0))
+        XCTAssertEqual(TunnelEntitlementGuard.check(baseAppGroupURL: base, now: Date(timeIntervalSince1970: 500)), .deniedNotEntitled)
+    }
+
+    func testFreeRecordIsDeniedEvenWithAFutureValidUntil() throws {
+        let base = try makeBase(.init(state: .free, updatedAt: 0, validUntil: 1000))
+        XCTAssertEqual(TunnelEntitlementGuard.check(baseAppGroupURL: base, now: Date(timeIntervalSince1970: 500)), .deniedNotEntitled)
+    }
+
     func testMissingFileIsAllowedBecauseTheAppAlreadyGatedStart() throws {
         let base = try makeBase(nil)
         XCTAssertEqual(TunnelEntitlementGuard.check(baseAppGroupURL: base, now: Date()), .allowed)

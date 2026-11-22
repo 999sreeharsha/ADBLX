@@ -62,12 +62,7 @@ public final class SafariWebExtensionBridgeProcessor {
            let entData = try? Data(contentsOf: entitlementURL),
            let entRecord = try? JSONDecoder().decode(WebExtensionPersistedEntitlement.self, from: entData) {
             validUntil = entRecord.validUntil
-            switch entRecord.state {
-            case .premiumActive:
-                entitlementState = entRecord.isExpired(at: now()) ? .free : .premiumActive
-            case .free:
-                entitlementState = .free
-            }
+            entitlementState = entRecord.isEntitled(at: now()) ? .premiumActive : .free
         }
         
         let response = WebExtensionCheckVersionResponse(

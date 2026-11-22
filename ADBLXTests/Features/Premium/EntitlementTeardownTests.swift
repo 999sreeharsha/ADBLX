@@ -3,6 +3,7 @@ import Testing
 import Foundation
 @testable import ADBLX
 import ADBLXShared
+import NetworkExtension
 
 /// Teardown runs on a detached task, so each test waits for the service to report it
 /// (`.disconnected`, sent after the settings are written) rather than sleeping. That report is
@@ -34,6 +35,34 @@ struct EntitlementTeardownTests {
         // Settings store must be disabled
         let updatedSettings = settingsStore.loadSettings()
         #expect(updatedSettings.isEnabled == false)
+    }
+
+    // SEC-13: a disabled configuration can still be connected from Settings > VPN, so entitlement
+    // loss removes it from preferences instead of only disabling it.
+    @Test("entitlement loss removes the saved VPN configuration, not only disables it")
+    func entitlementLossRemovesSavedConfiguration() async throws {
+        let tempDefaults = UserDefaults(suiteName: "TeardownRemove_\(UUID().uuidString)")!
+        let settingsStore = DNSProtectionSettingsStore(userDefaults: tempDefaults)
+        settingsStore.setEnabled(true)
+        let saved = NETunnelProviderManager()
+        saved.protocolConfiguration = NETunnelProviderProtocol()   // a saved configuration has one
+        saved.isEnabled = true
+        let removed = TestSignal<Void>()
+        let mockEntitlement = MockSubscriptionService(state: .annual(expiresAt: Date().addingTimeInterval(86400)))
+        let service = RealDNSProtectionService(
+            settingsStore: settingsStore,
+            entitlementService: mockEntitlement,
+            neverBlockStore: DNSNeverBlockStore(filterStore: FilterStore.temporary()),
+            loadManager: { saved },
+            removeManager: { _ in removed.send(()) }
+        )
+        let statuses = TestSignal<DNSConnectionStatus>()
+        service.setStatusChangeHandler { statuses.send($0) }
+
+        mockEntitlement.updateState(.free)
+        await removed.wait { _ in true }
+        await statuses.wait { $0 == .disconnected }
+        #expect(settingsStore.loadSettings().isEnabled == false)
     }
 
     @Test("Repeated .free entitlement signals are idempotent and do not crash or corrupt settings")
