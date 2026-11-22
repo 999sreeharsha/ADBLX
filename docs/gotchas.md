@@ -256,9 +256,13 @@ refund/revocation identically, because all of them surface as the
 `EntitlementService` reporting no premium access.
 
 Things to remember when touching this:
-- `InstalledFilter.premium` is `Bool?`; `nil` means a legacy record and is
-  resolved from the cached manifest, then `BundledPremiumCatalog`, then
-  persisted. Do not default it to `false`.
+- `InstalledFilter.premium` is `Bool?`; `nil` means a legacy record. Don't
+  default it to `false`. Since 2026-11-22 the reconciler doesn't trust the stored
+  flag when the verified cached manifest names the list: a list's tier can change
+  between manifests (free to premium), and the flag written at install would then
+  be stale. The stored flag is the fallback for lists the manifest doesn't name or
+  when no verified manifest is cached; `nil` falls back to `BundledPremiumCatalog`.
+  Changed flags are persisted (`PremiumTierChangeTests`).
 - A `304` manifest returns from `UpdateCoordinator.run()` before planning, so
   enforcement must never depend on `run()`. Likewise re-entitlement clears the
   cached ETag, otherwise a premium list the user lacks is never fetched.

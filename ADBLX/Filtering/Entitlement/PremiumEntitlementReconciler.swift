@@ -31,9 +31,10 @@ enum ReconcileOutcome: Equatable {
 /// Entitlement-source agnostic: trial expiry, subscription lapse and refund/revocation all
 /// arrive as `EntitlementService` reporting no premium access.
 ///
-/// Group-generic: nothing here names Annoyances or Regional. Premium-ness comes from
-/// `InstalledFilter.premium`, resolved for legacy records from the cached manifest and then
-/// `BundledPremiumCatalog`.
+/// Group-generic: nothing here names Annoyances or Regional. Premium-ness comes from the
+/// verified cached manifest, so a list whose tier changed is handled; `InstalledFilter.premium`
+/// is the fallback for lists the manifest doesn't name, and `BundledPremiumCatalog` for legacy
+/// records with no flag.
 ///
 /// Logging (docs/Architecture/Logging.md): outcome case names and counts only.
 actor PremiumEntitlementReconciler {
@@ -189,7 +190,7 @@ actor PremiumEntitlementReconciler {
         var installed = await readInstalled()
         guard !installed.isEmpty else { return .noChange }
 
-        installed = await resolveLegacyFlags(installed)
+        installed = await resolvePremiumFlags(installed)
         let premium = installed.filter { $0.premium == true }
         guard !premium.isEmpty else { return .noChange }
 
@@ -228,18 +229,24 @@ actor PremiumEntitlementReconciler {
         return .downgraded(removedCount: premium.count, affectedGroups: groups, reloadFailures: failures)
     }
 
-    /// Records written before `premium` existed carry `nil`. Resolve from the cached manifest,
-    /// then the bundled catalog, and persist so later runs need no lookup.
-    private func resolveLegacyFlags(_ installed: [InstalledFilter]) async -> [InstalledFilter] {
-        guard installed.contains(where: { $0.premium == nil }) else { return installed }
-        let manifestEntries = (try? await manifestStore.load())?.manifest.entries ?? []
-        let manifestPremiumByID = Dictionary(manifestEntries.map { ($0.id, $0.premium) }, uniquingKeysWith: { first, _ in first })
+    /// A list's tier can change between manifests, and the flag stored at install time would
+    /// then be stale: a list installed free and later marked premium would never be removed.
+    /// So the verified cached manifest decides for every list it names. The stored flag is the
+    /// fallback for lists it doesn't name, or when there is no verified manifest (a cache from
+    /// before signatures were checked is not trusted). Records written before `premium` existed
+    /// carry `nil` and fall back to the bundled catalog. Changed flags are persisted.
+    private func resolvePremiumFlags(_ installed: [InstalledFilter]) async -> [InstalledFilter] {
+        var manifestPremiumByID: [String: Bool] = [:]
+        if let cached = try? await manifestStore.load(), cached.signatureVerified {
+            manifestPremiumByID = Dictionary(cached.manifest.entries.map { ($0.id, $0.premium) }, uniquingKeysWith: { first, _ in first })
+        }
 
         var resolved = installed
-        for index in resolved.indices where resolved[index].premium == nil {
+        for index in resolved.indices {
             let id = resolved[index].id
-            resolved[index].premium = manifestPremiumByID[id] ?? BundledPremiumCatalog.isPremium(filterID: id)
+            resolved[index].premium = manifestPremiumByID[id] ?? resolved[index].premium ?? BundledPremiumCatalog.isPremium(filterID: id)
         }
+        guard resolved != installed else { return installed }
         if let data = try? JSONEncoder().encode(resolved) {
             try? await store.writeMetadata(data, filename: "installed_filters.json")
         }

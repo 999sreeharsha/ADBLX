@@ -292,19 +292,21 @@ as bugs to decide on, not security findings.
   `docs/gotchas.md`.
 
 The 2026-11-22 scan of the background-updates staging code (Area 5) raised two LOW candidates,
-both rejected 3 to 0. One is worth deciding on:
+both rejected 3 to 0. One was real behaviour and is now fixed:
 
 - **A list that a later manifest marks premium stays installed for a non-entitled user.
-  Open, for review.** The downgrade in `PremiumEntitlementReconciler` removes only records whose
-  stored flag is `premium == true` (`PremiumEntitlementReconciler.swift:193`). It re-resolves
-  the flag only when it is `nil` (`:234`), so a list installed while it was free keeps
-  `premium == false`. When a later signed manifest marks the same ID premium, `UpdatePlanner`
-  sends it to `.skipPremium` (`UpdatePlan.swift:46-48`). The ID stays in the manifest, so it is
-  never removed either (`UpdatePlan.swift:74`). A free, trial-expired or lapsed user keeps the
-  old copy of that list until a reinstall. Only a manifest signed with K1 or K2 can trigger it,
-  so it is a product question for whenever a list moves from free to premium, not an attack.
-  A candidate fix is to refresh `premium` from the cached manifest on every reconcile, not only
-  for `nil`, with a test written failing first. No list has moved tier so far.
+  Fixed (2026-11-22).** The downgrade in `PremiumEntitlementReconciler` removed only records whose
+  stored flag was `premium == true`, and re-resolved the flag only when it was `nil`, so a list
+  installed while it was free kept `premium == false`. When a later signed manifest marked the
+  same ID premium, `UpdatePlanner` sent it to `.skipPremium` and, since the ID stayed in the
+  manifest, never removed it. Only a manifest signed with K1 or K2 could trigger it, so it was a
+  product question, not an attack. Now the verified cached manifest decides premium-ness for
+  every installed list it names (`resolvePremiumFlags`); the stored flag is the fallback only
+  for lists it doesn't name or when no verified manifest is cached (a pre-signature cache is not
+  trusted), and the bundled catalog for legacy records with no flag. `PremiumTierChangeTests`:
+  a free-to-premium list is removed at the next reconcile (failed before the fix); a
+  premium-to-free list is installed at the next update and kept by reconcile, and an unverified
+  cache doesn't override the stored flag (both already held; they guard the fix).
 - **(Not kept) The DEBUG timing spike puts an unverified manifest ID into a temp-file name**
   (`BackgroundTiming.swift`). It is compiled only into Debug builds, a developer has to start
   it, and the name always ends in a fresh UUID, so nothing can be overwritten. Task 6 of the
