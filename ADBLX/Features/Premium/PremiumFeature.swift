@@ -5,7 +5,6 @@ import SwiftUI
 nonisolated enum PremiumFeature: CaseIterable, Equatable, Sendable {
     case dnsProtection
     case premiumFilterLists
-    case backgroundUpdates
     case youtube
 
     /// Default order, with `focus` (if any) moved to the front.
@@ -24,7 +23,6 @@ nonisolated enum PremiumFeature: CaseIterable, Equatable, Sendable {
         switch self {
         case .dnsProtection: return "network"
         case .premiumFilterLists: return "rectangle.badge.xmark"
-        case .backgroundUpdates: return "arrow.triangle.2.circlepath"
         case .youtube: return "play.tv.fill"
         }
     }
@@ -33,7 +31,6 @@ nonisolated enum PremiumFeature: CaseIterable, Equatable, Sendable {
         switch self {
         case .dnsProtection: return "premium.feature.dns.title"
         case .premiumFilterLists: return "premium.feature.filterLists.title"
-        case .backgroundUpdates: return "premium.feature.backgroundUpdates.title"
         case .youtube: return "premium.feature.youtube.title"
         }
     }
@@ -42,7 +39,6 @@ nonisolated enum PremiumFeature: CaseIterable, Equatable, Sendable {
         switch self {
         case .dnsProtection: return "premium.feature.dns.description"
         case .premiumFilterLists: return "premium.feature.filterLists.description"
-        case .backgroundUpdates: return "premium.feature.backgroundUpdates.description"
         case .youtube: return "premium.feature.youtube.description"
         }
     }

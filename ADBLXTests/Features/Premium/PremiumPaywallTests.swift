@@ -37,10 +37,23 @@ struct PremiumPaywallTests {
 
     @Test("a focused paywall lists the focused feature first; unfocused keeps the default order")
     func focusOrdersFeatures() {
-        #expect(PremiumFeature.displayOrder(focus: nil) == [.dnsProtection, .premiumFilterLists, .backgroundUpdates, .youtube])
+        #expect(PremiumFeature.displayOrder(focus: nil) == [.dnsProtection, .premiumFilterLists, .youtube])
         #expect(PremiumFeature.displayOrder(focus: .premiumFilterLists)
-                == [.premiumFilterLists, .dnsProtection, .backgroundUpdates, .youtube])
-        #expect(PremiumFeature.displayOrder(focus: .youtube) == [.youtube, .dnsProtection, .premiumFilterLists, .backgroundUpdates])
+                == [.premiumFilterLists, .dnsProtection, .youtube])
+        #expect(PremiumFeature.displayOrder(focus: .youtube) == [.youtube, .dnsProtection, .premiumFilterLists])
+    }
+
+    // Claims the app doesn't deliver: no background updates run, and background play and
+    // Picture in Picture aren't verified with the YouTube extension (App Review 2.3.1).
+    @Test("the paywall makes no background-updates, background-play or Picture-in-Picture claim")
+    func noUndeliveredClaims() {
+        let youtube = String(localized: "premium.feature.youtube.description")
+        #expect(!youtube.localizedCaseInsensitiveContains("background"))
+        #expect(!youtube.localizedCaseInsensitiveContains("PiP"))
+        #expect(!youtube.localizedCaseInsensitiveContains("picture"))
+        #expect(!PremiumFeature.allCases.map { "\($0)" }.contains("backgroundUpdates"))
+        let title = String(localized: "premium.feature.backgroundUpdates.title")
+        #expect(title == "premium.feature.backgroundUpdates.title", "the Background Updates string is still in the catalog")
     }
 
     @Test("PremiumViewModel carries the focus it was opened with")

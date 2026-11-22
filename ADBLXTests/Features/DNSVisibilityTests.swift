@@ -7,13 +7,13 @@ import Testing
 struct DNSVisibilityTests {
     @Test("the paywall list has no DNS entry with the flag off")
     func paywallFeatures() {
-        #expect(PremiumFeature.displayOrder(focus: nil, dnsEnabled: false) == [.premiumFilterLists, .backgroundUpdates, .youtube])
-        #expect(PremiumFeature.displayOrder(focus: .youtube, dnsEnabled: false) == [.youtube, .premiumFilterLists, .backgroundUpdates])
+        #expect(PremiumFeature.displayOrder(focus: nil, dnsEnabled: false) == [.premiumFilterLists, .youtube])
+        #expect(PremiumFeature.displayOrder(focus: .youtube, dnsEnabled: false) == [.youtube, .premiumFilterLists])
     }
 
     @Test("a paywall focused on DNS still has no DNS entry with the flag off")
     func paywallFocus() {
-        #expect(PremiumFeature.displayOrder(focus: .dnsProtection, dnsEnabled: false) == [.premiumFilterLists, .backgroundUpdates, .youtube])
+        #expect(PremiumFeature.displayOrder(focus: .dnsProtection, dnsEnabled: false) == [.premiumFilterLists, .youtube])
     }
 
     @Test("the paywall comparison has no DNS row with the flag off")

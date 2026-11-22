@@ -1393,26 +1393,6 @@
         }
       }
     },
-    "premium.feature.backgroundUpdates.description" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Blocklists stay fresh automatically. You never have to manually check for new tracker signatures."
-          }
-        }
-      }
-    },
-    "premium.feature.backgroundUpdates.title" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Background Updates"
-          }
-        }
-      }
-    },
     "premium.feature.dns.description" : {
       "localizations" : {
         "en" : {
@@ -1458,7 +1438,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Native-like experience in Safari with no video ads, background play, and PiP support."
+            "value" : "Watch YouTube in Safari without video ads."
           }
         }
       }

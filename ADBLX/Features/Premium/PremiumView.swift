@@ -189,7 +189,7 @@ struct PremiumView: View {
     private func featureColor(_ feature: PremiumFeature) -> Color {
         switch feature {
         case .dnsProtection: return DesignColors.primary
-        case .premiumFilterLists, .backgroundUpdates: return DesignColors.tertiary
+        case .premiumFilterLists: return DesignColors.tertiary
         case .youtube: return DesignColors.secondary
         }
     }
