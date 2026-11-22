@@ -1,7 +1,7 @@
 # 0014 — App target Info.plist: background task keys through a merged XcodeGen plist
 
 **Date:** 2026-11-08
-**Status:** Proposed (applied in task 6 of `docs/superpowers/plans/2026-11-07-background-updates.md`)
+**Status:** Proposed (applied in task 6 of `docs/superpowers/plans/2026-11-07-background-updates.md`); amended 2026-11-22, Debug only (section 5)
 
 ---
 
@@ -82,3 +82,22 @@ the keys it already generates:
   the file dropped.
 - App Store review sees a Background Modes capability (fetch, processing); the review note says it's
   for on-device blocklist updates.
+
+## 5. Amendment (2026-11-22): Debug only until background updates ship
+
+Release declared both modes while nothing in Release registered a task (only the DEBUG timing
+spike did), which risks App Review rejection under Guideline 2.5.4. So the keys now follow a build
+flag, `BACKGROUND_UPDATES_ENABLED` (`Config/Debug.xcconfig`, with a Swift compile condition of the
+same name read through `BuildFeatures.backgroundUpdates`):
+
+- **Debug (flag on):** unchanged. `Config/ADBLX-Info.plist` is merged as above.
+- **Release (flag off):** `project.yml` sets `INFOPLIST_FILE` to nothing for Release, so Xcode
+  generates the whole plist from build settings, versions included, with no background keys. This
+  replaces "Both configurations" in section 2.
+- **Checks:** `Scripts/check-background-modes.sh` reads the flag. On, every mode and identifier
+  must be present; off, none may be. The archive phase gets the flag from the build settings, so
+  an archive whose plist disagrees with the flag fails. CI's Release build runs with the flag off.
+- **When background updates ship:** set the flag in Release too (or in `Base.xcconfig`), delete
+  the Release `INFOPLIST_FILE` override, and have anything that registers a task check
+  `BuildFeatures.backgroundUpdates`.
+

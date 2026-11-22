@@ -14,6 +14,17 @@ nonisolated enum BuildFeatures {
     }
 
 
+    /// On in Debug, off in Release: background filter updates. With it off the app declares no
+    /// background modes or task identifiers (project.yml, ADR-0014), so nothing may register a
+    /// background task. `BACKGROUND_UPDATES_ENABLED` in `Config/Debug.xcconfig`.
+    static var backgroundUpdates: Bool {
+        #if BACKGROUND_UPDATES_ENABLED
+        return true
+        #else
+        return false
+        #endif
+    }
+
     /// On in Debug, off in Release: Settings rows for features that don't exist yet
     /// (`SettingsPlaceholderRow`), so a Release build never shows a row that leads nowhere.
     static var settingsPlaceholders: Bool {

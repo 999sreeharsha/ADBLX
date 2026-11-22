@@ -2,11 +2,17 @@ import Testing
 import Foundation
 @testable import ADBLX
 
-/// The test host is the Debug app, so this checks the merged plist of a Debug build (ADR-0014).
-/// `Scripts/check-background-modes.sh` checks the Release build in CI.
+/// The test host is the Debug app, so this checks the merged plist of a Debug build (ADR-0014),
+/// where `BACKGROUND_UPDATES_ENABLED` is on. `Scripts/check-background-modes.sh` checks the
+/// Release build, where it is off and the keys must be absent, on every archive and in CI.
 @Suite("App Info.plist background keys")
 struct AppInfoPlistBackgroundTests {
     private let info = Bundle.main.infoDictionary ?? [:]
+
+    @Test("the background-updates flag is on in Debug, which is what declares the keys below")
+    func flagOnInDebug() {
+        #expect(BuildFeatures.backgroundUpdates)
+    }
 
     @Test("both background modes are declared")
     func backgroundModes() {

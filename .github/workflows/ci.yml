@@ -115,7 +115,8 @@ jobs:
             CODE_SIGNING_ALLOWED=NO build
           Scripts/check-release-no-dns.sh build/release/Build/Products/Release-iphoneos/ADBLX.app
           Scripts/check-extension-versions.sh build/release/Build/Products/Release-iphoneos/ADBLX.app
-          # ADR-0014: the merged plist's background keys, and no DEBUG timing spike.
+          # ADR-0014: no background keys while BACKGROUND_UPDATES_ENABLED is off in Release, and
+          # no DEBUG timing spike. Set BACKGROUND_UPDATES_ENABLED=YES here once Release turns it on.
           Scripts/check-background-modes.sh build/release/Build/Products/Release-iphoneos/ADBLX.app
 
       - name: Run unit tests (ADBLXTests only)

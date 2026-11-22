@@ -67,7 +67,9 @@ targets:
         embed: true
       - package: ADBLXShared
     # ADR-0014: no INFOPLIST_KEY_ setting exists for these, so XcodeGen writes them into a partial
-    # plist that Xcode merges with the generated keys. Same file for Debug and Release.
+    # plist that Xcode merges with the generated keys. Debug only, while BACKGROUND_UPDATES_ENABLED
+    # is off in Release: the Release config below sets INFOPLIST_FILE to nothing, so Xcode
+    # generates the whole plist from build settings (versions included) with no background keys.
     info:
       path: Config/ADBLX-Info.plist
       properties:
@@ -126,6 +128,9 @@ targets:
         Release:
           EXCLUDED_SOURCE_FILE_NAMES: ADBLXPacketTunnel.appex
           CODE_SIGN_ENTITLEMENTS: Config/ADBLX.Release.entitlements
+          # No background modes while BACKGROUND_UPDATES_ENABLED is off (Config/Debug.xcconfig).
+          # When background updates ship, delete this line and set the flag in Release too.
+          INFOPLIST_FILE: ""
   ADBLXTests:
     type: bundle.unit-test
     platform: auto

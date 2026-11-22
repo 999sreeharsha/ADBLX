@@ -1,7 +1,8 @@
 #!/bin/sh
 # Checks check-archive-release.sh: it does nothing outside an archive, and in an archive it fails
 # when the built app carries DNS Protection, when an extension's version differs from the app's,
-# when it lacks a background mode or task identifier or carries the DEBUG timing spike (ADR-0014),
+# when its background modes and task identifiers don't match BACKGROUND_UPDATES_ENABLED (all
+# present when on, none when off) or it carries the DEBUG timing spike (ADR-0014),
 # or when the entitlements Xcode is about to sign with include the Network Extension one.
 dir=$(dirname "$0")
 work=$(mktemp -d)
@@ -23,8 +24,9 @@ version() { # plist short build
     /usr/libexec/PlistBuddy -c "Add :CFBundleShortVersionString string $2" -c "Add :CFBundleVersion string $3" "$1" >/dev/null
 }
 
-# background plist modes   (the identifiers background filter updates register are always added)
+# background plist modes   (with any mode, the identifiers background filter updates register are added too)
 background() {
+    [ -n "$2" ] || return 0
     /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes array" -c "Add :BGTaskSchedulerPermittedIdentifiers array" "$1" >/dev/null
     for mode in $2; do /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes: string $mode" "$1"; done
     for id in com.ADBLX.ADBLX.filter-refresh com.ADBLX.ADBLX.filter-install; do
@@ -49,32 +51,38 @@ make_app() {
     echo "$work/$(basename "$(dirname "$app")")"
 }
 
-expect() { # expected-exit action build-dir entitlements
+expect() { # expected-exit action build-dir entitlements [background-updates-flag]
     ACTION="$2" TARGET_BUILD_DIR="$3" WRAPPER_NAME=ADBLX.app SRCROOT=/ CODE_SIGN_ENTITLEMENTS="$4" \
-        "$dir/check-archive-release.sh" >/dev/null 2>&1
+        BACKGROUND_UPDATES_ENABLED="${5:-}" "$dir/check-archive-release.sh" >/dev/null 2>&1
     actual=$?
     if [ "$actual" -ne "$1" ]; then
-        echo "FAIL: $(basename "$3") (ACTION=$2) exited $actual, expected $1"
+        echo "FAIL: $(basename "$3") (ACTION=$2, BACKGROUND_UPDATES_ENABLED=${5:-unset}) exited $actual, expected $1"
         failures=$((failures + 1))
     fi
 }
 
 modes="fetch processing"
-good=$(make_app good "$modes" "plain app binary" ADBLXAdsBlocker 1.2 ADBLXSafariWebExtension 1.2)
-tunnel=$(make_app tunnel "$modes" "plain app binary" ADBLXAdsBlocker 1.2 ADBLXPacketTunnel 1.2)
-mismatch=$(make_app mismatch "$modes" "plain app binary" ADBLXAdsBlocker 1.2 ADBLXPrivacyBlocker 1.0)
+# Release today: the background-updates flag is off, so no background modes.
+good=$(make_app good "" "plain app binary" ADBLXAdsBlocker 1.2 ADBLXSafariWebExtension 1.2)
+tunnel=$(make_app tunnel "" "plain app binary" ADBLXAdsBlocker 1.2 ADBLXPacketTunnel 1.2)
+mismatch=$(make_app mismatch "" "plain app binary" ADBLXAdsBlocker 1.2 ADBLXPrivacyBlocker 1.0)
+spike=$(make_app timing-spike "" "BackgroundTimingSpike" ADBLXAdsBlocker 1.2)
+with_modes=$(make_app with-modes "$modes" "plain app binary" ADBLXAdsBlocker 1.2)
 no_fetch=$(make_app no-fetch "processing" "plain app binary" ADBLXAdsBlocker 1.2)
-spike=$(make_app timing-spike "$modes" "BackgroundTimingSpike" ADBLXAdsBlocker 1.2)
 
 expect 0 build "$tunnel" "$tunnel_entitlements"
 expect 0 install "$good" "$clean_entitlements"
 expect 1 install "$tunnel" "$clean_entitlements"
 expect 1 install "$mismatch" "$clean_entitlements"
-expect 1 install "$no_fetch" "$clean_entitlements"
 expect 1 install "$spike" "$clean_entitlements"
 expect 1 install "$good" "$tunnel_entitlements"
 expect 1 install "$good" "$work/missing.entitlements"
 expect 1 install "$work/no-such-build-dir" "$clean_entitlements"
+# Background modes follow the flag: absent while it is off, all present once it is on.
+expect 1 install "$with_modes" "$clean_entitlements"
+expect 0 install "$with_modes" "$clean_entitlements" YES
+expect 1 install "$good" "$clean_entitlements" YES
+expect 1 install "$no_fetch" "$clean_entitlements" YES
 
 [ "$failures" -eq 0 ] && echo "archive release checks: all cases passed"
 exit "$failures"
