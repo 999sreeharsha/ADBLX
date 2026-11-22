@@ -130,7 +130,12 @@ which rows are load-bearing and which aren't before building on top of them:
   `SettingsPlaceholderRow`s, shown only with `SETTINGS_PLACEHOLDERS_ENABLED` (set in
   `Config/Debug.xcconfig` only). In Debug, Notifications and Safari Help still land on
   `ComingSoonState`, and iCloud Sync still reads a hardcoded off: there is no notification
-  permission wiring and no iCloud sync backend. The Home plan card no longer lists iCloud sync.
+  permission wiring. The Home plan card no longer lists iCloud sync. Allowlist sync itself
+  (`ICloudSyncCoordinator`) exists but is off in Release since 2026-11-22
+  (`BuildFeatures.iCloudSync`, `ICLOUD_SYNC_ENABLED` in `Config/Debug.xcconfig`), and Release is
+  signed without the iCloud key-value entitlement (the archive check fails if it returns). The
+  privacy policy draft doesn't mention iCloud; turning sync on in Release means updating it and
+  the App Privacy label.
   Remove a row from `SettingsPlaceholderRow` only when its feature is real.
 - **Language opens the app's page in iOS Settings** (`SettingsView.languageSettingsURL`).
   iOS shows a per-app language choice there only when the app has more than one localization.

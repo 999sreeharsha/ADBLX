@@ -25,6 +25,17 @@ nonisolated enum BuildFeatures {
         #endif
     }
 
+    /// On in Debug, off in Release: Premium allowlist sync through iCloud key-value storage.
+    /// Release is signed without the iCloud entitlement, and the privacy policy doesn't mention
+    /// iCloud. `ICLOUD_SYNC_ENABLED` in `Config/Debug.xcconfig`.
+    static var iCloudSync: Bool {
+        #if ICLOUD_SYNC_ENABLED
+        return true
+        #else
+        return false
+        #endif
+    }
+
     /// On in Debug, off in Release: Settings rows for features that don't exist yet
     /// (`SettingsPlaceholderRow`), so a Release build never shows a row that leads nowhere.
     static var settingsPlaceholders: Bool {

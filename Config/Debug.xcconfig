@@ -11,5 +11,8 @@ ONLY_ACTIVE_ARCH = YES
 // Release, where project.yml leaves out the plist that declares them, until background updates
 // ship; Scripts/check-background-modes.sh fails an archive whose plist disagrees with this.
 BACKGROUND_UPDATES_ENABLED = YES
-SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG DNS_PROTECTION_ENABLED SETTINGS_PLACEHOLDERS_ENABLED BACKGROUND_UPDATES_ENABLED $(inherited)
+// ICLOUD_SYNC_ENABLED: Premium allowlist sync through iCloud key-value storage. Off in Release,
+// which is also signed without the iCloud entitlement (Config/ADBLX.Release.entitlements);
+// Scripts/check-archive-release.sh fails an archive that has it.
+SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG DNS_PROTECTION_ENABLED SETTINGS_PLACEHOLDERS_ENABLED BACKGROUND_UPDATES_ENABLED ICLOUD_SYNC_ENABLED $(inherited)
 SWIFT_OPTIMIZATION_LEVEL = -Onone

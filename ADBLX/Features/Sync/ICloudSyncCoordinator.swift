@@ -85,6 +85,9 @@ public actor ICloudSyncCoordinator {
     private let entitlementService: EntitlementService
     private let notificationCenter: NotificationCenter
     private var isObserving = false
+    /// Off in Release (`BuildFeatures.iCloudSync`): every entry point then returns without
+    /// touching iCloud or the local allowlist.
+    private let isEnabled: Bool
 
     private static let keyAllowlistData = "ADBLX_ICLOUD_ALLOWLIST_RECORDS_DATA"
     private static let keyAllowlistLegacyArray = "ADBLX_ICLOUD_ALLOWLIST_DOMAINS"
@@ -94,8 +97,10 @@ public actor ICloudSyncCoordinator {
         allowlistStore: AllowlistStore,
         pipeline: FilterPipeline? = nil,
         entitlementService: EntitlementService,
-        notificationCenter: NotificationCenter = .default
+        notificationCenter: NotificationCenter = .default,
+        isEnabled: Bool = BuildFeatures.iCloudSync
     ) {
+        self.isEnabled = isEnabled
         self.store = store
         self.allowlistStore = allowlistStore
         self.pipeline = pipeline
@@ -105,7 +110,7 @@ public actor ICloudSyncCoordinator {
 
     /// Starts observing remote iCloud changes if entitled.
     public func startObserving() async {
-        guard !isObserving else { return }
+        guard isEnabled, !isObserving else { return }
         isObserving = true
 
         notificationCenter.addObserver(
@@ -125,7 +130,7 @@ public actor ICloudSyncCoordinator {
 
     /// Handles changes pushed down from another device via iCloud, respecting tombstones and additions.
     public func handleExternalChange() async {
-        guard await entitlementService.isPremiumEntitled() else { return }
+        guard isEnabled, await entitlementService.isPremiumEntitled() else { return }
 
         let remoteRecords = loadRemoteRecords()
         let localEntries = await allowlistStore.load()
@@ -164,7 +169,7 @@ public actor ICloudSyncCoordinator {
 
     /// Records a local domain addition and synchronizes upstream.
     public func recordLocalAddition(domain: String) async {
-        guard await entitlementService.isPremiumEntitled() else { return }
+        guard isEnabled, await entitlementService.isPremiumEntitled() else { return }
 
         var records = loadRemoteRecords()
         records.removeAll { $0.domain == domain }
@@ -174,7 +179,7 @@ public actor ICloudSyncCoordinator {
 
     /// Records a local domain deletion with a tombstone and synchronizes upstream.
     public func recordLocalDeletion(domain: String) async {
-        guard await entitlementService.isPremiumEntitled() else { return }
+        guard isEnabled, await entitlementService.isPremiumEntitled() else { return }
 
         var records = loadRemoteRecords()
         records.removeAll { $0.domain == domain }
@@ -209,6 +214,7 @@ public actor ICloudSyncCoordinator {
 
     /// Returns whether iCloud sync is active and entitled.
     public func isSyncActive() async -> Bool {
-        await entitlementService.isPremiumEntitled()
+        guard isEnabled else { return false }
+        return await entitlementService.isPremiumEntitled()
     }
 }

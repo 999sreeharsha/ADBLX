@@ -3,7 +3,8 @@
 # when the built app carries DNS Protection, when an extension's version differs from the app's,
 # when its background modes and task identifiers don't match BACKGROUND_UPDATES_ENABLED (all
 # present when on, none when off) or it carries the DEBUG timing spike (ADR-0014),
-# or when the entitlements Xcode is about to sign with include the Network Extension one.
+# or when the entitlements Xcode is about to sign with include the Network Extension one or iCloud
+# key-value storage (iCloud sync is off in Release).
 dir=$(dirname "$0")
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
@@ -13,6 +14,11 @@ clean_entitlements="$work/clean.entitlements"
 cat > "$clean_entitlements" <<'EOF'
 <?xml version="1.0" encoding="UTF-8"?>
 <plist version="1.0"><dict><key>com.apple.security.application-groups</key><array><string>group.com.ADBLX.shared</string></array></dict></plist>
+EOF
+icloud_entitlements="$work/icloud.entitlements"
+cat > "$icloud_entitlements" <<'EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<plist version="1.0"><dict><key>com.apple.developer.ubiquity-kvstore-identifier</key><string>T.com.ADBLX.ADBLX</string></dict></plist>
 EOF
 tunnel_entitlements="$work/tunnel.entitlements"
 cat > "$tunnel_entitlements" <<'EOF'
@@ -76,6 +82,7 @@ expect 1 install "$tunnel" "$clean_entitlements"
 expect 1 install "$mismatch" "$clean_entitlements"
 expect 1 install "$spike" "$clean_entitlements"
 expect 1 install "$good" "$tunnel_entitlements"
+expect 1 install "$good" "$icloud_entitlements"
 expect 1 install "$good" "$work/missing.entitlements"
 expect 1 install "$work/no-such-build-dir" "$clean_entitlements"
 # Background modes follow the flag: absent while it is off, all present once it is on.

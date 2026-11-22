@@ -7,7 +7,8 @@
 # Runs as the app target's last build phase but acts only on archives (ACTION=install), like the
 # recipient and key checks. It runs after the extensions are embedded and before Xcode signs the
 # app, so the signature can't be read yet: the entitlements Xcode is about to sign with
-# (CODE_SIGN_ENTITLEMENTS) are checked for the Network Extension entitlement instead.
+# (CODE_SIGN_ENTITLEMENTS) are checked for the Network Extension and iCloud key-value storage
+# entitlements instead.
 # CI runs the same three scripts on its own Release build (.github/workflows/ci.yml).
 [ "${ACTION:-}" = "install" ] || exit 0
 
@@ -27,9 +28,16 @@ esac
 if [ -z "$entitlements" ] || [ ! -f "$entitlements" ]; then
     echo "error: can't read the entitlements this archive is signed with (CODE_SIGN_ENTITLEMENTS=${CODE_SIGN_ENTITLEMENTS:-unset})" >&2
     fail=1
-elif grep -q "networkextension" "$entitlements"; then
-    echo "error: this archive would be signed with the Network Extension entitlement ($entitlements)" >&2
-    fail=1
+else
+    if grep -q "networkextension" "$entitlements"; then
+        echo "error: this archive would be signed with the Network Extension entitlement ($entitlements)" >&2
+        fail=1
+    fi
+    # iCloud sync is off in Release (BuildFeatures.iCloudSync); the privacy policy doesn't cover it.
+    if grep -q "ubiquity-kvstore-identifier" "$entitlements"; then
+        echo "error: this archive would be signed with the iCloud key-value storage entitlement ($entitlements)" >&2
+        fail=1
+    fi
 fi
 
 [ "$fail" = 0 ] && echo "ok: Release checks passed for $app"

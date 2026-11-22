@@ -4,8 +4,9 @@
 the reason for each. Check them against [Apple's App Privacy Details page](https://developer.apple.com/app-store/app-privacy-details/)
 when you fill in the form; the definitions change.
 
-They describe the Release build at `dev` on 2026-11-22: no DNS Protection, no third-party SDKs.
-Redo them when either changes.
+They describe the Release build at `dev` on 2026-11-22: no DNS Protection, no iCloud sync, no
+background tasks, no third-party SDKs.
+Redo them when any of that changes.
 
 ## Summary
 
@@ -47,7 +48,7 @@ it. If you'd rather be conservative, also declare **Browsing History**, linked, 
 | YouTube pages and videos | The web extension reads youtube.com pages on the device and sends nothing off it. |
 | Purchases | StoreKit transactions are verified on the device. No server of ours receives them. |
 | Trial start date | Stored in the device's keychain, never sent. |
-| Allowlist (Premium iCloud sync) | Stored in the user's own iCloud key-value storage, which we can't access. Apple treats data the developer can't access as not collected. |
+| Allowlist | Stored on the device only. iCloud sync is off in Release builds, which are signed without the iCloud entitlement. |
 | Notifications | Local only, scheduled on the device. |
 | Diagnostics | No crash or analytics SDK. MetricKit payloads are only counted on the device. Crash reports and analytics that users share through Apple's own opt-in are Apple's data, not ours; confirm this on Apple's page when you fill in the form. |
 | IP address on filter downloads | The list host ({{FILTER_HOST}}) sees requests in its server logs, but we don't receive them, don't use them, and send nothing about the user. **Check this one** against Apple's page: if you decide the host counts as a partner collecting data, the type would be Identifiers or Diagnostics, not linked, not tracking. |
@@ -58,4 +59,4 @@ it. If you'd rather be conservative, also declare **Browsing History**, linked, 
   collection by a partner).
 - Any SDK is added.
 - Reports move from email to a form or a server.
-- iCloud sync changes (see the open point in `PrivacyPolicy.md`).
+- iCloud sync is turned on in Release (`BuildFeatures.iCloudSync`).

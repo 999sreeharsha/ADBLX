@@ -14,15 +14,11 @@ Placeholders to fill before publishing:
   {{EFFECTIVE_DATE}}
 
 Open points for the owner (remove this block before publishing):
-  1. iCloud: Premium users' allowlists sync through their iCloud key-value storage in Release
-     builds today (ICloudSyncCoordinator, wired into Settings), although the "iCloud Sync" row is
-     hidden in Release and the Home plan card no longer mentions it. The section below describes
-     what the code does. Either keep it, or turn sync off in Release and delete the section.
-  2. DNS Protection is not in this version (Release builds don't embed the tunnel). When it
+  1. DNS Protection is not in this version (Release builds don't embed the tunnel). When it
      ships, add a section: which resolver receives the queries, that the app keeps only counts,
      and the VPN configuration it installs.
-  3. Retention of report emails ({{REPORT_RETENTION}}) is a decision, not a fact from the code.
-  4. Check the "Your rights" wording with someone who knows the law where you're based; it is
+  2. Retention of report emails ({{REPORT_RETENTION}}) is a decision, not a fact from the code.
+  3. Check the "Your rights" wording with someone who knows the law where you're based; it is
      deliberately general.
 -->
 
@@ -71,9 +67,7 @@ again. It is not sent anywhere.
 
 ## Your allowlist
 
-Sites you allow are stored on your device. If you have Premium, the list also syncs between
-your devices through your own iCloud account, using Apple's iCloud key-value storage. That
-data sits in your iCloud account, and we can't read it.
+Sites you allow are stored on your device only.
 
 ## Notifications
 

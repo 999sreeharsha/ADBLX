@@ -26,6 +26,38 @@ final class ICloudSyncCoordinatorTests: XCTestCase {
     }
 
     // -------------------------------------------------------------
+    // iCloud sync is off in Release (BuildFeatures.iCloudSync): a disabled coordinator
+    // touches neither iCloud nor the local allowlist, even for an entitled user.
+    // -------------------------------------------------------------
+    func testDisabledSyncTouchesNothingForAnEntitledUser() async throws {
+        _ = try await allowlistStore.add(domain: "local-only.com")
+        let remote = try JSONEncoder().encode([SyncedAllowlistRecord(domain: "remote-only.com", isDeleted: false)])
+        mockKVS.set(remote, forKey: "ADBLX_ICLOUD_ALLOWLIST_RECORDS_DATA")
+
+        let coordinator = ICloudSyncCoordinator(
+            store: mockKVS,
+            allowlistStore: allowlistStore,
+            entitlementService: StubEntitlementService(isPremiumEntitled: true),
+            isEnabled: false
+        )
+
+        await coordinator.startObserving()
+        await coordinator.handleExternalChange()
+        await coordinator.recordLocalAddition(domain: "added.com")
+        await coordinator.recordLocalDeletion(domain: "local-only.com")
+
+        let localDomains = await allowlistStore.loadDomains()
+        XCTAssertEqual(localDomains, ["local-only.com"], "remote records must not be merged")
+        XCTAssertEqual(mockKVS.data(forKey: "ADBLX_ICLOUD_ALLOWLIST_RECORDS_DATA"), remote, "nothing may be written to iCloud")
+        let active = await coordinator.isSyncActive()
+        XCTAssertFalse(active)
+    }
+
+    func testSyncIsOnInDebugBuilds() {
+        XCTAssertTrue(BuildFeatures.iCloudSync, "the test host is a Debug build, where iCloud sync stays on")
+    }
+
+    // -------------------------------------------------------------
     // Test 1: Remote changes merge into local allowlist
     // -------------------------------------------------------------
     func testRemoteChangesMergeIntoLocalAllowlist() async throws {
