@@ -639,6 +639,10 @@ was the shared branch until then; it is fully merged into `dev`.
   commit. If it moved, merge again on top of the new tip and rerun the suites; don't merge the
   tested result over it. On 2026-11-08 a session committed onto the shared branch while a merge
   was being tested, and the tested merge had to be redone.
+- Before pushing `dev`, run `git log origin/dev..dev` and push only your own commits, or ones
+  their session or the owner agreed to. Another session's local commit rides along with any
+  push of `dev` otherwise: on 2026-11-22 a push of SEC-13 also pushed another session's
+  unapproved docs commit. If someone else's commit is in the list, ask them (or the owner) first.
 - CI runs on manual dispatch only, so pushing `dev` doesn't start a run. The release checks run
   on every archive in Xcode (`Scripts/check-archive-release.sh`).
 
