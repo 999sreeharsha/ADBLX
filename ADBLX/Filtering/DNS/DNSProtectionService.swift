@@ -385,11 +385,12 @@ public final class RealDNSProtectionService: DNSProtectionServiceProtocol, @unch
             if let manager = state.tunnelManager { return (manager, nil) }
             if let load = state.managerLoad { return (nil, load) }
             let load = Task { [weak self] () -> NETunnelProviderManager? in
-                var manager: NETunnelProviderManager?
+                let manager: NETunnelProviderManager?
                 do {
                     manager = try await loadManager()
                 } catch {
                     logger.error("Failed to load NETunnelProviderManager: \(error.localizedDescription)")
+                    manager = nil
                 }
                 self?.stateLock.withLock { state in
                     if let manager { state.tunnelManager = manager }
