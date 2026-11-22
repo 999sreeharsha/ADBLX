@@ -45,6 +45,16 @@ branch from it), with the same effort and panel as above.
 
 Area 5 is done.
 
+## Areas 6 and 7 (approved 2026-11-22, run on `dev`)
+
+The first audit covered `Filtering/Entitlement` and `Utilities` only partly, and the Area 5
+researchers read the rule compiler only as background. Run on `dev` after `3caf8a7` (the
+tier-change fix), so Area 6 reads the reconciler as it is now. Same effort and panel as above.
+
+| # | Part | Scope | Status | Report | Findings |
+|---|---|---|---|---|---|
+| 6 | Entitlement and Utilities | `ADBLX/Filtering/Entitlement`, `ADBLX/Filtering/Utilities` | Queued | | |
+| 7 | Rule compiler | `Packages/ADBLXShared/Sources/ADBLXShared/Compiler`, `ADBLX/Filtering/Compilation`, `ADBLX/Filtering/Deployment/RulePartitioner.swift` | Queued | | |
+
 Not covered here:
-- **`Filtering/Entitlement`, `Models` and `Utilities`:** also only partly covered by the first
-  audit. Not queued; waiting on the owner.
+- **`Filtering/Models`:** also only partly covered by the first audit (data types). Not queued.
