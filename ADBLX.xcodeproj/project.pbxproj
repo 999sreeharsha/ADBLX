@@ -116,6 +116,7 @@
 		2060F4E5B192F6724FA312AF /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				ADBLXSafariWebExtension.entitlements,
 				Info.plist,
 				Tests/background.test.js,
 				Tests/content.test.js,
@@ -126,6 +127,7 @@
 		88E813FE543BAE5119B8542D /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				ADBLXRegionalBlocker.entitlements,
 				Info.plist,
 			);
 			target = C87480D5B9FF5CF1894F7775 /* ADBLXRegionalBlocker */;
@@ -133,6 +135,7 @@
 		ABFB96CE63CB83F440BFF98B /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				ADBLXAdsBlocker.entitlements,
 				Info.plist,
 			);
 			target = 824DB7F7B38E0216F3CDD3A7 /* ADBLXAdsBlocker */;
@@ -140,13 +143,22 @@
 		B68B005B4FB6650B332CBE96 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				ADBLXPacketTunnel.entitlements,
 				Info.plist,
 			);
 			target = 8E481CF8054F4670C26FB1CF /* ADBLXPacketTunnel */;
 		};
+		BE867CA9F51BC191E93CC4E0 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				ADBLX.entitlements,
+			);
+			target = 685EBB135767780CE1A90795 /* ADBLX */;
+		};
 		D03E6A87125B987754364C69 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				ADBLXAnnoyancesBlocker.entitlements,
 				Info.plist,
 			);
 			target = C5C128EE93D0F47D2A5E66C4 /* ADBLXAnnoyancesBlocker */;
@@ -154,6 +166,7 @@
 		E89B5CB5F67F8FB7497B6934 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				ADBLXPrivacyBlocker.entitlements,
 				Info.plist,
 			);
 			target = 40E66CD588F8467CEC1C699F /* ADBLXPrivacyBlocker */;
@@ -226,6 +239,9 @@
 		};
 		61773C90EEB5C63FA4DA2D28 /* ADBLX */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				BE867CA9F51BC191E93CC4E0 /* PBXFileSystemSynchronizedBuildFileExceptionSet */,
+			);
 			explicitFileTypes = {
 			};
 			explicitFolders = (
@@ -628,7 +644,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
-				LastUpgradeCheck = 1430;
+				LastUpgradeCheck = 1600;
 				TargetAttributes = {
 					143F27535B274A2CF99D0C4B = {
 						DevelopmentTeam = 93F78RF6FG;
@@ -687,14 +703,14 @@
 			projectRoot = "";
 			targets = (
 				685EBB135767780CE1A90795 /* ADBLX */,
-				824DB7F7B38E0216F3CDD3A7 /* ADBLXAdsBlocker */,
-				C5C128EE93D0F47D2A5E66C4 /* ADBLXAnnoyancesBlocker */,
-				8E481CF8054F4670C26FB1CF /* ADBLXPacketTunnel */,
-				40E66CD588F8467CEC1C699F /* ADBLXPrivacyBlocker */,
-				C87480D5B9FF5CF1894F7775 /* ADBLXRegionalBlocker */,
-				734790D8FA30AEF8AB59E21B /* ADBLXSafariWebExtension */,
 				143F27535B274A2CF99D0C4B /* ADBLXTests */,
 				179B04420DCE6E84F57B2A38 /* ADBLXUITests */,
+				824DB7F7B38E0216F3CDD3A7 /* ADBLXAdsBlocker */,
+				40E66CD588F8467CEC1C699F /* ADBLXPrivacyBlocker */,
+				C5C128EE93D0F47D2A5E66C4 /* ADBLXAnnoyancesBlocker */,
+				C87480D5B9FF5CF1894F7775 /* ADBLXRegionalBlocker */,
+				8E481CF8054F4670C26FB1CF /* ADBLXPacketTunnel */,
+				734790D8FA30AEF8AB59E21B /* ADBLXSafariWebExtension */,
 			);
 		};
 /* End PBXProject section */
