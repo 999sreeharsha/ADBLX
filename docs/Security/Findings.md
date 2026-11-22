@@ -31,7 +31,7 @@ Scan reports are in the gitignored `CLAUDE-SECURITY-*` folders at the repo root.
 | SEC-12 | No DNS over TCP; responses over 4096 bytes truncated | MEDIUM | Manual | Open |
 | SEC-13 | Tunnel start check allows `.free` | LOW | Panel | Fixed |
 | SEC-14 | Upstream DNS responses are easy to spoof | LOW | Panel | Fixed (the "Now" part; DoH still open) |
-| SEC-15 | Tunnel thread-safety gaps | LOW | Manual | Open |
+| SEC-15 | Tunnel thread-safety gaps | LOW | Manual | Fixed |
 | **Decide and record** | | | | |
 | SEC-16 | Clock set forward extends the trial | LOW | Panel | Blocked on the PD-01 trial decision |
 | SEC-17 | macOS `entitlement.json` is user-editable | LOW | Panel | Accepted |
@@ -255,6 +255,26 @@ These can't be reached in a release while DNS Protection stays off (see the open
 `PacketTunnelProvider` counters change from both the packet-flow callback and the forwarder queue. `BSDUDPUpstreamSocket.close()` sets `fileDescriptor = -1` off its queue.
 
 **Fix:** guard the counters with one lock or queue, close the socket on its own queue, and run the tunnel tests under Thread Sanitizer.
+
+**Fixed (2026-11-22):**
+- The provider's four plain counters (`totalIngressQueries`, `totalBlockedQueries`,
+  `totalForwardedQueries`, `totalResponsesEgress`) are gone; they duplicated `DNSTunnelCounters`,
+  which already holds every count behind one lock. The every-100th-query generation check uses
+  the new `DNSTunnelCounters.incrementReturningValue`, which increments and reads in one step.
+- `BSDUDPUpstreamSocket` touches its descriptor, read source and handler only on its own queue:
+  `close()` runs there (directly when already on it, as `deinit` can be), and `send` checks for a
+  closed socket there. No answer is delivered after `close()` returns.
+- Tests (`TunnelThreadSafetyTests`): 8 threads x 1,000 increments are all counted with distinct
+  returned values, and the provider keeps no `&+=` counter of its own (both failed before the
+  fix); closing a real socket from another thread while a local responder answers stops delivery
+  and later sends throw (passed before the fix; Thread Sanitizer is what showed its race).
+- **Thread Sanitizer, once, over the 37 tunnel test types** (`ADBLXTests/Filtering/DNS*` and
+  `Tunnel*`, live Quad9 test excluded; iOS simulator, `-enableThreadSanitizer YES`). Before the
+  fix: 3 data races in `BSDUDPUpstreamSocket.close()`, and the test process was restarted on each.
+  After: 0 warnings, 168 Swift Testing and 49 XCTest tests passed. The provider itself isn't
+  compiled into the test target, so its packet loop isn't exercised under TSan; its counters are
+  covered through `DNSTunnelCounters`.
+- Upstream racing and timeouts are unchanged.
 
 ## Decide and record
 

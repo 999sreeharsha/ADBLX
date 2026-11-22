@@ -16,6 +16,15 @@ public final class DNSTunnelCounters: @unchecked Sendable {
         state.withLock { $0[keyPath: counter] &+= amount }
     }
 
+    /// Increments and returns the new value in one step, so a caller that decides something from
+    /// the count (the provider's every-100th-query generation check) needs no counter of its own.
+    public func incrementReturningValue(_ counter: WritableKeyPath<DNSTunnelCountersSnapshot, UInt64>) -> UInt64 {
+        state.withLock { current in
+            current[keyPath: counter] &+= 1
+            return current[keyPath: counter]
+        }
+    }
+
     public func reset() {
         state.withLock { current in
             var fresh = DNSTunnelCountersSnapshot()

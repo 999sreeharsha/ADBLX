@@ -13,13 +13,9 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
     private var payloadResolver: DNSPayloadResolver?
     private var diagnostics: DNSTunnelDiagnosticsHandler?
     private var networkMonitor: DNSNetworkMonitor?
+    /// Every count the tunnel keeps, behind one lock: the packet-flow callback, the forwarder's
+    /// queue and TCP answer tasks all update it (SEC-15). Counts only, no browsing history.
     private let counters = DNSTunnelCounters()
-    
-    // Aggregate diagnostic counters (zero private browsing history retained)
-    private var totalIngressQueries: UInt64 = 0
-    private var totalBlockedQueries: UInt64 = 0
-    private var totalForwardedQueries: UInt64 = 0
-    private var totalResponsesEgress: UInt64 = 0
     
     override func startTunnel(options: [String: NSObject]?, completionHandler: @escaping (Error?) -> Void) {
         let startSignpost = signposter.beginInterval("TunnelStart")
@@ -104,7 +100,6 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
             do {
                 try await fwd.start { [weak self] (responsePacket: Data, ipVersion: IPVersion) in
                     guard let self = self else { return }
-                    self.totalResponsesEgress &+= 1
                     self.counters.increment(\.responsesWritten)
                     let protocolNumber: NSNumber = (ipVersion == .v6) ? NSNumber(value: AF_INET6) : NSNumber(value: AF_INET)
                     self.packetFlow.writePackets([responsePacket], withProtocols: [protocolNumber])
@@ -165,8 +160,7 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
             guard let self = self else { return }
             
             for (index, packetData) in packets.enumerated() {
-                self.totalIngressQueries &+= 1
-                self.counters.increment(\.ingressPackets)
+                let ingress = self.counters.incrementReturningValue(\.ingressPackets)
                 let proto = protocols[index]
                 
                 switch TunnelPacketClassifier.classify(packetData) {
@@ -180,7 +174,7 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
                         in: self.counters
                     )
                 case .udpQuery(let query):
-                    self.handleUDP(query, packetData: packetData, proto: proto)
+                    self.handleUDP(query, packetData: packetData, proto: proto, ingressCount: ingress)
                 }
             }
             
@@ -188,9 +182,9 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
         }
     }
     
-    private func handleUDP(_ query: ParsedDNSQuery, packetData: Data, proto: NSNumber) {
+    private func handleUDP(_ query: ParsedDNSQuery, packetData: Data, proto: NSNumber, ingressCount: UInt64) {
         // Periodically check for generation update
-        if (totalIngressQueries % 100) == 0 {
+        if (ingressCount % 100) == 0 {
             checkForGenerationUpdate()
         }
         
@@ -202,7 +196,6 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
         
         switch decision {
         case .block:
-            totalBlockedQueries &+= 1
             counters.increment(\.blockedQueries)
             let response = packetData.withUnsafeBytes {
                 NXDOMAINResponseBuilder.buildResponse(
@@ -212,13 +205,11 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
                 )
             }
             if let response {
-                totalResponsesEgress &+= 1
                 counters.increment(\.responsesWritten)
                 packetFlow.writePackets([response], withProtocols: [proto])
             }
             
         case .allow:
-            totalForwardedQueries &+= 1
             counters.increment(\.forwardedQueries)
             Task {
                 guard let forwarder = self.forwarder else { return }
@@ -246,7 +237,6 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
     
     private func writeIPv4(_ packets: [Data]) {
         guard !packets.isEmpty else { return }
-        totalResponsesEgress &+= UInt64(packets.count)
         counters.increment(\.responsesWritten, by: UInt64(packets.count))
         packetFlow.writePackets(packets, withProtocols: packets.map { _ in NSNumber(value: AF_INET) })
     }

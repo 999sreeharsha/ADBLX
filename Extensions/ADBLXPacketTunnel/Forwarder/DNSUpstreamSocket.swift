@@ -7,11 +7,15 @@ public protocol DNSUpstreamSocketProtocol: AnyObject, Sendable {
     func close()
 }
 
-/// Production reusable BSD UDP socket with DispatchSourceRead for asynchronous zero-overhead response reception
+/// Production reusable BSD UDP socket with DispatchSourceRead for asynchronous zero-overhead response reception.
+///
+/// `fileDescriptor`, `readSource` and `responseHandler` are touched only on `queue` once `init`
+/// returns (SEC-15): sends, the read handler and `close` all run there.
 public final class BSDUDPUpstreamSocket: DNSUpstreamSocketProtocol, @unchecked Sendable {
     private var fileDescriptor: Int32 = -1
     private var readSource: DispatchSourceRead?
     private let queue = DispatchQueue(label: "com.ADBLX.ADBLX.UpstreamSocketQueue", qos: .userInitiated)
+    private let queueKey = DispatchSpecificKey<Void>()
     private var responseHandler: (@Sendable (Data, String, UInt16) -> Void)?
     private let isIPv6: Bool
     private let targetHost: String
@@ -32,6 +36,7 @@ public final class BSDUDPUpstreamSocket: DNSUpstreamSocketProtocol, @unchecked S
         _ = fcntl(fd, F_SETFL, flags | O_NONBLOCK)
         
         self.fileDescriptor = fd
+        queue.setSpecific(key: queueKey, value: ())
         setupReadSource()
     }
     
@@ -42,12 +47,12 @@ public final class BSDUDPUpstreamSocket: DNSUpstreamSocketProtocol, @unchecked S
     }
     
     public func send(payload: Data) async throws {
-        guard fileDescriptor >= 0 else {
-            throw NSError(domain: "DNSUpstreamSocket", code: -1, userInfo: [NSLocalizedDescriptionKey: "Socket is closed"])
-        }
-        
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             queue.async {
+                guard self.fileDescriptor >= 0 else {
+                    continuation.resume(throwing: NSError(domain: "DNSUpstreamSocket", code: -1, userInfo: [NSLocalizedDescriptionKey: "Socket is closed"]))
+                    return
+                }
                 var sent: Int = 0
                 if self.isIPv6 {
                     var sin6 = sockaddr_in6()
@@ -149,7 +154,18 @@ public final class BSDUDPUpstreamSocket: DNSUpstreamSocketProtocol, @unchecked S
         source.resume()
     }
     
+    /// Closes on the socket's queue, so no send or read is part-way through when the descriptor
+    /// goes, and no answer is delivered after this returns. Runs directly when already on the queue
+    /// (`deinit` can be, after a send's block drops the last reference).
     public func close() {
+        if DispatchQueue.getSpecific(key: queueKey) != nil {
+            closeOnQueue()
+        } else {
+            queue.sync { closeOnQueue() }
+        }
+    }
+
+    private func closeOnQueue() {
         if let source = readSource {
             source.cancel()
             readSource = nil
