@@ -624,6 +624,20 @@ holds (fine): `WebExtensionEntitlementCoordinatorTests`, `PremiumEntitlementReco
 `PremiumPaywallTests`, `DNSUpstreamForwarderTests` and `DNSRealQuad9ResolutionTests` (both
 in the DNS session's area).
 
+**Fixed (2026-11-22): `TrialNotificationSchedulerTests.entitlementTransitionsCancelNotifications`.**
+It failed once in a full-suite run on `dev` at `ad2d520`. Both of its "cancelled" expectations
+failed and the test ended after 0.135 s, about its two sleeps: the observer never ran.
+`TrialNotificationScheduler.startObserving()` returns as soon as it has started a detached
+`.utility` task, which then subscribes to `stateUpdates()` and cancels on a non-trial state. The
+test changed the state, slept a fixed 50 ms and expected the cancellation done. Under a full
+parallel run that low-priority task can wait longer. It's not a clock problem: the dates come from
+`Date()`, but every check is relative to the `start` the test captures. Delaying the observer by
+200 ms reproduced the same two failures every time. The test now waits for the cancellation
+itself. `scheduleTrialNotifications` also removes requests (before adding), so a plain "removed"
+signal would match that earlier call. Instead, `MockNotificationCenter` numbers each removal and
+sends the number on `removals`, and the test notes `removalsSoFar` before changing the state and
+waits for a larger one, under a `.timeLimit`. With the 200 ms delay it passes.
+
 `DNSRealQuad9ResolutionTests.testLiveQuad9UDPResolutionOnDevice` queries 9.9.9.9 for real, so it
 fails whenever this machine's network loses the UDP query (once on 2026-11-20). It is on demand
 only, skipped in the default run and CI: run it before a device test with

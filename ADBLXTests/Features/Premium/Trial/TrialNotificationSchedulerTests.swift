@@ -7,6 +7,12 @@ import UserNotifications
 final class MockNotificationCenter: NotificationCenterProtocol, @unchecked Sendable {
     private let lock = NSLock()
     private var requests: [String: UNNotificationRequest] = [:]
+    private var removalCount = 0
+    /// Each removal's number, counting from 1. Scheduling removes too (before it adds), so a test
+    /// waiting for a cancellation notes `removalsSoFar` first and waits for a larger number.
+    let removals = TestSignal<Int>()
+
+    var removalsSoFar: Int { lock.withLock { removalCount } }
     var authorizationResult: Bool = true
     var authorizationError: Error?
 
@@ -24,11 +30,14 @@ final class MockNotificationCenter: NotificationCenterProtocol, @unchecked Senda
     }
 
     func removePendingNotificationRequests(withIdentifiers identifiers: [String]) {
-        lock.lock()
-        defer { lock.unlock() }
-        for id in identifiers {
-            requests.removeValue(forKey: id)
+        let number = lock.withLock {
+            for id in identifiers {
+                requests.removeValue(forKey: id)
+            }
+            removalCount += 1
+            return removalCount
         }
+        removals.send(number)
     }
 
     func getPendingNotificationRequests() async -> [UNNotificationRequest] {
@@ -124,7 +133,10 @@ struct TrialNotificationSchedulerTests {
         #expect(pending.isEmpty)
     }
 
-    @Test("Entitlement transitions to .free, .monthly, .annual, .lifetime cancel all pending notifications")
+    /// The observer runs on a detached `.utility` task, so the test waits for its cancellation
+    /// rather than a fixed time (it used to sleep 50 ms and failed under a full parallel run).
+    @Test("Entitlement transitions to .free, .monthly, .annual, .lifetime cancel all pending notifications",
+          .timeLimit(.minutes(1)))
     func entitlementTransitionsCancelNotifications() async throws {
         let center = MockNotificationCenter()
         let mockEntitlement = MockSubscriptionService(state: .trial(expiresAt: Date().addingTimeInterval(15 * 86400)))
@@ -141,16 +153,18 @@ struct TrialNotificationSchedulerTests {
         #expect((await center.getPendingNotificationRequests()).count == 5)
 
         // 2. Transition to .monthly -> All cancelled
+        var before = center.removalsSoFar
         mockEntitlement.updateState(.monthly(expiresAt: start.addingTimeInterval(30 * 86400)))
-        try await Task.sleep(nanoseconds: 50_000_000)
+        await center.removals.wait { $0 > before }
         #expect((await center.getPendingNotificationRequests()).isEmpty)
 
         // 3. Reschedule and transition to .free -> All cancelled
         try await scheduler.scheduleTrialNotifications(activatedAt: start, referenceDate: start)
         #expect((await center.getPendingNotificationRequests()).count == 5)
 
+        before = center.removalsSoFar
         mockEntitlement.updateState(.free)
-        try await Task.sleep(nanoseconds: 50_000_000)
+        await center.removals.wait { $0 > before }
         #expect((await center.getPendingNotificationRequests()).isEmpty)
     }
 }
