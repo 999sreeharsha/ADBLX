@@ -54,7 +54,9 @@ tier-change fix), so Area 6 reads the reconciler as it is now. Same effort and p
 | # | Part | Scope | Status | Report | Findings |
 |---|---|---|---|---|---|
 | 6 | Entitlement and Utilities | `ADBLX/Filtering/Entitlement`, `ADBLX/Filtering/Utilities` | Done 2026-11-22, verified (2/2 researchers returned; small-scope shape, one all-category researcher), at `751947a` | `CLAUDE-SECURITY-20261122-064146` | None |
-| 7 | Rule compiler | `Packages/ADBLXShared/Sources/ADBLXShared/Compiler`, `ADBLX/Filtering/Compilation`, `ADBLX/Filtering/Deployment/RulePartitioner.swift` | Queued | | |
+| 7 | Rule compiler | `Packages/ADBLXShared/Sources/ADBLXShared/Compiler`, `ADBLX/Filtering/Compilation`, `ADBLX/Filtering/Deployment/RulePartitioner.swift` | Done 2026-11-22, verified (6/6 researchers returned; all 15 files read), at `64c28b9` | `CLAUDE-SECURITY-20261122-064518` | None |
+
+Areas 6 and 7 are done.
 
 Not covered here:
 - **`Filtering/Models`:** also only partly covered by the first audit (data types). Not queued.

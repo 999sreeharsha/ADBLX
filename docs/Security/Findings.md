@@ -263,11 +263,18 @@ These can't be reached in a release while DNS Protection stays off (see the open
 - **Gap scans (2026-11-08, one area at a time; progress in `ScanProgress.md`):** `.github/` and `backend/` outside the Publisher: no findings. `Features/Protection`: no findings. `Features/Home` and `Features/Onboarding`: one LOW, which is SEC-16 again. No new findings.
 - **Filtering rescan (2026-11-18):** `Filtering/Updates`, `Pipeline`, `Storage` and `Deployment`:
   no findings. Two candidates were rejected (see "Rejected by the panel" below).
-  `Filtering/Entitlement`, `Models` and `Utilities` are still only partly covered.
+  `Filtering/Entitlement`, `Models` and `Utilities` were still only partly covered (Entitlement
+  and Utilities are done since, in Areas 6 and 7 below).
 - **Background-updates staging (2026-11-22, Area 5):** the 11 production files
   `feat/background-updates` added or changed, on `dev` at `f247093`
   (`CLAUDE-SECURITY-20261121-211539`, verified, 6/6 researchers returned): no findings. Two LOW
   candidates were rejected 3 to 0 (see "Rejected by the panel" below).
+- **Entitlement, Utilities and the rule compiler (2026-11-22, Areas 6 and 7):**
+  `Filtering/Entitlement` and `Filtering/Utilities` at `751947a`, after the tier-change fix
+  (`CLAUDE-SECURITY-20261122-064146`, verified, 2/2 researchers returned): no findings. The
+  shared ABP compiler, `Filtering/Compilation` and `RulePartitioner.swift` at `64c28b9`
+  (`CLAUDE-SECURITY-20261122-064518`, verified, 6/6 researchers returned, all 15 files read):
+  no findings, and no candidates. `Filtering/Models` is still only partly covered.
 
 ## Rejected by the panel, but real behaviour (for review)
 
