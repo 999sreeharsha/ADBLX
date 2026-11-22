@@ -61,7 +61,7 @@ actor PremiumEntitlementReconciler {
         extensionIdentifiers: GroupExtensionIdentifiers,
         entitlementService: EntitlementService,
         gate: FilterTransactionGate = .shared,
-        stateProvider: ContentBlockerStateProviding = SystemContentBlockerStateProvider()
+        stateProvider: ContentBlockerStateProviding = AppCompositionRoot.makeContentBlockerStateProvider()
     ) {
         self.store = store
         self.pipeline = pipeline

@@ -536,6 +536,30 @@ shows `settings.allowlist.compileFailed` in Settings (`AllowlistEditOutcome.reve
 
 Found in: `PayloadPersistenceTests` investigation, 2026-11-05
 
+## `SFContentBlockerManager` calls must never overlap: they go through `ContentBlockerCallGate`
+
+The manager sets up its connection to Safari lazily on the first call, and that setup isn't
+thread-safe. Two first calls at once resume the same XPC connection twice and iOS kills the app
+with `EXC_BREAKPOINT` and `BUG IN CLIENT OF LIBDISPATCH: Over-resume of an object`. Seen on an
+iPhone 14 (2026-11-22, Debug build): the Home plan card checked Ads and Privacy in parallel
+(`async let`) while launch work checked and reloaded other blockers, and three threads were inside
+`+[SFContentBlockerManager _contentBlockerLoaderConnection]`. It hit on the first open after a
+while (more launch work then, so more overlap) and not on the next one.
+
+- Every call, state check and reload alike, goes through `ContentBlockerCallGate.shared`, one at a
+  time. A call holds the gate until its completion or its timeout; timeouts are counted
+  (`timeoutReleases`) and logged, since the manager can drop a completion.
+- The app has one `SystemContentBlockerStateProvider` and one `ReloadCoordinator`, from
+  `AppCompositionRoot.makeContentBlockerStateProvider()` / `makeReloadCoordinator()`.
+  `ContentBlockerManagerInstanceTests` fails if any other app file constructs one. The single
+  provider lets concurrent checks of the same blocker share one call.
+- Never call `SFContentBlockerManager` directly, in the app or a test. A per-instance actor or
+  lock isn't enough: the race is process-wide.
+- Callers queue now. If the manager drops a completion, everyone behind it waits up to that call's
+  timeout (5 s for a state check, 10 s for a reload).
+
+Found in: device crash log `ADBLX-2026-11-22-115708.ips`, 2026-11-22
+
 ## Each session tests on its own simulator
 
 Two `xcodebuild test` runs on one simulator kill each other's test runner. The run

@@ -49,10 +49,13 @@ public final class RealDNSProtectionService: DNSProtectionServiceProtocol, @unch
     private static let signposter = OSSignposter(subsystem: "com.ADBLX.ADBLX", category: "DNSProtectionService")
     private let stateLock = OSAllocatedUnfairLock(initialState: (
         tunnelManager: NETunnelProviderManager?.none,
+        managerLoad: Task<NETunnelProviderManager?, Never>?.none,
         statusHandler: (@Sendable (DNSConnectionStatus) -> Void)?.none
     ))
     private var notificationObserver: AnyObject?
     private var entitlementTask: Task<Void, Never>?
+    private let loadManager: @Sendable () async throws -> NETunnelProviderManager
+    private let managerLoadCallerCount = OSAllocatedUnfairLock(initialState: 0)
     
     public convenience init(
         settingsStore: DNSProtectionSettingsStore = DNSProtectionSettingsStore(),
@@ -68,11 +71,15 @@ public final class RealDNSProtectionService: DNSProtectionServiceProtocol, @unch
     init(
         settingsStore: DNSProtectionSettingsStore,
         entitlementService: EntitlementService,
-        neverBlockStore: DNSNeverBlockStore
+        neverBlockStore: DNSNeverBlockStore,
+        loadManager: @escaping @Sendable () async throws -> NETunnelProviderManager = {
+            try await RealDNSProtectionService.loadSystemManager()
+        }
     ) {
         self.settingsStore = settingsStore
         self.entitlementService = entitlementService
         self.neverBlockStore = neverBlockStore
+        self.loadManager = loadManager
         setupStatusObserver()
         setupEntitlementObserver()
     }
@@ -358,23 +365,49 @@ public final class RealDNSProtectionService: DNSProtectionServiceProtocol, @unch
         }
     }
     
-    private func getOrLoadManager() async -> NETunnelProviderManager? {
-        let existing = stateLock.withLock { $0.tunnelManager }
-        if let existing = existing {
-            return existing
-        }
-        
-        do {
-            let managers = try await NETunnelProviderManager.loadAllFromPreferences()
-            let manager = managers.first ?? NETunnelProviderManager()
-            stateLock.withLock { $0.tunnelManager = manager }
-            return manager
-        } catch {
-            logger.error("Failed to load NETunnelProviderManager: \(error.localizedDescription)")
-            return nil
-        }
+    /// The saved tunnel configuration, or a new one when none is saved.
+    private static func loadSystemManager() async throws -> NETunnelProviderManager {
+        try await NETunnelProviderManager.loadAllFromPreferences().first ?? NETunnelProviderManager()
     }
-    
+
+    /// Callers currently waiting for a manager load. Lets tests observe them without timing.
+    var managerLoadCallers: Int { managerLoadCallerCount.withLock { $0 } }
+
+    /// The cached manager, or the result of loading one. Callers that arrive while a load is in
+    /// progress wait for that load instead of starting their own, so two callers at once (the
+    /// status load and the entitlement-loss teardown at launch) can't make two managers. A failed
+    /// load isn't kept: the next caller tries again.
+    func getOrLoadManager() async -> NETunnelProviderManager? {
+        let loadManager = self.loadManager
+        let logger = self.logger
+        typealias Lookup = (cached: NETunnelProviderManager?, load: Task<NETunnelProviderManager?, Never>?)
+        let (existing, load) = stateLock.withLock { state -> Lookup in
+            if let manager = state.tunnelManager { return (manager, nil) }
+            if let load = state.managerLoad { return (nil, load) }
+            let load = Task { [weak self] () -> NETunnelProviderManager? in
+                var manager: NETunnelProviderManager?
+                do {
+                    manager = try await loadManager()
+                } catch {
+                    logger.error("Failed to load NETunnelProviderManager: \(error.localizedDescription)")
+                }
+                self?.stateLock.withLock { state in
+                    if let manager { state.tunnelManager = manager }
+                    state.managerLoad = nil
+                }
+                return manager
+            }
+            state.managerLoad = load
+            return (nil, load)
+        }
+        if let existing { return existing }
+        guard let load else { return nil }
+
+        managerLoadCallerCount.withLock { $0 += 1 }
+        defer { managerLoadCallerCount.withLock { $0 -= 1 } }
+        return await load.value
+    }
+
     private func saveManager(_ manager: NETunnelProviderManager) async throws {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             manager.saveToPreferences { error in

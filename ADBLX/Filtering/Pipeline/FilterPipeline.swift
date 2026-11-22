@@ -32,7 +32,7 @@ actor FilterPipeline {
         reloader: ReloadCoordinator,
         allowlistStore: AllowlistStore? = nil,
         gate: FilterTransactionGate = .shared,
-        stateProvider: ContentBlockerStateProviding = SystemContentBlockerStateProvider()
+        stateProvider: ContentBlockerStateProviding = AppCompositionRoot.makeContentBlockerStateProvider()
     ) {
         self.validator = validator
         self.compiler = compiler

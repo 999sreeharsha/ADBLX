@@ -23,7 +23,7 @@ struct RootTabView: View {
                 HomeView(
                     viewModel: HomeViewModel(service: dependencies.homeService),
                     planCard: HomePlanCardViewModel(
-                        stateProvider: SystemContentBlockerStateProvider(),
+                        stateProvider: AppCompositionRoot.makeContentBlockerStateProvider(),
                         extensionIdentifiers: AppCompositionRoot.extensionIdentifiers,
                         subscriptionService: dependencies.subscriptionService
                     ),

@@ -253,7 +253,7 @@ actor RealProtectionService: ProtectionService {
     init(
         store: FilterStore,
         preferencesStore: FilterPreferencesStore,
-        stateProvider: ContentBlockerStateProviding = SystemContentBlockerStateProvider(),
+        stateProvider: ContentBlockerStateProviding = AppCompositionRoot.makeContentBlockerStateProvider(),
         descriptors: [ContentBlockerDescriptor] = RealProtectionService.defaultDescriptors
     ) {
         self.store = store

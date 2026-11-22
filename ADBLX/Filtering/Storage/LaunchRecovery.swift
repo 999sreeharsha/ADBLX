@@ -18,7 +18,7 @@ nonisolated enum LaunchRecovery {
         reloader: ReloadCoordinator,
         extensionIdentifiers: GroupExtensionIdentifiers,
         gate: FilterTransactionGate = .shared,
-        stateProvider: ContentBlockerStateProviding = SystemContentBlockerStateProvider()
+        stateProvider: ContentBlockerStateProviding = AppCompositionRoot.makeContentBlockerStateProvider()
     ) async -> Bool {
         await gate.run {
             let restored: Bool

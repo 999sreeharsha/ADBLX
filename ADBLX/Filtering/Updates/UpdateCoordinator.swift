@@ -45,7 +45,7 @@ actor UpdateCoordinator {
         extensionIdentifiers: GroupExtensionIdentifiers,
         entitlementService: EntitlementService,
         gate: FilterTransactionGate = .shared,
-        stateProvider: ContentBlockerStateProviding = SystemContentBlockerStateProvider(),
+        stateProvider: ContentBlockerStateProviding = AppCompositionRoot.makeContentBlockerStateProvider(),
         rejectionLog: ManifestRejectionLog = .shared
     ) {
         self.rejectionLog = rejectionLog

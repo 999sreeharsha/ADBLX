@@ -299,11 +299,8 @@ final class Sprint10ClosureVerificationTests: XCTestCase {
         
         let trialsCount = 5
         for extID in extensionIDs {
-            let isEnabled = await withCheckedContinuation { continuation in
-                SFContentBlockerManager.getStateOfContentBlocker(withIdentifier: extID) { state, _ in
-                    continuation.resume(returning: state?.isEnabled ?? false)
-                }
-            }
+            // Through the app's gate, like every other SFContentBlockerManager call.
+            let isEnabled = await AppCompositionRoot.makeContentBlockerStateProvider().state(of: extID) == .enabled
             
             var durations: [Double] = []
             var allSucceeded = true

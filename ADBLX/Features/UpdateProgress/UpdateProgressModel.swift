@@ -21,7 +21,7 @@ final class UpdateProgressModel {
     var phase: UpdatePhase = .idle
     private let stateProvider: ContentBlockerStateProviding
 
-    init(stateProvider: ContentBlockerStateProviding = SystemContentBlockerStateProvider()) {
+    init(stateProvider: ContentBlockerStateProviding = AppCompositionRoot.makeContentBlockerStateProvider()) {
         self.stateProvider = stateProvider
     }
 

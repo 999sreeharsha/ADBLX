@@ -325,7 +325,7 @@ struct HomeView: View {
     HomeView(
         viewModel: HomeViewModel(service: MockHomeService()),
         planCard: HomePlanCardViewModel(
-            stateProvider: SystemContentBlockerStateProvider(),
+            stateProvider: AppCompositionRoot.makeContentBlockerStateProvider(),
             extensionIdentifiers: AppCompositionRoot.extensionIdentifiers,
             subscriptionService: MockSubscriptionService()
         ),

@@ -1,6 +1,7 @@
 // ADBLX/Filtering/Deployment/ContentBlockerStateProviding.swift
 import Foundation
 import SafariServices
+import os
 
 /// Represents the observed system state of a Safari Content Blocker extension in iOS Settings.
 enum ContentBlockerSettingsState: Equatable, Sendable {
@@ -33,6 +34,7 @@ nonisolated protocol ContentBlockerStateProviding: Sendable {
 }
 
 /// Production implementation querying `SFContentBlockerManager.getStateOfContentBlocker`.
+/// The app uses one instance, from `AppCompositionRoot.makeContentBlockerStateProvider()`.
 final class SystemContentBlockerStateProvider: ContentBlockerStateProviding, @unchecked Sendable {
     /// Calls back with whether the blocker is enabled, or an error. The real one wraps
     /// `SFContentBlockerManager`; tests pass one that never calls back.
@@ -41,10 +43,16 @@ final class SystemContentBlockerStateProvider: ContentBlockerStateProviding, @un
     ) -> Void
 
     private let timeoutSeconds: Int
+    private let gate: ContentBlockerCallGate
     private let stateOperation: StateOperation
+    /// The check in progress for each blocker, and how many callers are waiting on it.
+    private let inFlight = OSAllocatedUnfairLock(
+        initialState: [String: (check: Task<ContentBlockerSettingsState, Never>, callers: Int)]()
+    )
 
     nonisolated init(
         timeoutSeconds: Int = 5,
+        gate: ContentBlockerCallGate = .shared,
         stateOperation: @escaping StateOperation = { identifier, completion in
             SFContentBlockerManager.getStateOfContentBlocker(withIdentifier: identifier) { state, error in
                 completion(state?.isEnabled, error)
@@ -52,33 +60,54 @@ final class SystemContentBlockerStateProvider: ContentBlockerStateProviding, @un
         }
     ) {
         self.timeoutSeconds = timeoutSeconds
+        self.gate = gate
         self.stateOperation = stateOperation
     }
 
-    /// Never waits past `timeoutSeconds`: `getStateOfContentBlocker` can drop its completion
-    /// without calling it, and a timeout counts as state unknown (`.unavailable`). Same race as
-    /// `ReloadCoordinator`: an unstructured timeout Task, and `ResumeOnce` so only one side resumes.
+    /// Callers currently waiting for a check of `identifier`. Lets tests observe them without timing.
+    nonisolated func callers(waitingOn identifier: String) -> Int {
+        inFlight.withLock { $0[identifier]?.callers ?? 0 }
+    }
+
+    /// Concurrent checks of the same blocker share one call. A check that starts after it
+    /// finishes makes a new one, so an answer is never older than the call it came from.
+    ///
+    /// Never waits past `timeoutSeconds` once the call starts: `getStateOfContentBlocker` can drop
+    /// its completion without calling it, and a timeout counts as state unknown (`.unavailable`).
     nonisolated func state(of extensionIdentifier: String) async -> ContentBlockerSettingsState {
-        let timeoutSeconds = self.timeoutSeconds
-        return await withCheckedContinuation { (continuation: CheckedContinuation<ContentBlockerSettingsState, Never>) in
-            let resumeGuard = ResumeOnce()
-
-            stateOperation(extensionIdentifier) { isEnabled, error in
-                guard resumeGuard.markAndCheckFirst() else { return }
-                if let error {
-                    continuation.resume(returning: .unavailable(error.localizedDescription))
-                } else if let isEnabled {
-                    continuation.resume(returning: isEnabled ? .enabled : .disabled)
-                } else {
-                    continuation.resume(returning: .unavailable("No state returned"))
-                }
+        let shared = inFlight.withLock { checks in
+            if var entry = checks[extensionIdentifier] {
+                entry.callers += 1
+                checks[extensionIdentifier] = entry
+                return entry.check
             }
-
-            Task {
-                try? await Task.sleep(for: .seconds(timeoutSeconds))
-                guard resumeGuard.markAndCheckFirst() else { return }
-                continuation.resume(returning: .unavailable("Timed out after \(timeoutSeconds) s"))
+            let check = Task { [self] in
+                let state = await check(extensionIdentifier)
+                inFlight.withLock { $0[extensionIdentifier] = nil }
+                return state
             }
+            checks[extensionIdentifier] = (check, 1)
+            return check
+        }
+        return await shared.value
+    }
+
+    private nonisolated func check(_ extensionIdentifier: String) async -> ContentBlockerSettingsState {
+        let stateOperation = self.stateOperation
+        let outcome: ContentBlockerCallGate.Outcome<(isEnabled: Bool?, error: Error?)> = await gate.call(
+            timeout: .seconds(timeoutSeconds)
+        ) { answer in
+            stateOperation(extensionIdentifier) { isEnabled, error in answer((isEnabled, error)) }
+        }
+        switch outcome {
+        case .timedOut:
+            return .unavailable("Timed out after \(timeoutSeconds) s")
+        case .answered((_, let error?)):
+            return .unavailable(error.localizedDescription)
+        case .answered((let isEnabled?, nil)):
+            return isEnabled ? .enabled : .disabled
+        case .answered((nil, nil)):
+            return .unavailable("No state returned")
         }
     }
 }

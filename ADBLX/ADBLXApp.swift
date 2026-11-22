@@ -100,7 +100,7 @@ struct ADBLXApp: App {
                         // A transaction killed before its commit is undone before anything else
                         // reads the filter directories, and Safari reloads every blocker.
                         await LaunchRecovery.run(
-                            store: store, reloader: ReloadCoordinator(),
+                            store: store, reloader: AppCompositionRoot.makeReloadCoordinator(),
                             extensionIdentifiers: AppCompositionRoot.extensionIdentifiers
                         )
                     },

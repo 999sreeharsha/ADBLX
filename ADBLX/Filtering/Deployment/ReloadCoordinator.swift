@@ -9,8 +9,8 @@ import SafariServices
 /// Maps to FR-06 (reload affected extensions after compile; report per-extension status).
 /// Target: main app ONLY (extensions cannot reload themselves or each other).
 ///
-/// Bounded by `timeoutSeconds` — see this task's "Why this needs a timeout" note in the plan
-/// for why a plain TaskGroup race doesn't work here and an unstructured Task does.
+/// The app uses one instance, from `AppCompositionRoot.makeReloadCoordinator()`. Each reload goes
+/// through `ContentBlockerCallGate`, which also bounds it by `timeoutSeconds`.
 actor ReloadCoordinator {
     struct ReloadResult {
         var extensionIdentifier: String
@@ -30,15 +30,18 @@ actor ReloadCoordinator {
     typealias ReloadOperation = @Sendable (_ extensionIdentifier: String, _ completion: @escaping @Sendable (Error?) -> Void) -> Void
 
     private let timeoutSeconds: Int
+    private let gate: ContentBlockerCallGate
     private let reloadOperation: ReloadOperation
 
     init(
         timeoutSeconds: Int = 10,
+        gate: ContentBlockerCallGate = .shared,
         reloadOperation: @escaping ReloadOperation = { identifier, completion in
             SFContentBlockerManager.reloadContentBlocker(withIdentifier: identifier) { completion($0) }
         }
     ) {
         self.timeoutSeconds = timeoutSeconds
+        self.gate = gate
         self.reloadOperation = reloadOperation
     }
 
@@ -56,34 +59,22 @@ actor ReloadCoordinator {
 
     private func performReload(extensionIdentifier: String) async -> ReloadResult {
         let start = Date()
-        let timeoutSeconds = self.timeoutSeconds
-
-        return await withCheckedContinuation { (continuation: CheckedContinuation<ReloadResult, Never>) in
-            let resumeGuard = ResumeOnce()
-
-            reloadOperation(extensionIdentifier) { error in
-                guard resumeGuard.markAndCheckFirst() else { return }
-                continuation.resume(returning: ReloadResult(
-                    extensionIdentifier: extensionIdentifier,
-                    success: error == nil,
-                    error: error,
-                    duration: Date().timeIntervalSince(start)
-                ))
-            }
-
-            // Unstructured, not a TaskGroup child: see the task-level note on why a
-            // TaskGroup's implicit wait-for-all-children would defeat the timeout entirely.
-            Task {
-                try? await Task.sleep(for: .seconds(timeoutSeconds))
-                guard resumeGuard.markAndCheckFirst() else { return }
-                continuation.resume(returning: ReloadResult(
-                    extensionIdentifier: extensionIdentifier,
-                    success: false,
-                    error: ReloadError.timedOut,
-                    duration: Date().timeIntervalSince(start)
-                ))
-            }
+        let reloadOperation = self.reloadOperation
+        let timeout = Duration.seconds(timeoutSeconds)
+        let outcome: ContentBlockerCallGate.Outcome<Error?> = await gate.call(timeout: timeout) { answer in
+            reloadOperation(extensionIdentifier) { answer($0) }
         }
+        let error: Error?
+        switch outcome {
+        case .answered(let reloadError): error = reloadError
+        case .timedOut: error = ReloadError.timedOut
+        }
+        return ReloadResult(
+            extensionIdentifier: extensionIdentifier,
+            success: error == nil,
+            error: error,
+            duration: Date().timeIntervalSince(start)
+        )
     }
 
     /// Reloads multiple extensions and returns per-extension results — never a single

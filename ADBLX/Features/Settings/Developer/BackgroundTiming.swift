@@ -136,7 +136,7 @@ nonisolated struct CompileTimer: Sendable {
             validator: FilterValidator(), compiler: NativeRuleCompilerAdapter(),
             compositionService: JSONArrayCompositionService(),
             partitioner: GroupPartitioner(extensionIdentifiers: AppCompositionRoot.extensionIdentifiers),
-            store: store, writer: AtomicRuleWriter(), reloader: ReloadCoordinator(),
+            store: store, writer: AtomicRuleWriter(), reloader: AppCompositionRoot.makeReloadCoordinator(),
             gate: FilterTransactionGate()
         )
         let clock = ContinuousClock()

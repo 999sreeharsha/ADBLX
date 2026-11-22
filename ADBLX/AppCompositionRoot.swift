@@ -36,6 +36,22 @@ public enum AppCompositionRoot {
         FilterStore(appGroupIdentifier: AppGroup.identifier)
     }
 
+    /// One state provider and one reload coordinator for the app's lifetime. Both send every
+    /// `SFContentBlockerManager` call through `ContentBlockerCallGate.shared`; the single
+    /// provider also lets concurrent checks of the same blocker share one call.
+    nonisolated private static let sharedStateProvider = SystemContentBlockerStateProvider()
+    nonisolated private static let sharedReloadCoordinator = ReloadCoordinator()
+
+    /// The single `SystemContentBlockerStateProvider` instance shared app-wide.
+    nonisolated static func makeContentBlockerStateProvider() -> SystemContentBlockerStateProvider {
+        sharedStateProvider
+    }
+
+    /// The single `ReloadCoordinator` instance shared app-wide.
+    nonisolated static func makeReloadCoordinator() -> ReloadCoordinator {
+        sharedReloadCoordinator
+    }
+
     static func makeFilterPipeline(store: FilterStore, allowlistStore: AllowlistStore? = nil) -> FilterPipeline {
         FilterPipeline(
             validator: FilterValidator(),
@@ -44,7 +60,7 @@ public enum AppCompositionRoot {
             partitioner: GroupPartitioner(extensionIdentifiers: extensionIdentifiers),
             store: store,
             writer: AtomicRuleWriter(),
-            reloader: ReloadCoordinator(),
+            reloader: makeReloadCoordinator(),
             allowlistStore: allowlistStore ?? makeAllowlistStore(store: store)
         )
     }
@@ -175,7 +191,7 @@ public enum AppCompositionRoot {
             store: store,
             pipeline: pipeline,
             manifestStore: ManifestStore(filterStore: store),
-            reloader: ReloadCoordinator(),
+            reloader: makeReloadCoordinator(),
             extensionIdentifiers: extensionIdentifiers,
             entitlementService: makeSubscriptionService()
         )
@@ -197,7 +213,7 @@ public enum AppCompositionRoot {
             downloadClient: FilterDownloadClient(session: session),
             pipeline: pipeline,
             store: store,
-            reloader: ReloadCoordinator(),
+            reloader: makeReloadCoordinator(),
             extensionIdentifiers: extensionIdentifiers,
             entitlementService: makeSubscriptionService()
         )
@@ -212,7 +228,7 @@ public enum AppCompositionRoot {
                 pipeline: pipeline,
                 iCloudSyncCoordinator: makeICloudSyncCoordinator(store: store, pipeline: pipeline)
             ),
-            stateProvider: SystemContentBlockerStateProvider(),
+            stateProvider: makeContentBlockerStateProvider(),
             extensionIdentifiers: extensionIdentifiers
         )
     }

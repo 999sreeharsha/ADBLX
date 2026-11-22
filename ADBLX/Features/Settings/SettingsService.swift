@@ -62,7 +62,7 @@ actor RealSettingsService: SettingsService {
         allowlistStore: AllowlistStore,
         pipeline: FilterPipeline? = nil,
         iCloudSyncCoordinator: ICloudSyncCoordinator? = nil,
-        stateProvider: ContentBlockerStateProviding = SystemContentBlockerStateProvider()
+        stateProvider: ContentBlockerStateProviding = AppCompositionRoot.makeContentBlockerStateProvider()
     ) {
         self.allowlistStore = allowlistStore
         self.pipeline = pipeline
